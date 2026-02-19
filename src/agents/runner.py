@@ -4,7 +4,8 @@ Per Technical Architecture: "Each agent is a module, not a class hierarchy.
 An agent is: a prompt template, a Pydantic output model, and a thin runner function."
 
 All 10 agents use this shared runner. It handles:
-- LLM API calls via the Riskified proxy
+- LLM API calls via the Riskified proxy (streaming SSE to avoid 60s proxy timeout)
+- Sync and async execution (async enables parallel Agents 2-8)
 - Retry with exponential backoff (3 attempts)
 - JSON extraction from LLM response (bracket-counting for nested objects)
 - Pydantic validation of output
@@ -13,6 +14,7 @@ All 10 agents use this shared runner. It handles:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -23,14 +25,18 @@ from typing import Generic, TypeVar
 import anthropic
 from pydantic import BaseModel, ValidationError
 
-from config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MAX_OUTPUT_TOKENS_PER_AGENT
+from config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MAX_OUTPUT_TOKENS_PER_AGENT, MODEL_AGENTS_1_8
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
-# Shared client (reused across agents for connection pooling)
+# Shared clients (reused across agents for connection pooling)
 _client: anthropic.Anthropic | None = None
+_async_client: anthropic.AsyncAnthropic | None = None
+
+# Semaphore to limit concurrent proxy requests (adjust if DevOps confirms higher limit)
+DEFAULT_MAX_CONCURRENT = 7
 
 
 def get_client() -> anthropic.Anthropic:
@@ -41,9 +47,22 @@ def get_client() -> anthropic.Anthropic:
             api_key=ANTHROPIC_API_KEY,
             base_url=ANTHROPIC_BASE_URL,
             timeout=120.0,
-            max_retries=0,  # Don't auto-retry 504s — our runner handles retries
+            max_retries=0,
         )
     return _client
+
+
+def get_async_client() -> anthropic.AsyncAnthropic:
+    """Get or create the shared async Anthropic client."""
+    global _async_client
+    if _async_client is None:
+        _async_client = anthropic.AsyncAnthropic(
+            api_key=ANTHROPIC_API_KEY,
+            base_url=ANTHROPIC_BASE_URL,
+            timeout=120.0,
+            max_retries=0,
+        )
+    return _async_client
 
 
 @dataclass
@@ -58,6 +77,110 @@ class AgentResult(Generic[T]):
     attempts: int
 
 
+def build_analysis_prompt(
+    transcript_texts: list[str],
+    stage_context: dict,
+    timeline_entries: list[str] | None,
+    instruction: str,
+) -> str:
+    """Build the shared user prompt used by Agents 2-8.
+
+    All analysis agents receive the same context (timeline + stage + transcripts)
+    and differ only in their final instruction line. Centralizing this avoids
+    duplicating ~30 lines across 7 agent modules.
+    """
+    parts = []
+
+    if timeline_entries:
+        parts.append("## DEAL TIMELINE (all calls, chronological)")
+        parts.append("\n\n".join(timeline_entries))
+        parts.append("")
+
+    parts.append("## STAGE CONTEXT (from Agent 1)")
+    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
+    parts.append(f"Confidence: {stage_context.get('confidence')}")
+    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
+    parts.append("")
+
+    num_transcripts = len(transcript_texts)
+    parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
+    for i, text in enumerate(transcript_texts, 1):
+        parts.append(f"### Call {i} of {num_transcripts}")
+        parts.append(text)
+        parts.append("")
+
+    parts.append(
+        f"{instruction} "
+        f"You are analyzing {num_transcripts} full transcripts. Respond with JSON only."
+    )
+
+    return "\n".join(parts)
+
+
+def _enhance_system_prompt(system_prompt: str, output_model: type[BaseModel]) -> str:
+    """Build enhanced system prompt with schema injection and conciseness rules."""
+    raw_schema = output_model.model_json_schema()
+    schema = json.dumps(_strip_schema_descriptions(raw_schema), indent=2)
+    return (
+        system_prompt
+        + "\n\n## Required JSON Schema\n"
+        "Your response MUST be a JSON object matching this exact schema. "
+        "Use these EXACT field names.\n\n"
+        "## CONCISENESS RULES (critical for latency)\n"
+        "- narrative/reasoning: MAX 150 words. Be analytical, not descriptive.\n"
+        "- evidence fields: MAX 1 sentence. Quote or cite, don't explain.\n"
+        "- List fields (objections, risks, signals, stakeholders, etc.): "
+        "Only the most significant items.\n"
+        "- Do NOT pad with qualifiers, hedging, or restating what's obvious.\n"
+        "- Every word must earn its place.\n\n"
+        f"```json\n{schema}\n```"
+    )
+
+
+def _process_response(
+    agent_name: str,
+    response,
+    elapsed: float,
+    output_model: type[T],
+    model: str,
+    attempt: int,
+    max_output_tokens: int,
+) -> AgentResult[T]:
+    """Parse and validate an LLM response. Shared between sync/async runners."""
+    raw_text = response.content[0].text
+    tokens_in = response.usage.input_tokens
+    tokens_out = response.usage.output_tokens
+    stop_reason = response.stop_reason
+
+    logger.info(
+        "[%s] Response in %.1fs — %d in / %d out tokens (stop: %s)",
+        agent_name, elapsed, tokens_in, tokens_out, stop_reason,
+    )
+
+    if stop_reason == "max_tokens":
+        raise AgentError(
+            f"Output truncated (hit {max_output_tokens} token limit). "
+            "Response is likely incomplete JSON."
+        )
+
+    parsed_json = _extract_json(raw_text)
+    if parsed_json is None:
+        raise AgentError(f"No valid JSON found in response: {raw_text[:200]}...")
+
+    result = output_model.model_validate(parsed_json)
+    return AgentResult(
+        output=result,
+        input_tokens=tokens_in,
+        output_tokens=tokens_out,
+        elapsed_seconds=elapsed,
+        model=model,
+        attempts=attempt,
+    )
+
+
+# ── Sync runner (used for sequential agents: 1, 9, 10) ──────────────────
+
+
 def run_agent(
     agent_name: str,
     system_prompt: str,
@@ -67,14 +190,14 @@ def run_agent(
     max_output_tokens: int = MAX_OUTPUT_TOKENS_PER_AGENT,
     max_retries: int = 3,
 ) -> AgentResult[T]:
-    """Run an agent: send prompt to LLM, parse and validate structured output.
+    """Run an agent synchronously: send prompt to LLM, parse structured output.
 
     Args:
         agent_name: Human-readable agent name for logging
         system_prompt: System message with agent identity and instructions
         user_prompt: User message with transcript data and context
         output_model: Pydantic model class to validate the JSON output against
-        model: LLM model to use (defaults to config MODEL_AGENTS_1_9)
+        model: LLM model to use (defaults to config MODEL_AGENTS_1_8)
         max_output_tokens: Max tokens for LLM response
         max_retries: Number of retry attempts
 
@@ -84,23 +207,9 @@ def run_agent(
     Raises:
         AgentError: If all retries exhausted
     """
-    from config import MODEL_AGENTS_1_9
-
-    model = model or MODEL_AGENTS_1_9
+    model = model or MODEL_AGENTS_1_8
     client = get_client()
-
-    # Auto-inject compact JSON schema so the LLM knows exact field names and types.
-    # Strip descriptions (already in the system prompt) to save tokens.
-    raw_schema = output_model.model_json_schema()
-    schema = json.dumps(_strip_schema_descriptions(raw_schema), indent=2)
-    enhanced_system = (
-        system_prompt
-        + "\n\n## Required JSON Schema\n"
-        "Your response MUST be a JSON object matching this exact schema. "
-        "Use these EXACT field names. Be concise — keep narrative to 1-2 paragraphs "
-        "and limit lists to key items only:\n"
-        f"```json\n{schema}\n```"
-    )
+    enhanced_system = _enhance_system_prompt(system_prompt, output_model)
 
     last_error = None
     current_user_prompt = user_prompt
@@ -110,45 +219,17 @@ def run_agent(
             logger.info("[%s] Attempt %d/%d (model=%s)", agent_name, attempt, max_retries, model)
             start = time.time()
 
-            response = client.messages.create(
+            with client.messages.stream(
                 model=model,
                 max_tokens=max_output_tokens,
                 system=enhanced_system,
                 messages=[{"role": "user", "content": current_user_prompt}],
-            )
+            ) as stream:
+                response = stream.get_final_message()
 
             elapsed = time.time() - start
-            raw_text = response.content[0].text
-            tokens_in = response.usage.input_tokens
-            tokens_out = response.usage.output_tokens
-            stop_reason = response.stop_reason
-
-            logger.info(
-                "[%s] Response in %.1fs — %d in / %d out tokens (stop: %s)",
-                agent_name, elapsed, tokens_in, tokens_out, stop_reason,
-            )
-
-            # Check for truncated output
-            if stop_reason == "max_tokens":
-                raise AgentError(
-                    f"Output truncated (hit {max_output_tokens} token limit). "
-                    "Response is likely incomplete JSON."
-                )
-
-            # Parse JSON from response
-            parsed_json = _extract_json(raw_text)
-            if parsed_json is None:
-                raise AgentError(f"No valid JSON found in response: {raw_text[:200]}...")
-
-            # Validate against Pydantic model
-            result = output_model.model_validate(parsed_json)
-            return AgentResult(
-                output=result,
-                input_tokens=tokens_in,
-                output_tokens=tokens_out,
-                elapsed_seconds=elapsed,
-                model=model,
-                attempts=attempt,
+            return _process_response(
+                agent_name, response, elapsed, output_model, model, attempt, max_output_tokens,
             )
 
         except anthropic.RateLimitError as e:
@@ -167,7 +248,6 @@ def run_agent(
             last_error = e
             logger.warning("[%s] Output validation failed: %s", agent_name, e)
             if attempt < max_retries:
-                # Smart retry: append correction hint so the model can fix its output
                 current_user_prompt = (
                     user_prompt
                     + f"\n\n[RETRY — your previous response failed validation: {e}. "
@@ -184,6 +264,110 @@ def run_agent(
     raise AgentError(f"[{agent_name}] Failed after {max_retries} attempts. Last error: {last_error}")
 
 
+# ── Async runner (used for parallel agents: 2-8) ────────────────────────
+
+
+async def run_agent_async(
+    agent_name: str,
+    system_prompt: str,
+    user_prompt: str,
+    output_model: type[T],
+    model: str | None = None,
+    max_output_tokens: int = MAX_OUTPUT_TOKENS_PER_AGENT,
+    max_retries: int = 3,
+) -> AgentResult[T]:
+    """Run an agent asynchronously. Identical logic to run_agent, non-blocking I/O.
+
+    Uses AsyncAnthropic with streaming SSE for proxy timeout avoidance.
+    """
+    model = model or MODEL_AGENTS_1_8
+    client = get_async_client()
+    enhanced_system = _enhance_system_prompt(system_prompt, output_model)
+
+    last_error = None
+    current_user_prompt = user_prompt
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info("[%s] Attempt %d/%d (model=%s)", agent_name, attempt, max_retries, model)
+            start = time.time()
+
+            async with client.messages.stream(
+                model=model,
+                max_tokens=max_output_tokens,
+                system=enhanced_system,
+                messages=[{"role": "user", "content": current_user_prompt}],
+            ) as stream:
+                response = await stream.get_final_message()
+
+            elapsed = time.time() - start
+            return _process_response(
+                agent_name, response, elapsed, output_model, model, attempt, max_output_tokens,
+            )
+
+        except anthropic.RateLimitError as e:
+            last_error = e
+            wait = 2 ** attempt
+            logger.warning("[%s] Rate limited, waiting %ds", agent_name, wait)
+            await asyncio.sleep(wait)
+
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError) as e:
+            last_error = e
+            wait = 2 ** attempt
+            logger.warning("[%s] API error: %s, retrying in %ds", agent_name, type(e).__name__, wait)
+            await asyncio.sleep(wait)
+
+        except ValidationError as e:
+            last_error = e
+            logger.warning("[%s] Output validation failed: %s", agent_name, e)
+            if attempt < max_retries:
+                current_user_prompt = (
+                    user_prompt
+                    + f"\n\n[RETRY — your previous response failed validation: {e}. "
+                    "Please respond with valid JSON matching the required schema exactly.]"
+                )
+                await asyncio.sleep(1)
+
+        except AgentError as e:
+            last_error = e
+            logger.warning("[%s] %s", agent_name, e)
+            if attempt < max_retries:
+                await asyncio.sleep(1)
+
+    raise AgentError(f"[{agent_name}] Failed after {max_retries} attempts. Last error: {last_error}")
+
+
+async def run_agents_parallel(
+    tasks: list[dict],
+    max_concurrent: int = DEFAULT_MAX_CONCURRENT,
+) -> list[AgentResult | Exception]:
+    """Run multiple agents concurrently with a concurrency semaphore.
+
+    Args:
+        tasks: List of dicts with keys matching run_agent_async params:
+               {agent_name, system_prompt, user_prompt, output_model, model?, max_output_tokens?}
+        max_concurrent: Max simultaneous proxy requests (default 7 for agents 2-8)
+
+    Returns:
+        List of AgentResult or Exception in same order as input tasks.
+        Exceptions are returned (not raised) so one failure doesn't kill the batch.
+    """
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def _safe_run(task: dict) -> AgentResult | Exception:
+        async with semaphore:
+            try:
+                return await run_agent_async(**task)
+            except Exception as e:
+                return e
+
+    results = await asyncio.gather(*[_safe_run(t) for t in tasks])
+    return list(results)
+
+
+# ── JSON extraction helpers ──────────────────────────────────────────────
+
+
 def _extract_json(text: str) -> dict | None:
     """Extract JSON object from LLM response text.
 
@@ -194,14 +378,12 @@ def _extract_json(text: str) -> dict | None:
     """
     text = text.strip()
 
-    # Try direct parse first (most common — prompt asks for JSON only)
     if text.startswith("{"):
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             pass
 
-    # Try extracting from code block
     match = re.search(r"```(?:json)?\s*(\{.+\})\s*```", text, re.DOTALL)
     if match:
         try:
@@ -209,7 +391,6 @@ def _extract_json(text: str) -> dict | None:
         except json.JSONDecodeError:
             pass
 
-    # Bracket-counting fallback for JSON embedded in prose
     json_str = _find_json_object(text)
     if json_str:
         try:
@@ -221,11 +402,7 @@ def _extract_json(text: str) -> dict | None:
 
 
 def _find_json_object(text: str) -> str | None:
-    """Find the outermost JSON object using bracket counting.
-
-    Handles arbitrary nesting depth (arrays of objects, nested dicts, etc.)
-    unlike regex which fails beyond one level.
-    """
+    """Find the outermost JSON object using bracket counting."""
     start = text.find("{")
     if start == -1:
         return None
@@ -258,11 +435,7 @@ def _find_json_object(text: str) -> str | None:
 
 
 def _strip_schema_descriptions(schema: dict) -> dict:
-    """Recursively strip 'description' and 'title' fields from a JSON schema.
-
-    Descriptions are already embedded in the system prompt, so including them
-    again in the schema wastes tokens. This typically cuts schema size by 40-60%.
-    """
+    """Recursively strip 'description' and 'title' fields from a JSON schema."""
     if not isinstance(schema, dict):
         return schema
     result = {}

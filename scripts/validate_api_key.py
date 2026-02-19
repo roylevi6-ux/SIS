@@ -9,7 +9,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_AGENTS_1_9
+from config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_AGENTS_1_8
 
 import anthropic
 
@@ -21,7 +21,7 @@ def main():
 
     print(f"API Key: {ANTHROPIC_API_KEY[:8]}...{ANTHROPIC_API_KEY[-4:]}")
     print(f"Base URL: {ANTHROPIC_BASE_URL}")
-    print(f"Model: {MODEL_AGENTS_1_9}")
+    print(f"Model: {MODEL_AGENTS_1_8}")
     print("Testing API connection...")
 
     try:
@@ -30,7 +30,7 @@ def main():
             base_url=ANTHROPIC_BASE_URL,
         )
         response = client.messages.create(
-            model=MODEL_AGENTS_1_9,
+            model=MODEL_AGENTS_1_8,
             max_tokens=100,
             messages=[
                 {

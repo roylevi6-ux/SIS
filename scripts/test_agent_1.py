@@ -16,7 +16,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from config import MODEL_AGENTS_1_9, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
+from config import MODEL_AGENTS_1_8, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
 from preprocessor import load_account_calls
 from agents.stage_classifier import run_stage_classifier
 
@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s
 def main():
     print("=" * 70)
     print("Agent 1: Stage & Progress — Xtools Account Test")
-    print(f"Model: {MODEL_AGENTS_1_9}")
+    print(f"Model: {MODEL_AGENTS_1_8}")
     print(f"Proxy: {ANTHROPIC_BASE_URL}")
     print("=" * 70)
 

@@ -1,6 +1,6 @@
 """Test all agents (1-8) against the Xtools account.
 
-Runs Agent 1 first, then Agents 2-8 sequentially (parallel requires asyncio, coming later).
+Runs Agent 1 first (sequential), then Agents 2-8 in PARALLEL using asyncio.
 Prints structured output for each agent.
 
 Run: python scripts/test_all_agents.py
@@ -8,6 +8,7 @@ Run: python scripts/test_all_agents.py
 Requires: VPN connected (for Riskified LLM proxy)
 """
 
+import asyncio
 import json
 import logging
 import sys
@@ -17,21 +18,19 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from config import MODEL_AGENTS_1_9, ANTHROPIC_BASE_URL
+from config import MODEL_AGENTS_1_8, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
 from preprocessor import load_account_calls, estimate_tokens
-
-# Override transcript budget for faster runs through the proxy (60s timeout).
-# 3K per transcript × 2 transcripts + 3.4K timeline + ~2K system = ~11.5K input.
-# Gives ~45s headroom for 3.5K output tokens at ~20ms/token.
-TEST_TOKENS_PER_TRANSCRIPT = 3_000
 from agents.stage_classifier import run_stage_classifier
-from agents.relationship import run_relationship
-from agents.commercial import run_commercial
-from agents.momentum import run_momentum
-from agents.technical import run_technical
-from agents.economic_buyer import run_economic_buyer
-from agents.msp_next_steps import run_msp_next_steps
-from agents.competitive import run_competitive
+from agents.runner import run_agents_parallel
+
+# Import build_call from each agent module for parallel execution
+from agents.relationship import build_call as build_call_2
+from agents.commercial import build_call as build_call_3
+from agents.momentum import build_call as build_call_4
+from agents.technical import build_call as build_call_5
+from agents.economic_buyer import build_call as build_call_6
+from agents.msp_next_steps import build_call as build_call_7
+from agents.competitive import build_call as build_call_8
 
 XTOOLS_DIR = Path(__file__).parent.parent / "data" / "transcripts" / "xtools"
 
@@ -39,10 +38,21 @@ XTOOLS_DIR = Path(__file__).parent.parent / "data" / "transcripts" / "xtools"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
 
+AGENT_META = [
+    ("agent_2", "Relationship & Power Map", build_call_2),
+    ("agent_3", "Commercial & Risk", build_call_3),
+    ("agent_4", "Momentum & Engagement", build_call_4),
+    ("agent_5", "Technical Validation", build_call_5),
+    ("agent_6", "Economic Buyer", build_call_6),
+    ("agent_7", "MSP & Next Steps", build_call_7),
+    ("agent_8", "Competitive Displacement", build_call_8),
+]
+
+
 def main():
     print("=" * 70)
     print("SIS Pipeline Test — Agents 1-8 — Xtools Account")
-    print(f"Model: {MODEL_AGENTS_1_9}")
+    print(f"Model: {MODEL_AGENTS_1_8}")
     print(f"Proxy: {ANTHROPIC_BASE_URL}")
     print("=" * 70)
 
@@ -50,20 +60,11 @@ def main():
     calls = load_account_calls(XTOOLS_DIR)
     print(f"\nLoaded {len(calls)} calls ({calls[0].metadata.date} to {calls[-1].metadata.date})")
 
-    # Build context: 1 most recent transcript (60s proxy timeout constrains total tokens).
-    # Ultra-compact timeline: just dates, titles, and participant names (~500 tokens for 10 calls).
-    timeline_entries = []
-    for c in calls:
-        int_names = [s.name for s in c.speakers if s.affiliation == "Internal"]
-        ext_names = [s.name for s in c.speakers if s.affiliation != "Internal"]
-        tl = f"[{c.metadata.date}] {c.metadata.title} ({c.metadata.duration_minutes}min)"
-        if ext_names:
-            tl += f" — External: {', '.join(ext_names[:3])}"
-        if int_names:
-            tl += f" — Internal: {', '.join(int_names[:2])}"
-        timeline_entries.append(tl)
-    recent_calls = calls[-1:]
-    transcript_texts = [c.to_agent_text(max_tokens=TEST_TOKENS_PER_TRANSCRIPT) for c in recent_calls]
+    # Build context: 2 most recent transcripts at full budget + compact timeline.
+    # Streaming SSE keeps the proxy connection alive, so no more 60s timeout constraint.
+    timeline_entries = [c.to_timeline_entry(compact=True) for c in calls]
+    recent_calls = calls[-2:]
+    transcript_texts = [c.to_agent_text(max_tokens=MAX_TOKENS_PER_TRANSCRIPT) for c in recent_calls]
 
     print(f"\nContext: {len(timeline_entries)} timeline entries + {len(transcript_texts)} full transcripts")
     timeline_tokens = sum(estimate_tokens(t) for t in timeline_entries)
@@ -76,7 +77,7 @@ def main():
     total_output_tokens = 0
     results = {}
 
-    # ── Step 1: Agent 1 (Stage Classifier) ──
+    # ── Step 1: Agent 1 (Stage Classifier) — Sequential ──
     print("\n" + "=" * 70)
     print("STEP 1: Agent 1 — Stage & Progress")
     print("=" * 70)
@@ -104,40 +105,43 @@ def main():
         "reasoning": output_1.reasoning,
     }
 
-    # ── Step 2: Agents 2-8 (Sequential for now, parallel later) ──
+    # ── Step 2: Agents 2-8 — PARALLEL ──
     print("\n" + "=" * 70)
-    print("STEP 2: Agents 2-8 — Parallel Analysis Layer (running sequentially)")
+    print("STEP 2: Agents 2-8 — Parallel Analysis Layer (7 agents concurrent)")
     print("=" * 70)
 
-    agent_runners = [
-        ("agent_2", "Relationship & Power Map", run_relationship),
-        ("agent_3", "Commercial & Risk", run_commercial),
-        ("agent_4", "Momentum & Engagement", run_momentum),
-        ("agent_5", "Technical Validation", run_technical),
-        ("agent_6", "Economic Buyer", run_economic_buyer),
-        ("agent_7", "MSP & Next Steps", run_msp_next_steps),
-        ("agent_8", "Competitive Displacement", run_competitive),
-    ]
+    # Build kwargs dicts for all 7 agents
+    tasks = []
+    for agent_id, agent_name, build_fn in AGENT_META:
+        task = build_fn(transcript_texts, stage_context, timeline_entries)
+        tasks.append(task)
+        print(f"  Prepared: {agent_name}")
 
-    for agent_id, agent_name, runner_fn in agent_runners:
+    # Run all 7 in parallel
+    parallel_start = time.time()
+    print(f"\n  Launching {len(tasks)} agents in parallel...")
+    parallel_results = asyncio.run(run_agents_parallel(tasks))
+    parallel_elapsed = time.time() - parallel_start
+    print(f"\n  All agents completed in {parallel_elapsed:.1f}s (parallel wall time)")
+
+    # Process results
+    for i, (agent_id, agent_name, _) in enumerate(AGENT_META):
+        result = parallel_results[i]
         print(f"\n  {'─' * 60}")
-        print(f"  Running {agent_name}...")
+        print(f"  {agent_name}:")
 
-        try:
-            result = runner_fn(transcript_texts, stage_context, timeline_entries)
+        if isinstance(result, Exception):
+            print(f"  FAILED: {type(result).__name__}: {result}")
+            results[agent_id] = None
+        else:
             output = result.output
             total_input_tokens += result.input_tokens
             total_output_tokens += result.output_tokens
             results[agent_id] = result
 
-            # Print summary based on agent type
             summary = _get_agent_summary(agent_id, output)
             print(f"  Result: {summary}")
-            print(f"  Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | {result.elapsed_seconds:.1f}s")
-
-        except Exception as e:
-            print(f"  FAILED: {type(e).__name__}: {e}")
-            results[agent_id] = None
+            print(f"  Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out | {result.elapsed_seconds:.1f}s | Attempt {result.attempts}")
 
     # ── Summary ──
     pipeline_elapsed = time.time() - pipeline_start
@@ -145,9 +149,19 @@ def main():
     print("PIPELINE SUMMARY")
     print("=" * 70)
     print(f"  Total elapsed: {pipeline_elapsed:.1f}s")
+    print(f"    Agent 1 (sequential): {result_1.elapsed_seconds:.1f}s")
+    print(f"    Agents 2-8 (parallel): {parallel_elapsed:.1f}s")
+
+    # Sum individual elapsed times to show sequential equivalent
+    sequential_equivalent = sum(
+        r.elapsed_seconds for r in parallel_results if not isinstance(r, Exception)
+    )
+    speedup = sequential_equivalent / parallel_elapsed if parallel_elapsed > 0 else 0
+    print(f"    Sequential equivalent: {sequential_equivalent:.1f}s → {speedup:.1f}x speedup")
+
     print(f"  Total tokens: {total_input_tokens:,} in / {total_output_tokens:,} out")
-    est_cost = (total_input_tokens * 0.80 / 1_000_000) + (total_output_tokens * 4.00 / 1_000_000)
-    print(f"  Estimated cost: ~${est_cost:.2f} (Haiku pricing)")
+    est_cost = (total_input_tokens * 3.00 / 1_000_000) + (total_output_tokens * 15.00 / 1_000_000)
+    print(f"  Estimated cost: ~${est_cost:.2f} (Sonnet pricing)")
     print(f"  Agents completed: {sum(1 for v in results.values() if v is not None)}/{len(results)}")
 
     failed = [k for k, v in results.items() if v is None]

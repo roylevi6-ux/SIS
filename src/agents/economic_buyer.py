@@ -12,7 +12,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, run_agent
+from .runner import AgentResult, build_analysis_prompt, run_agent
 
 
 # --- Output Model ---
@@ -23,7 +23,7 @@ class EBReference(BaseModel):
 
     reference_type: str = Field(description="Direct (EB on call), Secondhand (mentioned by others), or Inferred (budget language without naming EB)")
     speaker: str = Field(description="Who made the reference")
-    context: str = Field(description="Brief quote or description of the reference")
+    context: str = Field(description="One sentence: quote or description of the reference")
     sentiment: str = Field(description="Positive (supportive of deal), Neutral, Negative (budget concerns), or Unknown")
 
 
@@ -36,12 +36,12 @@ class EconomicBuyerOutput(BaseModel):
     eb_engagement: str = Field(description="Direct (on calls, actively engaged), Indirect (mentioned positively by others), Unknown (no visibility), or Concerning (absent or negative signals)")
     eb_last_appearance: Optional[str] = Field(default=None, description="Date of last call where EB appeared directly")
     eb_access_risk: str = Field(description="Low (direct access, engaged), Medium (indirect access, supportive signals), High (no access, no signals), or Critical (negative signals)")
-    budget_language: list[str] = Field(default_factory=list, description="Verbatim budget-related quotes from transcripts")
+    budget_language: list[str] = Field(default_factory=list, description="Verbatim budget-related quotes from transcripts. Max 3 items.")
     budget_status: str = Field(description="Approved, In Process, Not Discussed, Uncertain, or Blocked")
-    eb_references: list[EBReference] = Field(default_factory=list, description="All references to the economic buyer across transcripts")
+    eb_references: list[EBReference] = Field(default_factory=list, description="References to the economic buyer across transcripts. Max 3 items.")
     executive_escalation_recommended: bool = Field(description="Whether an executive sponsor engagement is recommended")
     escalation_rationale: Optional[str] = Field(default=None, description="Why executive escalation is or isn't recommended")
-    narrative: str = Field(description="2-4 paragraph analytical narrative about economic buyer presence and budget authority")
+    narrative: str = Field(description="Analytical narrative about economic buyer presence and budget authority. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     calls_analyzed: int = Field(description="Number of full transcripts analyzed")
 
@@ -91,40 +91,27 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
 
 
+def build_call(
+    transcript_texts: list[str],
+    stage_context: dict,
+    timeline_entries: list[str] | None = None,
+) -> dict:
+    """Build kwargs dict for run_agent / run_agent_async."""
+    return {
+        "agent_name": "Agent 6: Economic Buyer",
+        "system_prompt": SYSTEM_PROMPT,
+        "user_prompt": build_analysis_prompt(
+            transcript_texts, stage_context, timeline_entries,
+            "Based on the above, assess the economic buyer presence and budget authority.",
+        ),
+        "output_model": EconomicBuyerOutput,
+    }
+
+
 def run_economic_buyer(
     transcript_texts: list[str],
     stage_context: dict,
     timeline_entries: list[str] | None = None,
 ) -> AgentResult[EconomicBuyerOutput]:
     """Run Agent 6: Economic Buyer Presence & Authority."""
-    parts = []
-
-    if timeline_entries:
-        parts.append("## DEAL TIMELINE (all calls, chronological)")
-        parts.append("\n\n".join(timeline_entries))
-        parts.append("")
-
-    parts.append(f"## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
-    parts.append(f"Confidence: {stage_context.get('confidence')}")
-    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
-    parts.append("")
-
-    num_transcripts = len(transcript_texts)
-    parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
-    for i, text in enumerate(transcript_texts, 1):
-        parts.append(f"### Call {i} of {num_transcripts}")
-        parts.append(text)
-        parts.append("")
-
-    parts.append(
-        f"Based on the above, assess the economic buyer presence and budget authority. "
-        f"You are analyzing {num_transcripts} full transcripts. Respond with JSON only."
-    )
-
-    return run_agent(
-        agent_name="Agent 6: Economic Buyer",
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt="\n".join(parts),
-        output_model=EconomicBuyerOutput,
-    )
+    return run_agent(**build_call(transcript_texts, stage_context, timeline_entries))

@@ -14,8 +14,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 # --- API Configuration (via Riskified LLM Proxy) ---
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
-MODEL_AGENTS_1_9 = os.getenv("MODEL_AGENTS_1_9", "anthropic/claude-sonnet-4-20250514")
-MODEL_AGENT_10 = os.getenv("MODEL_AGENT_10", "anthropic/claude-opus-4-20250514")
+MODEL_AGENTS_1_8 = os.getenv("MODEL_AGENTS_1_8", "anthropic/claude-sonnet-4-20250514")
+MODEL_AGENTS_9_10 = os.getenv("MODEL_AGENTS_9_10", "anthropic/claude-opus-4-20250514")
 
 # --- Database ---
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/sis.db")

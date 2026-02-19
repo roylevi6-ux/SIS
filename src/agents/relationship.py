@@ -13,7 +13,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, run_agent
+from .runner import AgentResult, build_analysis_prompt, run_agent
 
 
 # --- Output Model ---
@@ -30,7 +30,7 @@ class Stakeholder(BaseModel):
     affiliation: str = Field(description="Internal (Riskified) or External (prospect/customer)")
     calls_appeared: int = Field(description="Number of calls this stakeholder appeared on")
     last_seen: Optional[str] = Field(default=None, description="Date of last call this stakeholder appeared on")
-    notable_quotes: list[str] = Field(default_factory=list, description="1-2 notable quotes showing their stance or influence")
+    notable_quotes: list[str] = Field(default_factory=list, description="1-2 notable quotes showing their stance or influence. Max 3 items.")
 
 
 class ChampionAssessment(BaseModel):
@@ -38,21 +38,21 @@ class ChampionAssessment(BaseModel):
 
     identified: bool = Field(description="Whether a champion has been identified")
     name: Optional[str] = Field(default=None, description="Champion name if identified")
-    advocacy_evidence: list[str] = Field(default_factory=list, description="Specific evidence of advocacy behavior — selling internally, driving timelines, defending Riskified")
-    risk_signals: list[str] = Field(default_factory=list, description="Risks to champion's position or engagement")
+    advocacy_evidence: list[str] = Field(default_factory=list, description="Specific evidence of advocacy behavior. One sentence each. Max 3 items.")
+    risk_signals: list[str] = Field(default_factory=list, description="Risks to champion's position or engagement. One sentence each. Max 3 items.")
     strength: Optional[str] = Field(default=None, description="Champion strength: Strong (active advocacy + authority), Moderate (advocacy but limited authority), Weak (friendly but no advocacy behavior)")
 
 
 class RelationshipOutput(BaseModel):
     """Structured output from Agent 2: Relationship & Power Map."""
 
-    stakeholders: list[Stakeholder] = Field(description="All stakeholders identified across transcripts")
+    stakeholders: list[Stakeholder] = Field(description="Top 8 most significant stakeholders identified across transcripts")
     champion: ChampionAssessment = Field(description="Champion identification and assessment")
     multithreading_depth: str = Field(description="Multithreading assessment: Deep (3+ departments engaged), Moderate (2 departments), Shallow (single contact), Single-threaded (one person only)")
     departments_engaged: list[str] = Field(description="List of buyer-side departments that have appeared on calls")
     political_risk_flags: list[str] = Field(default_factory=list, description="Political risks: champion going quiet, blocker identified, key stakeholder absent, internal misalignment")
     decision_maker_engagement: str = Field(description="DM engagement: Direct (DM on calls), Indirect (DM referenced positively), Unknown (no DM visibility), Concerning (DM referenced negatively or absent)")
-    narrative: str = Field(description="2-4 paragraph analytical narrative about relationship dynamics and power structure")
+    narrative: str = Field(description="Analytical narrative about relationship dynamics and power structure. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     calls_analyzed: int = Field(description="Number of full transcripts analyzed")
 
@@ -104,49 +104,27 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 Respond with a single JSON object matching the schema. Include ALL stakeholders (both Riskified and prospect-side). Respond with ONLY the JSON object."""
 
 
+def build_call(
+    transcript_texts: list[str],
+    stage_context: dict,
+    timeline_entries: list[str] | None = None,
+) -> dict:
+    """Build kwargs dict for run_agent / run_agent_async."""
+    return {
+        "agent_name": "Agent 2: Relationship & Power Map",
+        "system_prompt": SYSTEM_PROMPT,
+        "user_prompt": build_analysis_prompt(
+            transcript_texts, stage_context, timeline_entries,
+            "Based on the above, map all stakeholders, identify the champion, and assess relationship dynamics.",
+        ),
+        "output_model": RelationshipOutput,
+    }
+
+
 def run_relationship(
     transcript_texts: list[str],
     stage_context: dict,
     timeline_entries: list[str] | None = None,
 ) -> AgentResult[RelationshipOutput]:
-    """Run Agent 2: Relationship & Power Map.
-
-    Args:
-        transcript_texts: Preprocessed call texts
-        stage_context: Agent 1 output dict (inferred_stage, stage_name, confidence, reasoning)
-        timeline_entries: Optional timeline entries for cross-call context
-
-    Returns:
-        AgentResult wrapping RelationshipOutput
-    """
-    parts = []
-
-    if timeline_entries:
-        parts.append("## DEAL TIMELINE (all calls, chronological)")
-        parts.append("\n\n".join(timeline_entries))
-        parts.append("")
-
-    parts.append(f"## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
-    parts.append(f"Confidence: {stage_context.get('confidence')}")
-    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
-    parts.append("")
-
-    num_transcripts = len(transcript_texts)
-    parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
-    for i, text in enumerate(transcript_texts, 1):
-        parts.append(f"### Call {i} of {num_transcripts}")
-        parts.append(text)
-        parts.append("")
-
-    parts.append(
-        f"Based on the above, map all stakeholders, identify the champion, and assess relationship dynamics. "
-        f"You are analyzing {num_transcripts} full transcripts. Respond with JSON only."
-    )
-
-    return run_agent(
-        agent_name="Agent 2: Relationship & Power Map",
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt="\n".join(parts),
-        output_model=RelationshipOutput,
-    )
+    """Run Agent 2: Relationship & Power Map."""
+    return run_agent(**build_call(transcript_texts, stage_context, timeline_entries))

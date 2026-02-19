@@ -12,7 +12,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, run_agent
+from .runner import AgentResult, build_analysis_prompt, run_agent
 
 
 # --- Output Model ---
@@ -24,7 +24,7 @@ class TechnicalBlocker(BaseModel):
     blocker: str = Field(description="Description of the technical issue")
     status: str = Field(description="Resolved, Active, Deferred, or Unknown")
     severity: str = Field(description="High (deal-blocking), Medium (requires work), or Low (manageable)")
-    evidence: str = Field(description="Brief quote or reference from transcript")
+    evidence: str = Field(description="One sentence: quote or reference from transcript")
 
 
 class TechnicalOutput(BaseModel):
@@ -38,9 +38,9 @@ class TechnicalOutput(BaseModel):
     integration_type: Optional[str] = Field(default=None, description="Integration type discussed: API, Plugin/Extension, Hosted, or Not Discussed")
     poc_status: Optional[str] = Field(default=None, description="POC/test mode status: Not Discussed, Planned, In Progress, Completed, or Skipped")
     test_mode_results: Optional[str] = Field(default=None, description="Summary of test mode / shadow mode results if discussed")
-    blockers: list[TechnicalBlocker] = Field(default_factory=list, description="Technical blockers identified")
+    blockers: list[TechnicalBlocker] = Field(default_factory=list, description="Technical blockers identified. Max 5 items.")
     recommended_se_actions: list[str] = Field(default_factory=list, description="Recommended actions for the SE/technical team")
-    narrative: str = Field(description="2-4 paragraph analytical narrative about technical readiness and integration complexity")
+    narrative: str = Field(description="Analytical narrative about technical readiness and integration complexity. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     calls_analyzed: int = Field(description="Number of full transcripts analyzed")
 
@@ -89,40 +89,27 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
 
 
+def build_call(
+    transcript_texts: list[str],
+    stage_context: dict,
+    timeline_entries: list[str] | None = None,
+) -> dict:
+    """Build kwargs dict for run_agent / run_agent_async."""
+    return {
+        "agent_name": "Agent 5: Technical Validation",
+        "system_prompt": SYSTEM_PROMPT,
+        "user_prompt": build_analysis_prompt(
+            transcript_texts, stage_context, timeline_entries,
+            "Based on the above, assess the technical readiness and integration complexity.",
+        ),
+        "output_model": TechnicalOutput,
+    }
+
+
 def run_technical(
     transcript_texts: list[str],
     stage_context: dict,
     timeline_entries: list[str] | None = None,
 ) -> AgentResult[TechnicalOutput]:
     """Run Agent 5: Technical Validation & Integration Complexity."""
-    parts = []
-
-    if timeline_entries:
-        parts.append("## DEAL TIMELINE (all calls, chronological)")
-        parts.append("\n\n".join(timeline_entries))
-        parts.append("")
-
-    parts.append(f"## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
-    parts.append(f"Confidence: {stage_context.get('confidence')}")
-    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
-    parts.append("")
-
-    num_transcripts = len(transcript_texts)
-    parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
-    for i, text in enumerate(transcript_texts, 1):
-        parts.append(f"### Call {i} of {num_transcripts}")
-        parts.append(text)
-        parts.append("")
-
-    parts.append(
-        f"Based on the above, assess the technical readiness and integration complexity. "
-        f"You are analyzing {num_transcripts} full transcripts. Respond with JSON only."
-    )
-
-    return run_agent(
-        agent_name="Agent 5: Technical Validation",
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt="\n".join(parts),
-        output_model=TechnicalOutput,
-    )
+    return run_agent(**build_call(transcript_texts, stage_context, timeline_entries))
