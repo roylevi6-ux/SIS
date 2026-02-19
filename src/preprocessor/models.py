@@ -2,7 +2,35 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
+
+
+# CJK / non-Latin character ranges that consume ~2-3 BPE tokens per character
+_CJK_RE = re.compile(
+    r"[\u3000-\u303f"  # CJK Symbols and Punctuation
+    r"\u3040-\u309f"   # Hiragana
+    r"\u30a0-\u30ff"   # Katakana
+    r"\u3400-\u4dbf"   # CJK Extension A
+    r"\u4e00-\u9fff"   # CJK Unified Ideographs
+    r"\uf900-\ufaff"   # CJK Compatibility Ideographs
+    r"\uff00-\uffef"   # Fullwidth Forms
+    r"\uac00-\ud7af"   # Korean Hangul
+    r"\u0590-\u05ff"   # Hebrew
+    r"\u0600-\u06ff"   # Arabic
+    r"]"
+)
+
+
+def estimate_tokens(text: str) -> int:
+    """Estimate token count with CJK / non-Latin awareness.
+
+    English text: ~1 token per 4 characters.
+    CJK (Chinese, Japanese, Korean) + Hebrew + Arabic: ~2.5 tokens per character.
+    """
+    cjk_chars = len(_CJK_RE.findall(text))
+    latin_chars = len(text) - cjk_chars
+    return int(cjk_chars * 2.5 + latin_chars * 0.25)
 
 
 @dataclass
@@ -159,12 +187,13 @@ class ParsedCall:
 
         return result
 
-    def to_timeline_entry(self) -> str:
-        """Compact summary for cross-call context (Agent 9).
+    def to_timeline_entry(self, compact: bool = False) -> str:
+        """Summary for cross-call context.
 
-        Produces ~200-400 tokens per call: date, type, participants,
-        key_points, brief — no raw transcript. Designed to fit all calls
-        for an account within a reasonable token budget.
+        Args:
+            compact: If True, skip key_points (which are expensive for CJK calls).
+                     Use compact=True for Agents 1-8 to save tokens.
+                     Use compact=False for Agent 9 (Adversarial) which needs full detail.
         """
         lines = []
         m = self.metadata
@@ -189,8 +218,8 @@ class ParsedCall:
         if e.brief:
             lines.append(f"  Summary: {e.brief.strip()}")
 
-        # Key points (the high-signal structured data)
-        if e.key_points:
+        # Key points — skip in compact mode (expensive for CJK)
+        if not compact and e.key_points:
             lines.append("  Key points:")
             for kp in e.key_points:
                 lines.append(f"    - {kp.strip()}")
@@ -235,34 +264,44 @@ def _classify_call(classifications: dict[str, bool]) -> str:
 
 
 def _truncate_to_budget(text: str, max_tokens: int) -> str:
-    """Rough truncation to stay within token budget.
+    """Truncate text to stay within token budget.
 
-    Uses ~4 chars per token as a conservative estimate.
-    Preserves the header and truncates from the middle of the transcript,
-    keeping the beginning and end (most important for deal trajectory).
+    Uses CJK-aware token estimation. Preserves the header and truncates
+    from the middle of the transcript, keeping the beginning and end
+    (most important for deal trajectory).
     """
-    char_budget = max_tokens * 4
-    if len(text) <= char_budget:
+    est = estimate_tokens(text)
+    if est <= max_tokens:
         return text
 
     marker = "--- TRANSCRIPT ---"
     if marker not in text:
-        return text[:char_budget]
+        # No transcript section — truncate proportionally
+        ratio = max_tokens / est
+        return text[: int(len(text) * ratio)]
 
     header, transcript = text.split(marker, 1)
     header_with_marker = header + marker
 
-    remaining = char_budget - len(header_with_marker) - 100  # buffer for truncation notice
-    if remaining <= 0:
+    header_tokens = estimate_tokens(header_with_marker)
+    remaining_tokens = max_tokens - header_tokens - 20  # buffer for truncation notice
+
+    if remaining_tokens <= 0:
         return header_with_marker + "\n[Transcript truncated — token budget exceeded]"
 
-    # Keep first 60% and last 40% of transcript (beginning = context, end = latest state)
-    first_part = int(remaining * 0.6)
-    last_part = remaining - first_part
+    # Compute how many characters we can keep, proportional to token ratio
+    transcript_tokens = estimate_tokens(transcript)
+    ratio = remaining_tokens / transcript_tokens
+    char_budget = int(len(transcript) * ratio)
 
+    # Keep first 60% and last 40% (beginning = context, end = latest state)
+    first_part = int(char_budget * 0.6)
+    last_part = char_budget - first_part
+
+    tokens_dropped = transcript_tokens - remaining_tokens
     truncated = (
         transcript[:first_part]
-        + f"\n\n[... {len(transcript) - remaining} chars truncated for token budget ...]\n\n"
+        + f"\n\n[... ~{tokens_dropped:,} tokens truncated for budget ...]\n\n"
         + transcript[-last_part:]
     )
 
