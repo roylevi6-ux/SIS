@@ -41,6 +41,7 @@ def get_client() -> anthropic.Anthropic:
             api_key=ANTHROPIC_API_KEY,
             base_url=ANTHROPIC_BASE_URL,
             timeout=120.0,
+            max_retries=0,  # Don't auto-retry 504s — our runner handles retries
         )
     return _client
 
@@ -88,6 +89,19 @@ def run_agent(
     model = model or MODEL_AGENTS_1_9
     client = get_client()
 
+    # Auto-inject compact JSON schema so the LLM knows exact field names and types.
+    # Strip descriptions (already in the system prompt) to save tokens.
+    raw_schema = output_model.model_json_schema()
+    schema = json.dumps(_strip_schema_descriptions(raw_schema), indent=2)
+    enhanced_system = (
+        system_prompt
+        + "\n\n## Required JSON Schema\n"
+        "Your response MUST be a JSON object matching this exact schema. "
+        "Use these EXACT field names. Be concise — keep narrative to 1-2 paragraphs "
+        "and limit lists to key items only:\n"
+        f"```json\n{schema}\n```"
+    )
+
     last_error = None
     current_user_prompt = user_prompt
 
@@ -99,7 +113,7 @@ def run_agent(
             response = client.messages.create(
                 model=model,
                 max_tokens=max_output_tokens,
-                system=system_prompt,
+                system=enhanced_system,
                 messages=[{"role": "user", "content": current_user_prompt}],
             )
 
@@ -241,6 +255,30 @@ def _find_json_object(text: str) -> str | None:
                 return text[start : i + 1]
 
     return None
+
+
+def _strip_schema_descriptions(schema: dict) -> dict:
+    """Recursively strip 'description' and 'title' fields from a JSON schema.
+
+    Descriptions are already embedded in the system prompt, so including them
+    again in the schema wastes tokens. This typically cuts schema size by 40-60%.
+    """
+    if not isinstance(schema, dict):
+        return schema
+    result = {}
+    for key, value in schema.items():
+        if key in ("description", "title"):
+            continue
+        if isinstance(value, dict):
+            result[key] = _strip_schema_descriptions(value)
+        elif isinstance(value, list):
+            result[key] = [
+                _strip_schema_descriptions(item) if isinstance(item, dict) else item
+                for item in value
+            ]
+        else:
+            result[key] = value
+    return result
 
 
 class AgentError(Exception):

@@ -1,7 +1,7 @@
 """Preprocessor — Gong transcript parser, speaker mapper, token budget manager."""
 
 from .gong_parser import load_account_calls, parse_call
-from .models import CallMetadata, GongEnrichment, ParsedCall, Speaker, TranscriptTurn
+from .models import CallMetadata, GongEnrichment, ParsedCall, Speaker, TranscriptTurn, estimate_tokens
 
 __all__ = [
     "load_account_calls",
@@ -11,4 +11,5 @@ __all__ = [
     "TranscriptTurn",
     "CallMetadata",
     "GongEnrichment",
+    "estimate_tokens",
 ]
