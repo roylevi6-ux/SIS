@@ -1,0 +1,33 @@
+[project]
+name = "sis"
+version = "0.1.0"
+description = "Riskified Sales Intelligence System — 10-agent AI pipeline for deal health analysis"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.42.0",
+    "sqlalchemy>=2.0",
+    "streamlit>=1.40.0",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "tiktoken>=0.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+]
+alerts = [
+    "slack-sdk>=3.33",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
