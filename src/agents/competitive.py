@@ -12,7 +12,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, run_agent
+from .runner import AgentResult, build_analysis_prompt, run_agent
 
 
 # --- Output Model ---
@@ -22,7 +22,7 @@ class CompetitorMention(BaseModel):
     """A competitor or alternative mentioned in transcripts."""
 
     name: str = Field(description="Competitor or alternative name (e.g., Forter, Signifyd, in-house rules, manual review)")
-    context: str = Field(description="How they were mentioned — verbatim or paraphrased from transcript")
+    context: str = Field(description="One sentence: how they were mentioned, verbatim or paraphrased")
     buyer_sentiment: str = Field(description="Positive (defending incumbent), Neutral, Negative (critical of current solution), or Unknown")
 
 
@@ -35,11 +35,11 @@ class CompetitiveOutput(BaseModel):
     switching_catalyst: Optional[str] = Field(default=None, description="What's driving the potential switch: chargeback spike, growth, leadership change, platform migration, cost reduction, regulatory, etc.")
     catalyst_strength: str = Field(description="Existential (must change or business suffers), Structural (real driver but not urgent), Cosmetic (nice-to-have, no urgency), or None Identified")
     buying_dynamic: str = Field(description="RFP (formal evaluation), Sole Source (only evaluating Riskified), Replacement (replacing specific vendor), Greenfield (no current solution), or Unknown")
-    competitor_mentions: list[CompetitorMention] = Field(default_factory=list, description="All competitor or alternative mentions in transcripts")
+    competitor_mentions: list[CompetitorMention] = Field(default_factory=list, description="Competitor or alternative mentions in transcripts. Max 5 items.")
     no_decision_risk: str = Field(description="High (buyer may do nothing), Medium (some inertia signals), Low (clear intent to act), or Unknown")
-    no_decision_evidence: list[str] = Field(default_factory=list, description="Evidence supporting the no-decision risk assessment")
+    no_decision_evidence: list[str] = Field(default_factory=list, description="Evidence supporting the no-decision risk assessment. Max 5 items.")
     recommended_catalyst_actions: list[str] = Field(default_factory=list, description="Recommended actions to strengthen the catalyst and reduce no-decision risk")
-    narrative: str = Field(description="2-4 paragraph analytical narrative about competitive dynamics and displacement readiness")
+    narrative: str = Field(description="Analytical narrative about competitive dynamics and displacement readiness. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     calls_analyzed: int = Field(description="Number of full transcripts analyzed")
 
@@ -99,40 +99,27 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
 
 
+def build_call(
+    transcript_texts: list[str],
+    stage_context: dict,
+    timeline_entries: list[str] | None = None,
+) -> dict:
+    """Build kwargs dict for run_agent / run_agent_async."""
+    return {
+        "agent_name": "Agent 8: Competitive Displacement",
+        "system_prompt": SYSTEM_PROMPT,
+        "user_prompt": build_analysis_prompt(
+            transcript_texts, stage_context, timeline_entries,
+            "Based on the above, assess the competitive dynamics and displacement readiness.",
+        ),
+        "output_model": CompetitiveOutput,
+    }
+
+
 def run_competitive(
     transcript_texts: list[str],
     stage_context: dict,
     timeline_entries: list[str] | None = None,
 ) -> AgentResult[CompetitiveOutput]:
     """Run Agent 8: Competitive Displacement & Alternative Path."""
-    parts = []
-
-    if timeline_entries:
-        parts.append("## DEAL TIMELINE (all calls, chronological)")
-        parts.append("\n\n".join(timeline_entries))
-        parts.append("")
-
-    parts.append(f"## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
-    parts.append(f"Confidence: {stage_context.get('confidence')}")
-    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
-    parts.append("")
-
-    num_transcripts = len(transcript_texts)
-    parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
-    for i, text in enumerate(transcript_texts, 1):
-        parts.append(f"### Call {i} of {num_transcripts}")
-        parts.append(text)
-        parts.append("")
-
-    parts.append(
-        f"Based on the above, assess the competitive dynamics and displacement readiness. "
-        f"You are analyzing {num_transcripts} full transcripts. Respond with JSON only."
-    )
-
-    return run_agent(
-        agent_name="Agent 8: Competitive Displacement",
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt="\n".join(parts),
-        output_model=CompetitiveOutput,
-    )
+    return run_agent(**build_call(transcript_texts, stage_context, timeline_entries))

@@ -12,7 +12,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, run_agent
+from .runner import AgentResult, build_analysis_prompt, run_agent
 
 
 # --- Output Model ---
@@ -28,7 +28,7 @@ class NextStep(BaseModel):
     initiated_by: str = Field(description="Buyer or Seller — who proposed this action")
     confirmed_by_buyer: bool = Field(description="Whether the buyer explicitly confirmed/agreed to this step")
     status: str = Field(description="Completed (confirmed in later call), Pending (not yet due), Slipped (past deadline, not done), Unknown")
-    evidence: str = Field(description="Brief quote or reference from transcript")
+    evidence: str = Field(description="One sentence: quote or reference from transcript")
 
 
 class MSPNextStepsOutput(BaseModel):
@@ -38,13 +38,13 @@ class MSPNextStepsOutput(BaseModel):
     msp_details: Optional[str] = Field(default=None, description="MSP structure if it exists: milestones, timeline, shared document")
     go_live_date_confirmed: bool = Field(description="Whether a buyer-owned go-live date or deadline exists")
     go_live_date: Optional[str] = Field(default=None, description="The go-live date if confirmed")
-    next_steps: list[NextStep] = Field(default_factory=list, description="All next steps/action items identified across transcripts")
+    next_steps: list[NextStep] = Field(default_factory=list, description="Most important next steps/action items identified across transcripts. Max 5 items.")
     buyer_initiation_ratio: Optional[str] = Field(default=None, description="Approximate ratio of buyer-initiated vs. seller-initiated next steps (e.g., '40/60 buyer/seller')")
     commitment_slip_rate: Optional[str] = Field(default=None, description="Percentage of committed actions that slipped or weren't completed")
     next_step_specificity: str = Field(description="Overall assessment: High (concrete dates, owners, deliverables), Medium (general direction with some specificity), Low (vague commitments only)")
     structural_advancement: str = Field(description="Strong (deal moving through checkpoints), Moderate (some progress, some stalls), Weak (enthusiastic but not advancing), or Stalled (no structural progress)")
     recommended_actions: list[str] = Field(default_factory=list, description="Recommended actions to establish or strengthen forward commitment")
-    narrative: str = Field(description="2-4 paragraph analytical narrative about structural deal advancement")
+    narrative: str = Field(description="Analytical narrative about structural deal advancement. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     calls_analyzed: int = Field(description="Number of full transcripts analyzed")
 
@@ -105,40 +105,27 @@ A formal MSP includes:
 Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
 
 
+def build_call(
+    transcript_texts: list[str],
+    stage_context: dict,
+    timeline_entries: list[str] | None = None,
+) -> dict:
+    """Build kwargs dict for run_agent / run_agent_async."""
+    return {
+        "agent_name": "Agent 7: MSP & Next Steps",
+        "system_prompt": SYSTEM_PROMPT,
+        "user_prompt": build_analysis_prompt(
+            transcript_texts, stage_context, timeline_entries,
+            "Based on the above, assess the structural advancement of this deal.",
+        ),
+        "output_model": MSPNextStepsOutput,
+    }
+
+
 def run_msp_next_steps(
     transcript_texts: list[str],
     stage_context: dict,
     timeline_entries: list[str] | None = None,
 ) -> AgentResult[MSPNextStepsOutput]:
     """Run Agent 7: MSP & Next Step Commitment."""
-    parts = []
-
-    if timeline_entries:
-        parts.append("## DEAL TIMELINE (all calls, chronological)")
-        parts.append("\n\n".join(timeline_entries))
-        parts.append("")
-
-    parts.append(f"## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
-    parts.append(f"Confidence: {stage_context.get('confidence')}")
-    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
-    parts.append("")
-
-    num_transcripts = len(transcript_texts)
-    parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
-    for i, text in enumerate(transcript_texts, 1):
-        parts.append(f"### Call {i} of {num_transcripts}")
-        parts.append(text)
-        parts.append("")
-
-    parts.append(
-        f"Based on the above, assess the structural advancement of this deal. "
-        f"You are analyzing {num_transcripts} full transcripts. Respond with JSON only."
-    )
-
-    return run_agent(
-        agent_name="Agent 7: MSP & Next Steps",
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt="\n".join(parts),
-        output_model=MSPNextStepsOutput,
-    )
+    return run_agent(**build_call(transcript_texts, stage_context, timeline_entries))

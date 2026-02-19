@@ -40,6 +40,7 @@ venv/
 
 # Data (transcripts contain sensitive customer content)
 data/transcripts/
+data/test_output_*.json
 
 # Logs
 *.log

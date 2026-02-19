@@ -12,7 +12,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, run_agent
+from .runner import AgentResult, build_analysis_prompt, run_agent
 
 
 # --- Output Model ---
@@ -24,7 +24,7 @@ class Objection(BaseModel):
     objection: str = Field(description="The objection or concern raised")
     status: str = Field(description="Resolved, Active, Recurring, or Deferred")
     raised_by: Optional[str] = Field(default=None, description="Who raised it")
-    evidence: str = Field(description="Brief quote or reference from transcript")
+    evidence: str = Field(description="One sentence: quote or reference from transcript")
 
 
 class CommercialRisk(BaseModel):
@@ -32,8 +32,8 @@ class CommercialRisk(BaseModel):
 
     risk: str = Field(description="Description of the risk")
     severity: str = Field(description="High, Medium, or Low")
-    evidence: str = Field(description="Brief quote or reference from transcript")
-    mitigation: Optional[str] = Field(default=None, description="Suggested mitigation if apparent")
+    evidence: str = Field(description="One sentence: quote or reference from transcript")
+    mitigation: Optional[str] = Field(default=None, description="Suggested mitigation if apparent. One sentence.")
 
 
 class CommercialOutput(BaseModel):
@@ -45,11 +45,11 @@ class CommercialOutput(BaseModel):
     roi_framing: str = Field(description="Landed (ROI accepted), Presented (ROI shown but not validated), Discussed (ROI mentioned), or Not Discussed")
     budget_signals: str = Field(description="Summary of budget-related signals: approved, in process, not discussed, concerning")
     commercial_readiness: str = Field(description="High (pricing agreed, budget clear, timeline set), Medium (in negotiation, some clarity), Low (not yet discussed or significant blockers)")
-    active_objections: list[Objection] = Field(default_factory=list, description="Currently unresolved objections")
-    resolved_objections: list[Objection] = Field(default_factory=list, description="Objections that have been addressed")
-    risks: list[CommercialRisk] = Field(default_factory=list, description="Commercial risk signals identified")
+    active_objections: list[Objection] = Field(default_factory=list, description="Currently unresolved objections. Max 5 items.")
+    resolved_objections: list[Objection] = Field(default_factory=list, description="Objections that have been addressed. Max 5 items.")
+    risks: list[CommercialRisk] = Field(default_factory=list, description="Commercial risk signals identified. Max 3 items.")
     contract_status: Optional[str] = Field(default=None, description="Contract/MSA status if discussed: Not Started, Drafting, In Review, Redlining, Near Execution, Executed")
-    narrative: str = Field(description="2-4 paragraph analytical narrative about commercial state and risks")
+    narrative: str = Field(description="Analytical narrative about commercial state and risks. Max 100 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     calls_analyzed: int = Field(description="Number of full transcripts analyzed")
 
@@ -97,40 +97,28 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
 
 
+def build_call(
+    transcript_texts: list[str],
+    stage_context: dict,
+    timeline_entries: list[str] | None = None,
+) -> dict:
+    """Build kwargs dict for run_agent / run_agent_async."""
+    return {
+        "agent_name": "Agent 3: Commercial & Risk",
+        "system_prompt": SYSTEM_PROMPT,
+        "user_prompt": build_analysis_prompt(
+            transcript_texts, stage_context, timeline_entries,
+            "Based on the above, assess the commercial state of this deal.",
+        ),
+        "output_model": CommercialOutput,
+        "max_output_tokens": 4_000,
+    }
+
+
 def run_commercial(
     transcript_texts: list[str],
     stage_context: dict,
     timeline_entries: list[str] | None = None,
 ) -> AgentResult[CommercialOutput]:
     """Run Agent 3: Commercial & Risk."""
-    parts = []
-
-    if timeline_entries:
-        parts.append("## DEAL TIMELINE (all calls, chronological)")
-        parts.append("\n\n".join(timeline_entries))
-        parts.append("")
-
-    parts.append(f"## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
-    parts.append(f"Confidence: {stage_context.get('confidence')}")
-    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
-    parts.append("")
-
-    num_transcripts = len(transcript_texts)
-    parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
-    for i, text in enumerate(transcript_texts, 1):
-        parts.append(f"### Call {i} of {num_transcripts}")
-        parts.append(text)
-        parts.append("")
-
-    parts.append(
-        f"Based on the above, assess the commercial state of this deal. "
-        f"You are analyzing {num_transcripts} full transcripts. Respond with JSON only."
-    )
-
-    return run_agent(
-        agent_name="Agent 3: Commercial & Risk",
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt="\n".join(parts),
-        output_model=CommercialOutput,
-    )
+    return run_agent(**build_call(transcript_texts, stage_context, timeline_entries))

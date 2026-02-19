@@ -27,7 +27,7 @@ class StageMilestone(BaseModel):
 
     milestone: str = Field(description="What should happen at this stage")
     achieved: bool = Field(description="Whether transcript evidence supports this milestone being met")
-    evidence: str = Field(description="Brief quote or reference from transcript supporting the assessment")
+    evidence: str = Field(description="One sentence: quote or reference from transcript supporting the assessment")
 
 
 class StageClassifierOutput(BaseModel):
@@ -39,10 +39,10 @@ class StageClassifierOutput(BaseModel):
     secondary_stage: Optional[int] = Field(default=None, ge=1, le=7, description="If the deal straddles two stages, the secondary stage number (1-7)")
     secondary_stage_name: Optional[str] = Field(default=None, description="Name of the secondary stage, if applicable")
     reasoning: str = Field(description="2-4 sentence explanation of why this stage was inferred, citing specific transcript evidence")
-    progression_narrative: str = Field(description="Brief narrative of how the deal has progressed across available calls — trajectory, velocity, any regression signals")
-    milestones: list[StageMilestone] = Field(description="3-5 stage-appropriate milestones with achievement status")
-    stage_risk_signals: list[str] = Field(default_factory=list, description="Any signals suggesting the deal may be regressing to an earlier stage or stalling")
-    data_quality_notes: list[str] = Field(default_factory=list, description="Notes on transcript quality issues that may affect analysis — e.g., poor ASR, missing speakers, short calls")
+    progression_narrative: str = Field(description="Brief narrative of how the deal has progressed across available calls — trajectory, velocity, any regression signals. Max 150 words.")
+    milestones: list[StageMilestone] = Field(description="3-5 stage-appropriate milestones with achievement status. Max 5 items.")
+    stage_risk_signals: list[str] = Field(default_factory=list, description="Any signals suggesting the deal may be regressing to an earlier stage or stalling. Max 5 items.")
+    data_quality_notes: list[str] = Field(default_factory=list, description="Notes on transcript quality issues that may affect analysis — e.g., poor ASR, missing speakers, short calls. Max 5 items.")
     calls_analyzed: int = Field(description="Number of full transcripts analyzed (not timeline entries)")
 
 
