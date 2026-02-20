@@ -5,6 +5,8 @@ Per PRD Section 7.3:
 - Identifies champions (requires advocacy behavior, not just friendliness)
 - Assesses multithreading depth and political risk
 - NEVER calls someone a champion based solely on friendliness or question-asking
+
+Output wrapped in standardized envelope per PRD Section 7.4.
 """
 
 from __future__ import annotations
@@ -14,9 +16,10 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, build_analysis_prompt, run_agent
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
 
-# --- Output Model ---
+# --- Sub-models (unchanged) ---
 
 
 class Stakeholder(BaseModel):
@@ -43,8 +46,11 @@ class ChampionAssessment(BaseModel):
     strength: Optional[str] = Field(default=None, description="Champion strength: Strong (active advocacy + authority), Moderate (advocacy but limited authority), Weak (friendly but no advocacy behavior)")
 
 
-class RelationshipOutput(BaseModel):
-    """Structured output from Agent 2: Relationship & Power Map."""
+# --- Findings (agent-specific structured fields) ---
+
+
+class RelationshipFindings(BaseModel):
+    """Agent-specific findings for Agent 2: Relationship & Power Map."""
 
     stakeholders: list[Stakeholder] = Field(description="Top 8 most significant stakeholders identified across transcripts")
     champion: ChampionAssessment = Field(description="Champion identification and assessment")
@@ -52,9 +58,22 @@ class RelationshipOutput(BaseModel):
     departments_engaged: list[str] = Field(description="List of buyer-side departments that have appeared on calls")
     political_risk_flags: list[str] = Field(default_factory=list, description="Political risks: champion going quiet, blocker identified, key stakeholder absent, internal misalignment")
     decision_maker_engagement: str = Field(description="DM engagement: Direct (DM on calls), Indirect (DM referenced positively), Unknown (no DM visibility), Concerning (DM referenced negatively or absent)")
-    narrative: str = Field(description="Analytical narrative about relationship dynamics and power structure. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
-    calls_analyzed: int = Field(description="Number of full transcripts analyzed")
+
+
+# --- Envelope output ---
+
+
+class RelationshipOutput(BaseModel):
+    """Standardized envelope output for Agent 2: Relationship & Power Map."""
+
+    agent_id: str = Field(default="agent_2_relationship")
+    transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
+    narrative: str = Field(description="2-4 paragraphs analyzing relationship dynamics and power structure. Max 300 words.")
+    findings: RelationshipFindings = Field(description="Agent-specific structured findings")
+    evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
+    confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
+    sparse_data_flag: bool = Field(description="True if fewer than 3 full transcripts were provided")
 
 
 # --- System Prompt ---
@@ -88,20 +107,29 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 
 ## Analysis Rules
 1. Track stakeholders across ALL calls, not just the most recent.
-2. Note when a previously active stakeholder goes quiet — this is a risk signal.
+2. Note when a previously active stakeholder goes quiet -- this is a risk signal.
 3. Distinguish between Riskified-side and prospect/customer-side stakeholders.
 4. For champion assessment, look for: internal advocacy, timeline ownership, access facilitation, defending Riskified's value in internal discussions.
 5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 6. Use Gong's KEY POINTS section as a reliable signal source.
-
-## Confidence Calibration
-- 0.9-1.0: Multiple calls with clear stakeholder mapping, champion behavior evident
-- 0.7-0.89: Good visibility into key stakeholders, some gaps in org structure
-- 0.5-0.69: Limited stakeholder visibility, champion unclear
-- Below 0.5: Very sparse data, few stakeholders identified
+""" + ENVELOPE_PROMPT_FRAGMENT + """
 
 ## Output Format
-Respond with a single JSON object matching the schema. Include ALL stakeholders (both Riskified and prospect-side). Respond with ONLY the JSON object."""
+Respond with a single JSON object using this envelope structure:
+{
+  "agent_id": "agent_2_relationship",
+  "transcript_count_analyzed": <number>,
+  "narrative": "<2-4 paragraphs analyzing relationship dynamics and power structure>",
+  "findings": {
+    "stakeholders": [...], "champion": {...}, "multithreading_depth": "...",
+    "departments_engaged": [...], "political_risk_flags": [...],
+    "decision_maker_engagement": "...", "data_quality_notes": [...]
+  },
+  "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
+  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "sparse_data_flag": false
+}
+Respond with ONLY the JSON object."""
 
 
 def build_call(
