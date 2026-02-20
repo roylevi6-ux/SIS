@@ -18,6 +18,8 @@ from pydantic import BaseModel, Field
 from .runner import AgentResult, run_agent
 from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
+from config import MODEL_AGENT_1
+
 
 # --- Sub-models ---
 
@@ -140,6 +142,8 @@ def build_call(
         "system_prompt": SYSTEM_PROMPT,
         "user_prompt": "\n".join(parts),
         "output_model": StageClassifierOutput,
+        "model": MODEL_AGENT_1,
+        "transcript_count": num_transcripts,
     }
 
 

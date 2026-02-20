@@ -58,7 +58,7 @@ class ConfidenceAssessment(BaseModel):
 ENVELOPE_PROMPT_FRAGMENT = """\
 
 ## Evidence Citation Rules
-For every factual claim, provide at least one evidence citation (5-8 most important):
+For every factual claim, provide evidence citations (3-5 most important only):
 - `claim_id`: snake_case, max 30 characters, matches a specific finding
 - `transcript_index`: which transcript (1-indexed)
 - `speaker`: format as "NAME (Company -- Role)" when known

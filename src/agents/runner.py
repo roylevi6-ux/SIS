@@ -79,7 +79,7 @@ class AgentResult(Generic[T]):
 
 def build_analysis_prompt(
     transcript_texts: list[str],
-    stage_context: dict,
+    stage_context: dict | None,
     timeline_entries: list[str] | None,
     instruction: str,
 ) -> str:
@@ -88,6 +88,9 @@ def build_analysis_prompt(
     All analysis agents receive the same context (timeline + stage + transcripts)
     and differ only in their final instruction line. Centralizing this avoids
     duplicating ~30 lines across 7 agent modules.
+
+    stage_context is optional — when Agent 1 runs in parallel with Agents 2-8,
+    stage context is not yet available. Agents analyze transcripts independently.
     """
     parts = []
 
@@ -96,11 +99,12 @@ def build_analysis_prompt(
         parts.append("\n\n".join(timeline_entries))
         parts.append("")
 
-    parts.append("## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
-    parts.append(f"Confidence: {stage_context.get('confidence')}")
-    parts.append(f"Reasoning: {stage_context.get('reasoning')}")
-    parts.append("")
+    if stage_context:
+        parts.append("## STAGE CONTEXT (from Agent 1)")
+        parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
+        parts.append(f"Confidence: {stage_context.get('confidence')}")
+        parts.append(f"Reasoning: {stage_context.get('reasoning')}")
+        parts.append("")
 
     num_transcripts = len(transcript_texts)
     parts.append(f"## CALL TRANSCRIPTS ({num_transcripts} full transcripts)")
@@ -127,15 +131,55 @@ def _enhance_system_prompt(system_prompt: str, output_model: type[BaseModel]) ->
         "Your response MUST be a JSON object matching this exact schema. "
         "Use these EXACT field names.\n\n"
         "## CONCISENESS RULES (critical for latency)\n"
-        "- narrative: MAX 300 words (2-4 paragraphs). Be analytical, not descriptive.\n"
-        "- evidence interpretation: MAX 1 sentence each.\n"
+        "- narrative: MAX 150 words. Be analytical, not descriptive.\n"
+        "- evidence quote: MAX 1 sentence. Verbatim or [Call N, Speaker].\n"
+        "- evidence interpretation: MAX 1 sentence.\n"
         "- confidence rationale: MAX 2 sentences.\n"
-        "- List fields (objections, risks, signals, stakeholders, etc.): "
-        "Only the most significant items.\n"
-        "- Do NOT pad with qualifiers, hedging, or restating what's obvious.\n"
+        "- List fields: MAX 5 items. Only the most significant.\n"
+        "- Do NOT pad with qualifiers, hedging, or restating the obvious.\n"
         "- Every word must earn its place.\n\n"
         f"```json\n{schema}\n```"
     )
+
+
+def _inject_deterministic_fields(result: BaseModel, transcript_count: int | None = None) -> None:
+    """Inject fields that can be computed by code instead of by the LLM.
+
+    - transcript_count_analyzed: set from Python len(transcript_texts)
+    - sparse_data_flag: set from transcript_count < 3
+    These save ~30 output tokens per agent (~0.5s each).
+    """
+    if transcript_count is not None:
+        if hasattr(result, "transcript_count_analyzed"):
+            object.__setattr__(result, "transcript_count_analyzed", transcript_count)
+        if hasattr(result, "sparse_data_flag"):
+            object.__setattr__(result, "sparse_data_flag", transcript_count < 3)
+
+
+def strip_for_downstream(agent_output: dict) -> dict:
+    """Strip verbose fields from agent output before passing to Agents 9/10.
+
+    Removes evidence[], narrative, confidence.rationale, confidence.data_gaps,
+    and data_quality_notes from findings. Keeps only the essential data:
+    agent_id, findings (core), confidence.overall, sparse_data_flag.
+
+    This reduces Agent 10's input from ~33K to ~21K tokens.
+    """
+    stripped = {}
+    for key, value in agent_output.items():
+        if key == "evidence":
+            continue  # Skip evidence array entirely
+        if key == "narrative":
+            continue  # Skip narrative (findings contain the structured version)
+        if key == "confidence" and isinstance(value, dict):
+            stripped[key] = {"overall": value.get("overall", 0.0)}
+            continue
+        if key == "findings" and isinstance(value, dict):
+            # Remove data_quality_notes from findings
+            stripped[key] = {k: v for k, v in value.items() if k != "data_quality_notes"}
+            continue
+        stripped[key] = value
+    return stripped
 
 
 def _copy_data_quality_to_confidence(result: BaseModel) -> None:
@@ -166,6 +210,7 @@ def _process_response(
     model: str,
     attempt: int,
     max_output_tokens: int,
+    transcript_count: int | None = None,
 ) -> AgentResult[T]:
     """Parse and validate an LLM response. Shared between sync/async runners."""
     raw_text = response.content[0].text
@@ -190,8 +235,8 @@ def _process_response(
 
     result = output_model.model_validate(parsed_json)
 
-    # Post-processing: copy findings.data_quality_notes -> confidence.data_gaps
-    # (single source of truth: LLM writes to findings only, runner copies)
+    # Post-processing: inject deterministic fields + copy data quality notes
+    _inject_deterministic_fields(result, transcript_count)
     _copy_data_quality_to_confidence(result)
 
     return AgentResult(
@@ -215,6 +260,7 @@ def run_agent(
     model: str | None = None,
     max_output_tokens: int = MAX_OUTPUT_TOKENS_PER_AGENT,
     max_retries: int = 3,
+    transcript_count: int | None = None,
 ) -> AgentResult[T]:
     """Run an agent synchronously: send prompt to LLM, parse structured output.
 
@@ -256,6 +302,7 @@ def run_agent(
             elapsed = time.time() - start
             return _process_response(
                 agent_name, response, elapsed, output_model, model, attempt, max_output_tokens,
+                transcript_count=transcript_count,
             )
 
         except anthropic.RateLimitError as e:
@@ -301,6 +348,7 @@ async def run_agent_async(
     model: str | None = None,
     max_output_tokens: int = MAX_OUTPUT_TOKENS_PER_AGENT,
     max_retries: int = 3,
+    transcript_count: int | None = None,
 ) -> AgentResult[T]:
     """Run an agent asynchronously. Identical logic to run_agent, non-blocking I/O.
 
@@ -329,6 +377,7 @@ async def run_agent_async(
             elapsed = time.time() - start
             return _process_response(
                 agent_name, response, elapsed, output_model, model, attempt, max_output_tokens,
+                transcript_count=transcript_count,
             )
 
         except anthropic.RateLimitError as e:

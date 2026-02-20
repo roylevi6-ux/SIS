@@ -17,9 +17,9 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, run_agent
+from .runner import AgentResult, run_agent, strip_for_downstream
 
-from config import MAX_OUTPUT_TOKENS_SYNTHESIS, MODEL_AGENTS_9_10
+from config import MAX_OUTPUT_TOKENS_SYNTHESIS, MODEL_AGENT_10
 
 
 # --- Sub-models ---
@@ -222,12 +222,13 @@ def build_call(
     parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} -- {stage_context.get('stage_name')}")
     parts.append("")
 
-    parts.append("## ALL AGENT OUTPUTS (Agents 1-9)")
+    parts.append("## ALL AGENT OUTPUTS (Agents 1-9, findings + confidence only)")
     parts.append("Synthesize these into a coherent deal assessment.\n")
 
     for agent_id in sorted(upstream_outputs.keys()):
         label = agent_labels.get(agent_id, agent_id)
-        output_json = json.dumps(upstream_outputs[agent_id], indent=1, ensure_ascii=False)
+        compressed = strip_for_downstream(upstream_outputs[agent_id])
+        output_json = json.dumps(compressed, ensure_ascii=False)
         parts.append(f"### {label}\n```json\n{output_json}\n```\n")
 
     parts.append(
@@ -241,7 +242,7 @@ def build_call(
         "system_prompt": SYSTEM_PROMPT,
         "user_prompt": "\n".join(parts),
         "output_model": SynthesisOutput,
-        "model": MODEL_AGENTS_9_10,
+        "model": MODEL_AGENT_10,
         "max_output_tokens": MAX_OUTPUT_TOKENS_SYNTHESIS,
     }
 

@@ -14,8 +14,14 @@ load_dotenv(PROJECT_ROOT / ".env")
 # --- API Configuration (via Riskified LLM Proxy) ---
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
-MODEL_AGENTS_1_8 = os.getenv("MODEL_AGENTS_1_8", "anthropic/claude-sonnet-4-20250514")
-MODEL_AGENTS_9_10 = os.getenv("MODEL_AGENTS_9_10", "anthropic/claude-opus-4-20250514")
+MODEL_AGENTS_2_8 = os.getenv("MODEL_AGENTS_2_8", "anthropic/claude-sonnet-4-20250514")
+MODEL_AGENT_1 = os.getenv("MODEL_AGENT_1", "anthropic/claude-haiku-4-5-20251001")
+MODEL_AGENT_9 = os.getenv("MODEL_AGENT_9", "anthropic/claude-sonnet-4-20250514")
+MODEL_AGENT_10 = os.getenv("MODEL_AGENT_10", "anthropic/claude-opus-4-20250514")
+
+# Backwards compat aliases
+MODEL_AGENTS_1_8 = MODEL_AGENTS_2_8  # runner default for agents 2-8
+MODEL_AGENTS_9_10 = MODEL_AGENT_10  # kept for synthesis import
 
 # --- Database ---
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/sis.db")
@@ -24,7 +30,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/sis.db")
 MAX_TOKENS_PER_TRANSCRIPT = 8_000
 MAX_TRANSCRIPTS_PER_ACCOUNT = 5
 TOTAL_CONTEXT_BUDGET = 60_000
-MAX_OUTPUT_TOKENS_PER_AGENT = 4_500  # Agents 1-8 (envelope adds ~500 tokens for evidence + confidence)
+MAX_OUTPUT_TOKENS_PER_AGENT = 3_500  # Agents 1-8 (tightened from 4500 — conciseness rules enforce shorter output)
 MAX_OUTPUT_TOKENS_SYNTHESIS = 8_000  # Agent 10 (Synthesis): deal memo + contradiction map + health score
 
 # --- Alerts ---
