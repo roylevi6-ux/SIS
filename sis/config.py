@@ -41,7 +41,7 @@ STALE_CALL_DAYS_THRESHOLD = 30
 
 def load_calibration_config() -> dict:
     """Load calibration config from YAML. Separated from prompt logic per PRD Section 7.9."""
-    config_path = PROJECT_ROOT / "src" / "prompts" / "calibration" / "config.yaml"
+    config_path = PROJECT_ROOT / "sis" / "prompts" / "calibration" / "config.yaml"
     if config_path.exists():
         with open(config_path) as f:
             return yaml.safe_load(f)

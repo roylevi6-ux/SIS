@@ -2,7 +2,7 @@
 name = "sis"
 version = "0.1.0"
 description = "Riskified Sales Intelligence System — 10-agent AI pipeline for deal health analysis"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 dependencies = [
     "anthropic>=0.42.0",
     "sqlalchemy>=2.0",
@@ -26,7 +26,7 @@ alerts = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py39"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
