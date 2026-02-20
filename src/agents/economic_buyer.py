@@ -3,7 +3,9 @@
 Per PRD Section 7.3:
 - Assesses whether someone with budget authority has appeared on calls
 - Evaluates quality of EB engagement and language patterns around budget
-- NEVER counts secondhand EB mentions as EB engagement. CFO mentioned ≠ CFO engaged.
+- NEVER counts secondhand EB mentions as EB engagement. CFO mentioned != CFO engaged.
+
+Output wrapped in standardized envelope per PRD Section 7.4.
 """
 
 from __future__ import annotations
@@ -13,9 +15,10 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, build_analysis_prompt, run_agent
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
 
-# --- Output Model ---
+# --- Sub-models ---
 
 
 class EBReference(BaseModel):
@@ -27,8 +30,11 @@ class EBReference(BaseModel):
     sentiment: str = Field(description="Positive (supportive of deal), Neutral, Negative (budget concerns), or Unknown")
 
 
-class EconomicBuyerOutput(BaseModel):
-    """Structured output from Agent 6: Economic Buyer Presence & Authority."""
+# --- Findings ---
+
+
+class EconomicBuyerFindings(BaseModel):
+    """Agent-specific findings for Agent 6: Economic Buyer."""
 
     eb_confirmed: bool = Field(description="Whether an economic buyer has been positively identified")
     eb_name: Optional[str] = Field(default=None, description="Economic buyer name if identified")
@@ -41,9 +47,22 @@ class EconomicBuyerOutput(BaseModel):
     eb_references: list[EBReference] = Field(default_factory=list, description="References to the economic buyer across transcripts. Max 3 items.")
     executive_escalation_recommended: bool = Field(description="Whether an executive sponsor engagement is recommended")
     escalation_rationale: Optional[str] = Field(default=None, description="Why executive escalation is or isn't recommended")
-    narrative: str = Field(description="Analytical narrative about economic buyer presence and budget authority. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
-    calls_analyzed: int = Field(description="Number of full transcripts analyzed")
+
+
+# --- Envelope output ---
+
+
+class EconomicBuyerOutput(BaseModel):
+    """Standardized envelope output for Agent 6: Economic Buyer."""
+
+    agent_id: str = Field(default="agent_6_economic_buyer")
+    transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
+    narrative: str = Field(description="Analytical narrative about economic buyer presence and budget authority. Max 300 words.")
+    findings: EconomicBuyerFindings = Field(description="Agent-specific structured findings")
+    evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
+    confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
+    sparse_data_flag: bool = Field(description="True if fewer than 3 full transcripts were provided")
 
 
 # --- System Prompt ---
@@ -70,7 +89,7 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 ## NEVER Rules
 - NEVER count secondhand EB mentions as EB engagement. "My CFO likes this" without CFO on a call = EB NOT engaged.
 - NEVER assume budget approval from enthusiastic champion language.
-- NEVER infer budget authority from job title alone — verify through behavior and language.
+- NEVER infer budget authority from job title alone -- verify through behavior and language.
 
 ## Analysis Rules
 1. Direct EB appearance on a call is the strongest signal. Track exact calls.
@@ -80,15 +99,26 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 5. MEDDIC framework: Economic Buyer is the person who can say YES when everyone else says NO.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 7. Use Gong's KEY POINTS section as a reliable signal source.
-
-## Confidence Calibration
-- 0.9-1.0: EB identified, appeared on calls, expressed explicit support
-- 0.7-0.89: EB identified indirectly, positive signals but no direct engagement
-- 0.5-0.69: EB unclear, budget discussed but authority uncertain
-- Below 0.5: No EB visibility whatsoever
+""" + ENVELOPE_PROMPT_FRAGMENT + """
 
 ## Output Format
-Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
+Respond with a single JSON object using this envelope structure:
+{
+  "agent_id": "agent_6_economic_buyer",
+  "transcript_count_analyzed": <number>,
+  "narrative": "<analytical narrative about EB presence and budget authority>",
+  "findings": {
+    "eb_confirmed": true, "eb_name": "...", "eb_title": "...",
+    "eb_engagement": "...", "eb_last_appearance": "...", "eb_access_risk": "...",
+    "budget_language": [...], "budget_status": "...", "eb_references": [...],
+    "executive_escalation_recommended": false, "escalation_rationale": "...",
+    "data_quality_notes": [...]
+  },
+  "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
+  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "sparse_data_flag": false
+}
+Respond with ONLY the JSON object."""
 
 
 def build_call(

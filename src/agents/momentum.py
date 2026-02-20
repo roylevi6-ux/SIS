@@ -4,6 +4,8 @@ Per PRD Section 7.3:
 - Analyzes call cadence, who initiates meetings, question depth, energy levels
 - Tracks topic evolution and whether conversation is narrowing toward closure
 - NEVER counts seller-side engagement metrics as buyer momentum signals
+
+Output wrapped in standardized envelope per PRD Section 7.4.
 """
 
 from __future__ import annotations
@@ -13,9 +15,10 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, build_analysis_prompt, run_agent
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
 
-# --- Output Model ---
+# --- Sub-models ---
 
 
 class EngagementSignal(BaseModel):
@@ -26,21 +29,36 @@ class EngagementSignal(BaseModel):
     evidence: str = Field(description="One sentence: quote or reference from transcript")
 
 
-class MomentumOutput(BaseModel):
-    """Structured output from Agent 4: Momentum & Engagement."""
+# --- Findings ---
+
+
+class MomentumFindings(BaseModel):
+    """Agent-specific findings for Agent 4: Momentum & Engagement."""
 
     momentum_direction: str = Field(description="Improving, Stable, or Declining")
-    momentum_confidence: float = Field(ge=0.0, le=1.0, description="Confidence in momentum assessment")
-    call_cadence_assessment: str = Field(description="Assessment of call frequency pattern: Accelerating, Regular, Slowing, Irregular, Insufficient Data")
+    call_cadence_assessment: str = Field(description="Assessment of call frequency: Accelerating, Regular, Slowing, Irregular, Insufficient Data")
     meeting_initiation: str = Field(description="Who drives scheduling: Buyer-initiated, Seller-initiated, Mutual, or Unknown")
     buyer_engagement_quality: str = Field(description="High (deep questions, proactive follow-up), Medium (responsive but passive), Low (short answers, declining participation), or Minimal")
     topic_evolution: str = Field(description="Narrowing (converging toward decision), Stable (same topics recurring), Expanding (new concerns emerging), or Circular (same issues unresolved)")
     engagement_signals: list[EngagementSignal] = Field(default_factory=list, description="Specific engagement signals identified. Max 5 items.")
     leading_indicators: list[str] = Field(default_factory=list, description="Leading indicators of acceleration or stall")
     stall_risk: Optional[str] = Field(default=None, description="If declining, what specifically suggests a stall")
-    narrative: str = Field(description="Analytical narrative about momentum and engagement trajectory. Max 150 words.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
-    calls_analyzed: int = Field(description="Number of full transcripts analyzed")
+
+
+# --- Envelope output ---
+
+
+class MomentumOutput(BaseModel):
+    """Standardized envelope output for Agent 4: Momentum & Engagement."""
+
+    agent_id: str = Field(default="agent_4_momentum")
+    transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
+    narrative: str = Field(description="Analytical narrative about momentum and engagement trajectory. Max 300 words.")
+    findings: MomentumFindings = Field(description="Agent-specific structured findings")
+    evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
+    confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
+    sparse_data_flag: bool = Field(description="True if fewer than 3 full transcripts were provided")
 
 
 # --- System Prompt ---
@@ -80,25 +98,35 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 
 ## NEVER Rules
 - NEVER count seller-side engagement metrics as buyer momentum signals. Measure the BUYER.
-- NEVER treat call frequency alone as a momentum indicator — quality matters more than quantity.
+- NEVER treat call frequency alone as a momentum indicator -- quality matters more than quantity.
 - NEVER assume "busy" explanations from the buyer indicate maintained interest.
 
 ## Analysis Rules
 1. Compare engagement ACROSS calls to detect trajectory, not just snapshot.
-2. Track who talks more — increasing seller talk-time ratio often signals declining buyer engagement.
+2. Track who talks more -- increasing seller talk-time ratio often signals declining buyer engagement.
 3. Note topic shifts: are we moving forward (implementation questions) or backward (revisiting basic questions)?
 4. Buyer-initiated next steps are much stronger signals than seller-proposed ones.
 5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 6. Use Gong's KEY POINTS section as a reliable signal source.
-
-## Confidence Calibration
-- 0.9-1.0: Clear trajectory across 3+ calls with consistent signals
-- 0.7-0.89: Trajectory visible but 1-2 mixed signals
-- 0.5-0.69: Limited calls (1-2) or conflicting engagement signals
-- Below 0.5: Insufficient data to assess trajectory
+""" + ENVELOPE_PROMPT_FRAGMENT + """
 
 ## Output Format
-Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
+Respond with a single JSON object using this envelope structure:
+{
+  "agent_id": "agent_4_momentum",
+  "transcript_count_analyzed": <number>,
+  "narrative": "<analytical narrative about momentum trajectory>",
+  "findings": {
+    "momentum_direction": "...", "call_cadence_assessment": "...",
+    "meeting_initiation": "...", "buyer_engagement_quality": "...",
+    "topic_evolution": "...", "engagement_signals": [...],
+    "leading_indicators": [...], "stall_risk": "...", "data_quality_notes": [...]
+  },
+  "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
+  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "sparse_data_flag": false
+}
+Respond with ONLY the JSON object."""
 
 
 def build_call(
