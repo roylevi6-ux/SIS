@@ -127,14 +127,35 @@ def _enhance_system_prompt(system_prompt: str, output_model: type[BaseModel]) ->
         "Your response MUST be a JSON object matching this exact schema. "
         "Use these EXACT field names.\n\n"
         "## CONCISENESS RULES (critical for latency)\n"
-        "- narrative/reasoning: MAX 150 words. Be analytical, not descriptive.\n"
-        "- evidence fields: MAX 1 sentence. Quote or cite, don't explain.\n"
+        "- narrative: MAX 300 words (2-4 paragraphs). Be analytical, not descriptive.\n"
+        "- evidence interpretation: MAX 1 sentence each.\n"
+        "- confidence rationale: MAX 2 sentences.\n"
         "- List fields (objections, risks, signals, stakeholders, etc.): "
         "Only the most significant items.\n"
         "- Do NOT pad with qualifiers, hedging, or restating what's obvious.\n"
         "- Every word must earn its place.\n\n"
         f"```json\n{schema}\n```"
     )
+
+
+def _copy_data_quality_to_confidence(result: BaseModel) -> None:
+    """Copy findings.data_quality_notes into confidence.data_gaps if both exist.
+
+    The LLM populates data_quality_notes in findings only. This post-processing
+    step merges them into confidence.data_gaps so downstream consumers get a
+    unified view. Existing data_gaps from the LLM are preserved (deduped).
+    """
+    findings = getattr(result, "findings", None)
+    confidence = getattr(result, "confidence", None)
+    if findings is None or confidence is None:
+        return
+    notes = getattr(findings, "data_quality_notes", None)
+    if not notes:
+        return
+    existing = set(confidence.data_gaps)
+    for note in notes:
+        if note not in existing:
+            confidence.data_gaps.append(note)
 
 
 def _process_response(
@@ -168,6 +189,11 @@ def _process_response(
         raise AgentError(f"No valid JSON found in response: {raw_text[:200]}...")
 
     result = output_model.model_validate(parsed_json)
+
+    # Post-processing: copy findings.data_quality_notes -> confidence.data_gaps
+    # (single source of truth: LLM writes to findings only, runner copies)
+    _copy_data_quality_to_confidence(result)
+
     return AgentResult(
         output=result,
         input_tokens=tokens_in,
