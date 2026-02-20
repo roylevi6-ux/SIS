@@ -4,7 +4,7 @@ Pipeline:
   Agent 1 (sequential) → Agents 2-8 (parallel) → Agent 9 (sequential) → Agent 10 (sequential)
 """
 
-from .runner import AgentError, AgentResult, run_agent
+from .runner import AgentError, AgentResult, run_agent, strip_for_downstream
 from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
 from .stage_classifier import StageClassifierOutput, StageClassifierFindings, run_stage_classifier
@@ -23,6 +23,7 @@ __all__ = [
     "run_agent",
     "AgentError",
     "AgentResult",
+    "strip_for_downstream",
     # Shared schemas
     "EvidenceCitation",
     "ConfidenceAssessment",

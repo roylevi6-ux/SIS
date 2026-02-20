@@ -7,7 +7,7 @@ Per PRD Section 7.3:
 - Identifies gaps in upstream analyses
 
 Two jobs: DISCOVERY (find what's missing) and ADVERSARIAL VALIDATION (challenge optimism).
-Uses Opus model for deeper reasoning.
+Uses Sonnet model (adversarial validation is evidence extraction, not deep reasoning).
 
 Output wrapped in standardized envelope per PRD Section 7.4.
 """
@@ -19,10 +19,10 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, build_analysis_prompt, run_agent
+from .runner import AgentResult, build_analysis_prompt, run_agent, strip_for_downstream
 from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
-from config import MODEL_AGENTS_9_10
+from config import MODEL_AGENT_9
 
 
 # --- Sub-models ---
@@ -161,8 +161,8 @@ def build_call(
         "find what other agents missed and challenge their most optimistic findings.",
     )
 
-    # Append serialized upstream agent outputs
-    upstream_section = "\n\n## UPSTREAM AGENT OUTPUTS (Agents 1-8)\n"
+    # Append compressed upstream agent outputs (strip evidence, narrative, verbose confidence)
+    upstream_section = "\n\n## UPSTREAM AGENT OUTPUTS (Agents 1-8, findings only)\n"
     agent_labels = {
         "agent_1": "Agent 1: Stage & Progress",
         "agent_2": "Agent 2: Relationship & Power Map",
@@ -175,7 +175,8 @@ def build_call(
     }
     for agent_id in sorted(upstream_outputs.keys()):
         label = agent_labels.get(agent_id, agent_id)
-        output_json = json.dumps(upstream_outputs[agent_id], indent=1, ensure_ascii=False)
+        compressed = strip_for_downstream(upstream_outputs[agent_id])
+        output_json = json.dumps(compressed, ensure_ascii=False)
         upstream_section += f"\n### {label}\n```json\n{output_json}\n```\n"
 
     return {
@@ -183,7 +184,8 @@ def build_call(
         "system_prompt": SYSTEM_PROMPT,
         "user_prompt": base_prompt + upstream_section,
         "output_model": OpenDiscoveryOutput,
-        "model": MODEL_AGENTS_9_10,
+        "model": MODEL_AGENT_9,
+        "transcript_count": len(transcript_texts),
     }
 
 
