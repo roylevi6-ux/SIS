@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "sis"))
 
 from config import MODEL_AGENTS_9_10, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
 from preprocessor import load_account_calls, estimate_tokens
