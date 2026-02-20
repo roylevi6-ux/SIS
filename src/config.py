@@ -24,7 +24,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/sis.db")
 MAX_TOKENS_PER_TRANSCRIPT = 8_000
 MAX_TRANSCRIPTS_PER_ACCOUNT = 5
 TOTAL_CONTEXT_BUDGET = 60_000
-MAX_OUTPUT_TOKENS_PER_AGENT = 3_500  # Agents 1-8; Agent 10 (Synthesis) overrides to 4K
+MAX_OUTPUT_TOKENS_PER_AGENT = 4_500  # Agents 1-8 (envelope adds ~500 tokens for evidence + confidence)
+MAX_OUTPUT_TOKENS_SYNTHESIS = 8_000  # Agent 10 (Synthesis): deal memo + contradiction map + health score
 
 # --- Alerts ---
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
