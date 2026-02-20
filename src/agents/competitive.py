@@ -4,6 +4,8 @@ Per PRD Section 7.3:
 - Identifies status quo solution, displacement readiness, catalyst strength
 - Assesses competitive dynamics and 'no decision' risk
 - NEVER names specific competitor pricing or contract details inferred from context
+
+Output wrapped in standardized envelope per PRD Section 7.4.
 """
 
 from __future__ import annotations
@@ -13,9 +15,10 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, build_analysis_prompt, run_agent
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
 
-# --- Output Model ---
+# --- Sub-models ---
 
 
 class CompetitorMention(BaseModel):
@@ -26,22 +29,38 @@ class CompetitorMention(BaseModel):
     buyer_sentiment: str = Field(description="Positive (defending incumbent), Neutral, Negative (critical of current solution), or Unknown")
 
 
-class CompetitiveOutput(BaseModel):
-    """Structured output from Agent 8: Competitive Displacement & Alternative Path."""
+# --- Findings ---
+
+
+class CompetitiveFindings(BaseModel):
+    """Agent-specific findings for Agent 8: Competitive Displacement."""
 
     status_quo_solution: Optional[str] = Field(default=None, description="What the buyer currently uses: Forter, Signifyd, in-house rules engine, manual review, hybrid, nothing, or Unknown")
-    status_quo_embeddedness: str = Field(description="How embedded the incumbent is: Deep (integrated, team trained, contracts), Moderate (in use but pain points), Shallow (basic, easy to replace), or Unknown")
-    displacement_readiness: str = Field(description="High (buyer actively seeking replacement), Medium (evaluating but not urgent), Low (satisfied with status quo, or Unknown")
-    switching_catalyst: Optional[str] = Field(default=None, description="What's driving the potential switch: chargeback spike, growth, leadership change, platform migration, cost reduction, regulatory, etc.")
-    catalyst_strength: str = Field(description="Existential (must change or business suffers), Structural (real driver but not urgent), Cosmetic (nice-to-have, no urgency), or None Identified")
-    buying_dynamic: str = Field(description="RFP (formal evaluation), Sole Source (only evaluating Riskified), Replacement (replacing specific vendor), Greenfield (no current solution), or Unknown")
-    competitor_mentions: list[CompetitorMention] = Field(default_factory=list, description="Competitor or alternative mentions in transcripts. Max 5 items.")
-    no_decision_risk: str = Field(description="High (buyer may do nothing), Medium (some inertia signals), Low (clear intent to act), or Unknown")
+    status_quo_embeddedness: str = Field(description="How embedded the incumbent is: Deep, Moderate, Shallow, or Unknown")
+    displacement_readiness: str = Field(description="High (buyer actively seeking replacement), Medium (evaluating but not urgent), Low (satisfied with status quo), or Unknown")
+    switching_catalyst: Optional[str] = Field(default=None, description="What's driving the potential switch: chargeback spike, growth, leadership change, platform migration, cost reduction, etc.")
+    catalyst_strength: str = Field(description="Existential (must change), Structural (real driver), Cosmetic (nice-to-have), or None Identified")
+    buying_dynamic: str = Field(description="RFP, Sole Source, Replacement, Greenfield, or Unknown")
+    competitor_mentions: list[CompetitorMention] = Field(default_factory=list, description="Competitor or alternative mentions. Max 5 items.")
+    no_decision_risk: str = Field(description="High (buyer may do nothing), Medium (some inertia signals), Low (clear intent), or Unknown")
     no_decision_evidence: list[str] = Field(default_factory=list, description="Evidence supporting the no-decision risk assessment. Max 5 items.")
-    recommended_catalyst_actions: list[str] = Field(default_factory=list, description="Recommended actions to strengthen the catalyst and reduce no-decision risk")
-    narrative: str = Field(description="Analytical narrative about competitive dynamics and displacement readiness. Max 150 words.")
+    recommended_catalyst_actions: list[str] = Field(default_factory=list, description="Recommended actions to strengthen catalyst and reduce no-decision risk")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
-    calls_analyzed: int = Field(description="Number of full transcripts analyzed")
+
+
+# --- Envelope output ---
+
+
+class CompetitiveOutput(BaseModel):
+    """Standardized envelope output for Agent 8: Competitive Displacement."""
+
+    agent_id: str = Field(default="agent_8_competitive")
+    transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
+    narrative: str = Field(description="Analytical narrative about competitive dynamics and displacement readiness. Max 300 words.")
+    findings: CompetitiveFindings = Field(description="Agent-specific structured findings")
+    evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
+    confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
+    sparse_data_flag: bool = Field(description="True if fewer than 3 full transcripts were provided")
 
 
 # --- System Prompt ---
@@ -72,31 +91,43 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 
 ## Catalyst Types (what forces real decisions)
 - **Existential:** Massive chargeback spike, payment processor threatening termination, fraud rate threatening business viability
-- **Structural:** Platform migration (replatforming creates a natural switching window), leadership change, growth outpacing current solution
-- **Cosmetic:** "We should evaluate options" without urgency, exploratory RFP, analyst recommendation
+- **Structural:** Platform migration, leadership change, growth outpacing current solution
+- **Cosmetic:** "We should evaluate options" without urgency, exploratory RFP
 
 ## NEVER Rules
-- NEVER name a specific competitor's pricing or contract details inferred from context. Output "not discussed" when unknown.
+- NEVER name a specific competitor's pricing or contract details inferred from context.
 - NEVER assume the buyer is dissatisfied with their current solution without evidence.
-- NEVER underestimate "no decision" risk — it kills more deals than competitors do.
+- NEVER underestimate "no decision" risk -- it kills more deals than competitors do.
 
 ## Analysis Rules
-1. Listen for buyer language about their current solution: defensive = high displacement barrier, critical = opportunity.
+1. Listen for buyer language about their current solution: defensive = high barrier, critical = opportunity.
 2. Track whether competitive mentions increase or decrease over time.
-3. "No decision" is the most dangerous competitor — actively assess this risk.
-4. Note if the buyer is comparing Riskified to alternatives or evaluating Riskified in isolation.
+3. "No decision" is the most dangerous competitor -- actively assess this risk.
+4. Note if the buyer is comparing Riskified to alternatives or evaluating in isolation.
 5. A strong catalyst creates urgency. No catalyst = the buyer can always delay.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 7. Use Gong's KEY POINTS section as a reliable signal source.
-
-## Confidence Calibration
-- 0.9-1.0: Competitive landscape clear, catalyst identified and strong, buyer intent explicit
-- 0.7-0.89: Some competitive visibility, catalyst present but strength uncertain
-- 0.5-0.69: Limited competitive discussion, unclear whether buyer is seriously evaluating
-- Below 0.5: No competitive context in transcripts
+""" + ENVELOPE_PROMPT_FRAGMENT + """
 
 ## Output Format
-Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""
+Respond with a single JSON object using this envelope structure:
+{
+  "agent_id": "agent_8_competitive",
+  "transcript_count_analyzed": <number>,
+  "narrative": "<analytical narrative about competitive dynamics>",
+  "findings": {
+    "status_quo_solution": "...", "status_quo_embeddedness": "...",
+    "displacement_readiness": "...", "switching_catalyst": "...",
+    "catalyst_strength": "...", "buying_dynamic": "...",
+    "competitor_mentions": [...], "no_decision_risk": "...",
+    "no_decision_evidence": [...], "recommended_catalyst_actions": [...],
+    "data_quality_notes": [...]
+  },
+  "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
+  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "sparse_data_flag": false
+}
+Respond with ONLY the JSON object."""
 
 
 def build_call(
