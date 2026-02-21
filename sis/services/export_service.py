@@ -48,13 +48,23 @@ def export_deal_brief(account_id: str, format: str = "markdown") -> str:
         if not assessment:
             return f"**Error:** No assessment found for account `{account.account_name}`."
 
-        # Extract structured data from JSON columns
-        health_breakdown = json.loads(assessment.health_breakdown) if assessment.health_breakdown else []
-        top_risks = json.loads(assessment.top_risks) if assessment.top_risks else []
-        top_signals = json.loads(assessment.top_positive_signals) if assessment.top_positive_signals else []
-        actions = json.loads(assessment.recommended_actions) if assessment.recommended_actions else []
-        contradictions = json.loads(assessment.contradiction_map) if assessment.contradiction_map else []
-        key_unknowns = json.loads(assessment.key_unknowns) if assessment.key_unknowns else []
+        # Extract structured data from JSON columns (safe parse)
+        def _safe_json(val, default=None):
+            if default is None:
+                default = []
+            if not val:
+                return default
+            try:
+                return json.loads(val)
+            except (json.JSONDecodeError, TypeError):
+                return default
+
+        health_breakdown = _safe_json(assessment.health_breakdown)
+        top_risks = _safe_json(assessment.top_risks)
+        top_signals = _safe_json(assessment.top_positive_signals)
+        actions = _safe_json(assessment.recommended_actions)
+        contradictions = _safe_json(assessment.contradiction_map)
+        key_unknowns = _safe_json(assessment.key_unknowns)
 
         data = {
             "account_name": account.account_name,
@@ -100,12 +110,12 @@ def _render_structured_brief(d: dict) -> str:
         f"| Field | Value |",
         f"|-------|-------|",
         f"| MRR | {mrr_str} |",
-        f"| Stage | {d['stage']} — {d['stage_name']} ({d['stage_confidence']:.0%} conf) |",
-        f"| Health Score | {d['health_score']}/100 ({d['overall_confidence']:.0%} conf) |",
+        f"| Stage | {d['stage']} — {d['stage_name']} ({(d['stage_confidence'] or 0):.0%} conf) |",
+        f"| Health Score | {d['health_score']}/100 ({(d['overall_confidence'] or 0):.0%} conf) |",
         f"| Momentum | {d['momentum']} |",
         f"| AI Forecast | {d['ai_forecast']} |",
         f"| IC Forecast | {d['ic_forecast'] or 'Not entered'} |",
-        f"| TL | {d['team_lead'] or 'N/A'} | AE | {d['ae_owner'] or 'N/A'} |",
+        f"| Team | TL: {d['team_lead'] or 'N/A'}, AE: {d['ae_owner'] or 'N/A'} |",
         "",
     ]
 
@@ -256,7 +266,7 @@ def _render_inspection_brief(d: dict) -> str:
     lines.append("---")
     lines.append(f"**AI Forecast:** {d['ai_forecast']} | "
                  f"**IC Forecast:** {d['ic_forecast'] or 'Not entered'} | "
-                 f"**Confidence:** {d['overall_confidence']:.0%}")
+                 f"**Confidence:** {(d['overall_confidence'] or 0):.0%}")
     lines.append("")
 
     if d["forecast_rationale"]:
