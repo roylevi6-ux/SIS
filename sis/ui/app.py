@@ -46,8 +46,10 @@ def main():
     PAGES = [
         "Pipeline Overview",
         "Deal Detail",
+        "Deal Brief",
         "Divergence View",
         "Team Rollup",
+        "Meeting Prep",
         "Upload Transcript",
         "Run Analysis",
         "Chat",
@@ -70,11 +72,17 @@ def main():
     elif page == "Deal Detail":
         from sis.ui.pages.deal_detail import render
         render()
+    elif page == "Deal Brief":
+        from sis.ui.pages.deal_brief import render
+        render()
     elif page == "Divergence View":
         from sis.ui.pages.divergence_view import render
         render()
     elif page == "Team Rollup":
         from sis.ui.pages.team_rollup import render
+        render()
+    elif page == "Meeting Prep":
+        from sis.ui.pages.meeting_prep import render
         render()
     elif page == "Upload Transcript":
         from sis.ui.pages.upload_transcript import render
