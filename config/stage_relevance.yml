@@ -1,0 +1,69 @@
+## SIS Agent-Stage Relevance Matrix — per PRD Section 7.5
+## Synthesis Agent applies these weights when combining agent outputs.
+## Values: 0.0 (irrelevant at this stage) to 1.0 (critical at this stage).
+## Rows = agents, Columns = stages.
+
+# Stages:
+#   1: Qualification
+#   2: Discovery
+#   3: Evaluation
+#   4: Proposal
+#   5: Closing
+
+stage_relevance:
+  agent_2_relationship:
+    stage_1: 0.6    # stakeholder mapping starts early
+    stage_2: 0.8    # key for discovery — who is who
+    stage_3: 1.0    # champion and EB identification critical
+    stage_4: 0.9    # decision makers must be engaged
+    stage_5: 0.7    # relationships matter but deal is mostly decided
+
+  agent_3_commercial:
+    stage_1: 0.3    # too early for pricing usually
+    stage_2: 0.5    # budget signals begin
+    stage_3: 0.7    # ROI framing, pricing discussions
+    stage_4: 1.0    # commercial negotiation is the core activity
+    stage_5: 0.9    # final terms, objection resolution
+
+  agent_4_momentum:
+    stage_1: 0.5    # cadence matters from the start
+    stage_2: 0.7    # engagement quality signals interest
+    stage_3: 0.9    # momentum through evaluation is critical
+    stage_4: 1.0    # stalls here are the #1 risk signal
+    stage_5: 0.8    # momentum through close matters
+
+  agent_5_technical:
+    stage_1: 0.3    # minimal tech discussion early
+    stage_2: 0.5    # requirements gathering
+    stage_3: 1.0    # POC/evaluation is peak technical
+    stage_4: 0.7    # integration planning
+    stage_5: 0.5    # tech is validated by now
+
+  agent_6_economic_buyer:
+    stage_1: 0.4    # EB identification should start early
+    stage_2: 0.6    # EB engagement matters for discovery
+    stage_3: 0.8    # EB must be aware of evaluation
+    stage_4: 1.0    # EB must approve the deal
+    stage_5: 1.0    # EB signs off
+
+  agent_7_msp_next_steps:
+    stage_1: 0.4    # next steps discipline from day 1
+    stage_2: 0.6    # mutual plan starts forming
+    stage_3: 0.8    # MSP should be documented
+    stage_4: 1.0    # go-live dates, paper process, legal
+    stage_5: 1.0    # execution against the plan
+
+  agent_8_competitive:
+    stage_1: 0.7    # know the landscape early
+    stage_2: 0.9    # competitive positioning critical in discovery
+    stage_3: 1.0    # head-to-head evaluation
+    stage_4: 0.6    # competition usually decided by proposal
+    stage_5: 0.3    # if still competing at close, bigger problems
+
+  agent_9_open_discovery:
+    # Open discovery is stage-agnostic — always relevant
+    stage_1: 0.8
+    stage_2: 0.8
+    stage_3: 0.8
+    stage_4: 0.8
+    stage_5: 0.8

@@ -1,0 +1,38 @@
+## SIS Calibration Config v1.0
+## Per PRD Section 7.9 — separated from prompt logic.
+## TLs tune thresholds here; prompts define WHAT to analyze.
+## Changes logged in CalibrationLog with before/after values.
+
+global:
+  confidence_ceiling_sparse_data: 0.60
+  sparse_data_threshold: 3          # transcripts below this = sparse flag
+  stale_signal_days: 30
+
+agent_6_economic_buyer:
+  eb_absence_health_ceiling: 70     # max health score if EB never appeared
+  secondhand_mention_counts_as_engaged: false
+
+synthesis_agent_10:
+  health_score_weights:
+    economic_buyer_engagement: 20   # highest weight — per Section 7.11
+    stage_appropriateness: 15
+    momentum_quality: 15
+    technical_path_clarity: 10
+    competitive_position: 10
+    stakeholder_completeness: 10
+    commitment_quality: 10
+    commercial_clarity: 10
+  forecast_commit_minimum_health: 75
+  forecast_at_risk_maximum_health: 45
+  forecast_categories:
+    - Commit
+    - Best Case
+    - Pipeline
+    - Upside
+    - At Risk
+    - No Decision Risk
+
+alerts:
+  score_drop_threshold: 15          # Slack alert if score drops > this
+  stale_call_days: 30               # alert if no call in this many days
+  forecast_flip_alert: true         # alert on category change
