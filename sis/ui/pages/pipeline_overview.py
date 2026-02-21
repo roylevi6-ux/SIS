@@ -6,12 +6,51 @@ Shows: deal name, MRR, stage, health score, momentum, AI forecast, IC forecast, 
 
 import streamlit as st
 
-from sis.services.dashboard_service import get_pipeline_overview
+from sis.services.dashboard_service import get_pipeline_overview, get_pipeline_insights
 from sis.ui.components.health_badge import render_health_badge, render_momentum_indicator, render_forecast_badge
+
+
+def _render_insight_items(items: list[dict], color: str, section_key: str) -> None:
+    """Render a list of insight items with clickable account names."""
+    for item in items:
+        col_name, col_desc = st.columns([1, 3])
+        with col_name:
+            if st.button(item["account_name"], key=f"insight_{section_key}_{item['account_id']}"):
+                st.session_state["selected_account_id"] = item["account_id"]
+                st.rerun()
+        with col_desc:
+            delta = item.get("score_delta")
+            delta_str = f" ({'+' if delta > 0 else ''}{delta} pts)" if delta else ""
+            st.markdown(
+                f'<span style="color:{color}">{item["description"]}{delta_str}</span>',
+                unsafe_allow_html=True,
+            )
 
 
 def render():
     st.title("Pipeline Overview")
+
+    # Pipeline Insights panel
+    insights = get_pipeline_insights()
+    has_insights = any(insights[k] for k in insights)
+    if has_insights:
+        with st.expander("Pipeline Insights", expanded=True):
+            insight_sections = [
+                ("Stuck Deals", insights["stuck"], "#ef4444"),
+                ("Declining Deals", insights["declining"], "#ef4444"),
+                ("Improving Deals", insights["improving"], "#22c55e"),
+                ("New Risks", insights["new_risks"], "#f59e0b"),
+                ("Forecast Flips", insights["forecast_flips"], "#8b5cf6"),
+                ("Stale Deals", insights["stale"], "#6b7280"),
+            ]
+            for section_name, items, color in insight_sections:
+                if items:
+                    section_key = section_name.lower().replace(" ", "_")
+                    st.markdown(
+                        f'<h4 style="color:{color};margin-bottom:4px">{section_name} ({len(items)})</h4>',
+                        unsafe_allow_html=True,
+                    )
+                    _render_insight_items(items, color, section_key)
 
     # Team filter
     overview = get_pipeline_overview()

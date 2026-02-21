@@ -33,7 +33,7 @@ _init_database()
 def main():
     st.set_page_config(
         page_title="SIS — Sales Intelligence System",
-        page_icon="📊",
+        page_icon="\ud83d\udcca",
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -43,27 +43,49 @@ def main():
     st.sidebar.caption("Sales Intelligence System")
     st.sidebar.divider()
 
-    PAGES = [
+    # Pages grouped by section
+    ANALYTICS_PAGES = [
         "Pipeline Overview",
         "Deal Detail",
         "Deal Brief",
         "Divergence View",
         "Team Rollup",
+        "Rep Scorecard",
+        "Forecast Comparison",
+    ]
+
+    ACTIONS_PAGES = [
         "Meeting Prep",
         "Upload Transcript",
         "Run Analysis",
         "Chat",
-        "Feedback Dashboard",
-        "Cost Monitor",
     ]
 
-    # Section headers for visual grouping
+    ADMIN_PAGES = [
+        "Feedback Dashboard",
+        "Cost Monitor",
+        "Daily Digest",
+    ]
+
+    ALL_PAGES = ANALYTICS_PAGES + ACTIONS_PAGES + ADMIN_PAGES
+
+    # Section headers with radio navigation
     st.sidebar.markdown("**Analytics**")
+    st.sidebar.caption("Pipeline, deals, forecasts, scorecards")
     page = st.sidebar.radio(
         "Navigation",
-        PAGES,
+        ALL_PAGES,
         label_visibility="collapsed",
+        format_func=lambda p: (
+            f"--- Actions ---\n{p}" if p == ACTIONS_PAGES[0] and False else
+            f"--- Admin ---\n{p}" if p == ADMIN_PAGES[0] and False else
+            p
+        ),
     )
+
+    # Visual section dividers in sidebar
+    analytics_end = len(ANALYTICS_PAGES) - 1
+    actions_end = analytics_end + len(ACTIONS_PAGES)
 
     # Route to pages
     if page == "Pipeline Overview":
@@ -80,6 +102,12 @@ def main():
         render()
     elif page == "Team Rollup":
         from sis.ui.pages.team_rollup import render
+        render()
+    elif page == "Rep Scorecard":
+        from sis.ui.pages.rep_scorecard import render
+        render()
+    elif page == "Forecast Comparison":
+        from sis.ui.pages.forecast_comparison import render
         render()
     elif page == "Meeting Prep":
         from sis.ui.pages.meeting_prep import render
@@ -98,6 +126,9 @@ def main():
         render()
     elif page == "Cost Monitor":
         from sis.ui.pages.cost_monitor import render
+        render()
+    elif page == "Daily Digest":
+        from sis.ui.pages.daily_digest import render
         render()
     else:
         st.info("Select a page from the sidebar.")
