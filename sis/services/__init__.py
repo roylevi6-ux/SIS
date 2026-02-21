@@ -1,1 +1,7 @@
-"""Service layer — account, analysis, query, feedback, dashboard, export."""
+"""Service layer — account, analysis, transcript, feedback, dashboard."""
+
+from . import account_service
+from . import analysis_service
+from . import transcript_service
+from . import feedback_service
+from . import dashboard_service
