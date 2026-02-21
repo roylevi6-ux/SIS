@@ -173,6 +173,62 @@ def _persist_pipeline_result(
         return run.id
 
 
+def get_carry_forward_actions(account_id: str) -> list[dict]:
+    """Compare recommended actions across the two most recent runs.
+
+    Returns actions from the previous run that were NOT addressed in the
+    current run (i.e. no similar action appears in the latest assessment).
+    Each returned dict has the original action fields plus a 'status' of
+    'unfollowed'.
+    """
+    with get_session() as session:
+        assessments = (
+            session.query(DealAssessment)
+            .filter_by(account_id=account_id)
+            .order_by(DealAssessment.created_at.desc())
+            .limit(2)
+            .all()
+        )
+        if len(assessments) < 2:
+            return []
+
+        current_actions = json.loads(assessments[0].recommended_actions or "[]")
+        previous_actions = json.loads(assessments[1].recommended_actions or "[]")
+
+    if not previous_actions:
+        return []
+
+    # Build set of current action texts (lowered) for fuzzy matching
+    current_texts = {
+        a.get("action", "").lower().strip()
+        for a in current_actions
+        if isinstance(a, dict)
+    }
+
+    unfollowed = []
+    for prev in previous_actions:
+        if not isinstance(prev, dict):
+            continue
+        prev_text = prev.get("action", "").lower().strip()
+        # Check if a similar action exists in the current run
+        if not any(_action_similar(prev_text, ct) for ct in current_texts):
+            unfollowed.append({**prev, "status": "unfollowed"})
+
+    return unfollowed
+
+
+def _action_similar(a: str, b: str) -> bool:
+    """Simple similarity check — shared significant words."""
+    if not a or not b:
+        return False
+    words_a = set(a.split()) - {"the", "a", "an", "to", "and", "or", "of", "for", "with"}
+    words_b = set(b.split()) - {"the", "a", "an", "to", "and", "or", "of", "for", "with"}
+    if not words_a or not words_b:
+        return False
+    overlap = len(words_a & words_b)
+    return overlap / min(len(words_a), len(words_b)) >= 0.5
+
+
 def get_analysis_history(account_id: str) -> list[dict]:
     """Get all analysis runs for an account, most recent first."""
     with get_session() as session:
