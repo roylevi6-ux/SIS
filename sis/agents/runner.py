@@ -25,7 +25,7 @@ from typing import Generic, TypeVar
 import anthropic
 from pydantic import BaseModel, ValidationError
 
-from config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MAX_OUTPUT_TOKENS_PER_AGENT, MODEL_AGENTS_1_8
+from sis.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MAX_OUTPUT_TOKENS_PER_AGENT, MODEL_AGENTS_1_8
 
 logger = logging.getLogger(__name__)
 

@@ -15,7 +15,7 @@ from typing import Optional
 import yaml
 from jinja2 import Environment, BaseLoader
 
-from config import PROJECT_ROOT
+from sis.config import PROJECT_ROOT
 
 PROMPTS_DIR = PROJECT_ROOT / "prompts"
 

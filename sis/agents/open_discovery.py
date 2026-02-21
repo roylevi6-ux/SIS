@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from .runner import AgentResult, build_analysis_prompt, run_agent, strip_for_downstream
 from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
-from config import MODEL_AGENT_9
+from sis.config import MODEL_AGENT_9
 
 
 # --- Sub-models ---

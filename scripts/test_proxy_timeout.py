@@ -21,7 +21,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "sis"))
 
-from config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_AGENT_10, MODEL_AGENTS_2_8, MODEL_AGENT_1
+from sis.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_AGENT_10, MODEL_AGENTS_2_8, MODEL_AGENT_1
 
 import anthropic
 

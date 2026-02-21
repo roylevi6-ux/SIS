@@ -12,7 +12,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 
-from config import DATABASE_URL
+from sis.config import DATABASE_URL
 
 _engine: Engine | None = None
 

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Optional
 
 from sis.db.session import get_session
 from sis.db.models import Account, DealAssessment
+
+logger = logging.getLogger(__name__)
 
 # Whitelist of fields that can be updated via update_account
 UPDATABLE_FIELDS = {"account_name", "mrr_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name"}
@@ -38,9 +41,19 @@ def create_account(
 
 
 def update_account(account_id: str, **fields) -> Account:
-    """Update account fields. Only whitelisted fields are accepted."""
+    """Update account fields. Only whitelisted fields are accepted.
+
+    Raises ValueError if account not found.
+    Logs warning for any non-whitelisted fields.
+    """
+    ignored = set(fields.keys()) - UPDATABLE_FIELDS
+    if ignored:
+        logger.warning("update_account: ignoring non-updatable fields: %s", ignored)
+
     with get_session() as session:
-        account = session.query(Account).filter_by(id=account_id).one()
+        account = session.query(Account).filter_by(id=account_id).one_or_none()
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
         for key, value in fields.items():
             if key in UPDATABLE_FIELDS:
                 setattr(account, key, value)
@@ -60,7 +73,9 @@ def set_ic_forecast(account_id: str, category: str) -> dict:
         raise ValueError(f"Invalid category: {category}. Must be one of {valid_categories}")
 
     with get_session() as session:
-        account = session.query(Account).filter_by(id=account_id).one()
+        account = session.query(Account).filter_by(id=account_id).one_or_none()
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
         account.ic_forecast_category = category
 
         # Find latest deal assessment for divergence computation
@@ -154,7 +169,9 @@ def list_accounts(
 def get_account_detail(account_id: str) -> dict:
     """Full account detail with latest assessment, transcripts, feedback history."""
     with get_session() as session:
-        account = session.query(Account).filter_by(id=account_id).one()
+        account = session.query(Account).filter_by(id=account_id).one_or_none()
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
 
         latest_assessment = (
             session.query(DealAssessment)

@@ -32,7 +32,9 @@ def submit_feedback(
 
     with get_session() as session:
         # Get the health score at time of feedback
-        assessment = session.query(DealAssessment).filter_by(id=assessment_id).one()
+        assessment = session.query(DealAssessment).filter_by(id=assessment_id).one_or_none()
+        if not assessment:
+            raise ValueError(f"Assessment not found: {assessment_id}")
 
         feedback = ScoreFeedback(
             account_id=account_id,
@@ -101,7 +103,9 @@ def resolve_feedback(
         raise ValueError("resolution must be 'accepted' or 'rejected'")
 
     with get_session() as session:
-        feedback = session.query(ScoreFeedback).filter_by(id=feedback_id).one()
+        feedback = session.query(ScoreFeedback).filter_by(id=feedback_id).one_or_none()
+        if not feedback:
+            raise ValueError(f"Feedback not found: {feedback_id}")
         feedback.resolution = resolution
         feedback.resolution_notes = notes
         feedback.resolved_by = resolved_by

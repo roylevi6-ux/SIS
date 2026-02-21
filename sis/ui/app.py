@@ -11,10 +11,9 @@ Per Technical Architecture Appendix B:
 import sys
 from pathlib import Path
 
-# Ensure project root and sis package are importable
+# Ensure project root is importable (so 'sis' package resolves)
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "sis"))
 
 import streamlit as st
 

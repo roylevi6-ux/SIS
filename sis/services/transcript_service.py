@@ -7,7 +7,7 @@ from typing import Optional
 
 from sis.db.session import get_session
 from sis.db.models import Transcript
-from config import MAX_TRANSCRIPTS_PER_ACCOUNT
+from sis.config import MAX_TRANSCRIPTS_PER_ACCOUNT
 
 
 def upload_transcript(
@@ -87,6 +87,18 @@ def get_active_transcript_texts(account_id: str) -> list[str]:
             .all()
         )
         return [t.preprocessed_text or t.raw_text for t in transcripts]
+
+
+def get_active_transcript_ids(account_id: str) -> list[str]:
+    """Get IDs of all active transcripts for an account (for audit trail)."""
+    with get_session() as session:
+        transcripts = (
+            session.query(Transcript.id)
+            .filter_by(account_id=account_id, is_active=1)
+            .order_by(Transcript.call_date.asc())
+            .all()
+        )
+        return [t.id for t in transcripts]
 
 
 def _preprocess(raw_text: str) -> dict:

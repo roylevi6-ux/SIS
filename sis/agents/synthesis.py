@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from .runner import AgentResult, run_agent, strip_for_downstream
 
-from config import MAX_OUTPUT_TOKENS_SYNTHESIS, MODEL_AGENT_10
+from sis.config import MAX_OUTPUT_TOKENS_SYNTHESIS, MODEL_AGENT_10
 
 
 # --- Sub-models ---

@@ -23,7 +23,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "sis"))
 
-from config import MODEL_AGENT_1, MODEL_AGENTS_2_8, MODEL_AGENT_9, MODEL_AGENT_10, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
+from sis.config import MODEL_AGENT_1, MODEL_AGENTS_2_8, MODEL_AGENT_9, MODEL_AGENT_10, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
 from preprocessor import load_account_calls, estimate_tokens
 from agents.stage_classifier import build_call as build_call_1
 from agents.runner import run_agents_parallel
