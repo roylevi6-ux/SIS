@@ -120,6 +120,10 @@ def query(user_message: str, history: list[dict] | None = None) -> str:
     """
     context = _build_context()
 
+    # Early return if no pipeline data to query
+    if "## All Deals\n" not in context or context.endswith("## All Deals\n"):
+        return "No pipeline data available yet. Upload transcripts and run analysis first."
+
     messages: list[dict] = []
     if history:
         for msg in history[-10:]:
