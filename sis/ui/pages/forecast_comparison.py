@@ -13,6 +13,11 @@ import streamlit as st
 from sis.services.forecast_data_service import load_forecast_data, get_team_names
 from sis.services.export_service import export_forecast_report
 from sis.ui.components.health_badge import render_forecast_badge
+from sis.ui.components.layout import (
+    page_header, section_divider, metric_row, status_badge, score_badge,
+    empty_state,
+)
+from sis.ui.theme import Colors
 
 # Forecast category weights (same as export_service)
 CATEGORY_WEIGHTS = {
@@ -26,8 +31,10 @@ CATEGORY_WEIGHTS = {
 
 
 def render():
-    st.title("Forecast Comparison")
-    st.caption("AI aggregate vs IC aggregate: total weighted pipeline by team and org")
+    page_header(
+        "Forecast Comparison",
+        "AI aggregate vs IC aggregate: total weighted pipeline by team and org",
+    )
 
     # Team filter
     teams = get_team_names()
@@ -38,7 +45,11 @@ def render():
     rows = load_forecast_data(team_filter)
 
     if not rows:
-        st.info("No scored deals found. Run analysis first.")
+        empty_state(
+            "No scored deals found",
+            "📊",
+            "Run analysis first.",
+        )
         return
 
     # --- Summary metrics ---
@@ -49,19 +60,15 @@ def render():
     delta = ai_weighted - ic_weighted
     divergent_count = sum(1 for r in rows if r["divergence"])
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.metric("Total Pipeline MRR", f"${total_mrr:,.0f}")
-    with col2:
-        st.metric("AI Weighted", f"${ai_weighted:,.0f}")
-    with col3:
-        st.metric("IC Weighted", f"${ic_weighted:,.0f}")
-    with col4:
-        st.metric("Delta (AI - IC)", f"${delta:,.0f}", delta=f"${delta:,.0f}")
-    with col5:
-        st.metric("Divergent Deals", divergent_count)
+    metric_row([
+        {"label": "Total Pipeline MRR", "value": f"${total_mrr:,.0f}"},
+        {"label": "AI Weighted", "value": f"${ai_weighted:,.0f}"},
+        {"label": "IC Weighted", "value": f"${ic_weighted:,.0f}"},
+        {"label": "Delta (AI - IC)", "value": f"${delta:,.0f}"},
+        {"label": "Divergent Deals", "value": divergent_count},
+    ])
 
-    st.divider()
+    section_divider()
 
     # --- Per-team breakdown ---
     teams_data: dict[str, list] = {}
@@ -93,7 +100,7 @@ def render():
             with tc5:
                 if t_div:
                     st.caption(f"Divergent: {t_div}")
-        st.divider()
+        section_divider()
 
     # --- Per-deal table ---
     st.subheader("Deal-Level Comparison")
@@ -119,19 +126,22 @@ def render():
             with c4:
                 st.caption("Health")
                 score = r["health_score"]
-                st.markdown(f"**{score}**" if score is not None else "--")
+                st.markdown(
+                    score_badge(score) if score is not None else "--",
+                    unsafe_allow_html=True,
+                )
             with c5:
                 st.caption("Momentum")
                 st.markdown(r["momentum"] or "--")
             with c6:
                 if r["divergence"]:
                     st.markdown(
-                        '<span style="color:#ef4444;font-weight:bold">DIVERGENT</span>',
+                        status_badge("DIVERGENT", "danger"),
                         unsafe_allow_html=True,
                     )
 
     # --- Export button ---
-    st.divider()
+    section_divider()
     report_md = export_forecast_report(team=team_filter)
     st.download_button(
         label="Export Forecast Report (Markdown)",

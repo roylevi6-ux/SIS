@@ -12,6 +12,7 @@ from sis.services.prompt_version_service import (
     rollback_version,
     diff_versions,
 )
+from sis.ui.components.layout import page_header, section_divider, empty_state
 
 
 AGENTS = [
@@ -29,8 +30,7 @@ AGENTS = [
 
 
 def render():
-    st.title("Prompt Versions")
-    st.caption("Version control for agent prompts — create, rollback, and diff")
+    page_header("Prompt Versions", "Version control for agent prompts — create, rollback, and diff")
 
     # Agent selector
     agent_labels = {aid: f"{aid}: {name}" for aid, name in AGENTS}
@@ -61,9 +61,13 @@ def render():
                     st.caption(f"Notes: {active['change_notes']}")
             st.code(active["prompt_template"], language="text")
     else:
-        st.info("No versions for this agent. Create the first version below.")
+        empty_state(
+            "No versions for this agent",
+            "\U0001f4dd",
+            "Create the first version below.",
+        )
 
-    st.divider()
+    section_divider()
 
     # --- Version history ---
     st.subheader("Version History")
@@ -87,9 +91,12 @@ def render():
                         st.session_state["_pv_toast"] = f"Rolled back to v{v['version']}"
                         st.rerun()
     else:
-        st.info("No version history.")
+        empty_state(
+            "No version history",
+            "\U0001f4c2",
+        )
 
-    st.divider()
+    section_divider()
 
     # --- Create new version ---
     st.subheader("Create New Version")
@@ -120,7 +127,7 @@ def render():
             except Exception as e:
                 st.error(f"Error: {e}")
 
-    st.divider()
+    section_divider()
 
     # --- Side-by-side diff ---
     st.subheader("Compare Versions")
@@ -146,4 +153,7 @@ def render():
                 else:
                     st.success("No differences found.")
     else:
-        st.info("Need at least 2 versions to compare.")
+        empty_state(
+            "Need at least 2 versions to compare",
+            "\U0001f504",
+        )

@@ -7,11 +7,14 @@ Includes resolution buttons and account drill-down.
 import streamlit as st
 
 from sis.services.feedback_service import list_feedback, resolve_feedback, get_feedback_summary
+from sis.ui.components.layout import (
+    page_header, section_divider, metric_row, status_badge, empty_state,
+)
+from sis.ui.theme import Colors
 
 
 def render():
-    st.title("Feedback Dashboard")
-    st.caption("All TL score feedback across deals — filterable and actionable")
+    page_header("Feedback Dashboard", "All TL score feedback across deals")
 
     # Show resolution toasts from previous rerun
     for key in list(st.session_state.keys()):
@@ -23,24 +26,24 @@ def render():
     summary = get_feedback_summary()
 
     if summary["total"] == 0:
-        st.info("No feedback submitted yet.")
+        empty_state(
+            "No feedback submitted yet",
+            "\U0001f4ec",
+            "Score feedback will appear here once team leads submit it.",
+        )
         return
 
     # --- Summary metrics ---
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.metric("Total Feedback", summary["total"])
-    with col2:
-        st.metric("Too High", summary["by_direction"].get("too_high", 0))
-    with col3:
-        st.metric("Too Low", summary["by_direction"].get("too_low", 0))
-    with col4:
-        st.metric("Pending", summary["by_resolution"].get("pending", 0))
-    with col5:
-        resolved = summary["by_resolution"].get("accepted", 0) + summary["by_resolution"].get("rejected", 0)
-        st.metric("Resolved", resolved)
+    resolved = summary["by_resolution"].get("accepted", 0) + summary["by_resolution"].get("rejected", 0)
+    metric_row([
+        {"label": "Total Feedback", "value": summary["total"]},
+        {"label": "Too High", "value": summary["by_direction"].get("too_high", 0)},
+        {"label": "Too Low", "value": summary["by_direction"].get("too_low", 0)},
+        {"label": "Pending", "value": summary["by_resolution"].get("pending", 0)},
+        {"label": "Resolved", "value": resolved},
+    ])
 
-    st.divider()
+    section_divider()
 
     # --- Filter sidebar ---
     with st.sidebar:
@@ -62,7 +65,11 @@ def render():
         feedback = [f for f in feedback if f["direction"] == selected_direction]
 
     if not feedback:
-        st.info("No feedback matches the current filters.")
+        empty_state(
+            "No feedback matches the current filters",
+            "\U0001f50d",
+            "Try adjusting the filters in the sidebar.",
+        )
         return
 
     # --- Reason breakdown ---
@@ -76,7 +83,7 @@ def render():
         with cols[i % len(cols)]:
             st.metric(reason.replace("_", " ").title(), count)
 
-    st.divider()
+    section_divider()
 
     # --- Group by account for drill-down ---
     st.subheader(f"Feedback Items ({len(feedback)})")
@@ -91,11 +98,13 @@ def render():
     for account_name, items in sorted(by_account.items()):
         with st.expander(f"{account_name} ({len(items)} items)", expanded=len(by_account) <= 5):
             for f in items:
-                status_color = (
-                    "#22c55e" if f["resolution"] == "accepted"
-                    else "#ef4444" if f["resolution"] == "rejected"
-                    else "#f59e0b"
-                )
+                if f["resolution"] == "accepted":
+                    resolution_status = "success"
+                elif f["resolution"] == "rejected":
+                    resolution_status = "danger"
+                else:
+                    resolution_status = "warning"
+
                 direction_icon = "\u2191" if f["direction"] == "too_low" else "\u2193"
 
                 with st.container(border=True):
@@ -106,7 +115,7 @@ def render():
                         st.caption(f["reason"].replace("_", " "))
                     with c3:
                         st.markdown(
-                            f'<span style="color:{status_color}">{f["resolution"]}</span>',
+                            status_badge(f["resolution"], resolution_status),
                             unsafe_allow_html=True,
                         )
                     with c4:

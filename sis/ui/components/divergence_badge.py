@@ -4,6 +4,8 @@ import html
 
 import streamlit as st
 
+from sis.ui.theme import Colors, Typography
+
 
 def render_divergence_badge(
     ai_forecast: str | None,
@@ -22,9 +24,7 @@ def render_divergence_badge(
 
     if ai_forecast == ic_forecast:
         st.markdown(
-            '<span style="padding:2px 8px;border-radius:4px;'
-            'background:#22c55e20;color:#22c55e;font-size:12px;font-weight:600">'
-            'ALIGNED</span>',
+            f'<span class="sis-badge sis-badge-success">ALIGNED</span>',
             unsafe_allow_html=True,
         )
         return
@@ -33,10 +33,11 @@ def render_divergence_badge(
     ic_safe = html.escape(ic_forecast)
     st.markdown(
         f'<div style="padding:8px;border-radius:6px;'
-        f'background:#ef444415;border:1px solid #ef444440">'
-        f'<span style="color:#ef4444;font-weight:700;font-size:13px">'
-        f'DIVERGENT</span><br>'
-        f'<span style="font-size:12px">'
+        f'background:{Colors.with_alpha(Colors.DANGER, "15")};'
+        f'border:1px solid {Colors.with_alpha(Colors.DANGER, "40")}">'
+        f'<span style="color:{Colors.DANGER};font-weight:700;'
+        f'font-size:{Typography.CAPTION + 1}px">DIVERGENT</span><br>'
+        f'<span style="font-size:{Typography.CAPTION}px">'
         f'AI: <b>{ai_safe}</b> vs IC: <b>{ic_safe}</b></span>'
         f'</div>',
         unsafe_allow_html=True,
@@ -57,8 +58,9 @@ def render_divergence_inline(divergence_flag: bool) -> str:
     """
     if divergence_flag:
         return (
-            '<span style="padding:1px 6px;border-radius:3px;'
-            'background:#ef444420;color:#ef4444;font-size:11px;font-weight:600">'
-            'DIV</span>'
+            f'<span style="padding:1px 6px;border-radius:3px;'
+            f'background:{Colors.with_alpha(Colors.DANGER)};color:{Colors.DANGER};'
+            f'font-size:{Typography.CAPTION}px;font-weight:{Typography.SEMIBOLD}">'
+            f'DIV</span>'
         )
     return ""

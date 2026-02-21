@@ -7,11 +7,11 @@ per-user activity breakdown, and per-page view counts.
 import streamlit as st
 
 from sis.services.usage_tracking_service import get_usage_summary, get_cro_metrics
+from sis.ui.components.layout import page_header, section_divider, empty_state
 
 
 def render():
-    st.title("Usage Dashboard")
-    st.caption("CRO success criteria and platform adoption metrics")
+    page_header("Usage Dashboard", "CRO success criteria and platform adoption metrics")
 
     # --- CRO Scorecard ---
     st.subheader("CRO Success Criteria")
@@ -39,13 +39,13 @@ def render():
 
     passed_count = sum(1 for m in metrics if m["passed"] is True)
     total_evaluable = sum(1 for m in metrics if m["passed"] is not None)
-    st.divider()
+    section_divider()
     st.markdown(
         f"**Overall: {passed_count}/{total_evaluable} criteria met** "
         f"({len(metrics) - total_evaluable} not yet evaluable)"
     )
 
-    st.divider()
+    section_divider()
 
     # --- Event Summary ---
     days = st.selectbox("Time range", [7, 14, 30, 60, 90], index=2)
@@ -61,7 +61,10 @@ def render():
             for event_type, count in sorted(summary["by_type"].items(), key=lambda x: -x[1]):
                 st.text(f"  {event_type}: {count}")
         else:
-            st.info("No events recorded yet.")
+            empty_state(
+                "No events recorded yet",
+                "\U0001f4e1",
+            )
 
     with col2:
         st.markdown("**Views by Page**")
@@ -69,9 +72,12 @@ def render():
             for page, count in sorted(summary["by_page"].items(), key=lambda x: -x[1]):
                 st.text(f"  {page}: {count}")
         else:
-            st.info("No page views recorded yet.")
+            empty_state(
+                "No page views recorded yet",
+                "\U0001f4c4",
+            )
 
-    st.divider()
+    section_divider()
 
     # --- Per-User Activity ---
     st.subheader("Per-User Activity")
@@ -82,7 +88,11 @@ def render():
         ]
         st.dataframe(user_data, use_container_width=True, hide_index=True)
     else:
-        st.info("No user-attributed events yet. Events are tracked anonymously by default.")
+        empty_state(
+            "No user-attributed events yet",
+            "\U0001f464",
+            "Events are tracked anonymously by default.",
+        )
 
     # --- Daily Trend ---
     st.subheader("Daily Event Trend")
@@ -95,4 +105,7 @@ def render():
             data={d["Date"]: d["Events"] for d in day_data},
         )
     else:
-        st.info("No events to display.")
+        empty_state(
+            "No events to display",
+            "\U0001f4c8",
+        )

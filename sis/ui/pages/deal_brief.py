@@ -11,17 +11,17 @@ import streamlit as st
 from sis.services.account_service import list_accounts
 from sis.services.export_service import export_deal_brief
 from sis.services.usage_tracking_service import track_event
+from sis.ui.components.layout import page_header, section_divider, empty_state
 
 
 def render():
-    st.title("Deal Brief")
-    st.caption("One-page deal brief for pipeline review prep — 3 formats")
+    page_header("Deal Brief", "One-page deal brief for pipeline review prep — 3 formats")
 
     accounts = list_accounts()
     scored = [a for a in accounts if a.get("health_score") is not None]
 
     if not scored:
-        st.info("No scored accounts. Run analysis first.")
+        empty_state("No scored accounts.", "\U0001f4ca", "Run analysis first.")
         return
 
     col1, col2 = st.columns([2, 1])
@@ -42,7 +42,7 @@ def render():
             format_func=lambda x: format_labels[x],
         )
 
-    st.divider()
+    section_divider()
 
     # Generate brief
     track_event("brief_view", account_id=account["id"], page_name="Deal Brief")
@@ -52,7 +52,7 @@ def render():
     st.markdown(brief)
 
     # Download button
-    st.divider()
+    section_divider()
     st.download_button(
         label="Download as Markdown",
         data=brief,

@@ -4,10 +4,11 @@ import streamlit as st
 
 from sis.services.account_service import create_account, list_accounts
 from sis.services.transcript_service import upload_transcript, list_transcripts
+from sis.ui.components.layout import page_header, empty_state
 
 
 def render():
-    st.title("Upload Transcript")
+    page_header("Upload Transcript")
 
     tab1, tab2 = st.tabs(["Upload to Existing Account", "Create New Account"])
 
@@ -39,7 +40,11 @@ def render():
 
         accounts = list_accounts()
         if not accounts:
-            st.info("No accounts yet. Create one first using the tab above.")
+            empty_state(
+                "No accounts yet",
+                "\U0001f4c1",
+                "Create one first using the tab above.",
+            )
             return
 
         account_names = [a["account_name"] for a in accounts]
@@ -49,7 +54,6 @@ def render():
         idx = account_names.index(selected_name)
         account_id = account_ids[idx]
 
-        # Show existing transcripts
         existing = list_transcripts(account_id)
         if existing:
             st.caption(f"{len(existing)} active transcripts for this account")

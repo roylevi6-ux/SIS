@@ -2,6 +2,8 @@
 
 import streamlit as st
 
+from sis.ui.theme import Colors, Typography
+
 
 def render_health_badge(score: int | None, size: str = "large") -> None:
     """Render a color-coded health score badge.
@@ -14,28 +16,23 @@ def render_health_badge(score: int | None, size: str = "large") -> None:
         st.markdown("**--**")
         return
 
-    if score >= 70:
-        color = "#22c55e"  # green
-        label = "Healthy"
-    elif score >= 45:
-        color = "#f59e0b"  # amber
-        label = "At Risk"
-    else:
-        color = "#ef4444"  # red
-        label = "Critical"
+    color = Colors.status_color(score)
+    label = "Healthy" if score >= 70 else "At Risk" if score >= 45 else "Critical"
 
     if size == "large":
         st.markdown(
-            f'<div style="text-align:center;padding:16px;border-radius:12px;'
-            f'background:{color}20;border:2px solid {color}">'
-            f'<span style="font-size:48px;font-weight:bold;color:{color}">{score}</span>'
-            f'<br><span style="color:{color};font-weight:600">{label}</span></div>',
+            f'<div class="sis-score-lg" style="background:{Colors.with_alpha(color)};'
+            f'border:2px solid {color}">'
+            f'<div class="score-value" style="color:{color}">{score}</div>'
+            f'<div class="score-label" style="color:{color}">{label}</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             f'<span style="padding:2px 8px;border-radius:4px;'
-            f'background:{color}20;color:{color};font-weight:bold">{score}</span>',
+            f'background:{Colors.with_alpha(color)};color:{color};'
+            f'font-weight:bold;font-size:{Typography.CAPTION}px">{score}</span>',
             unsafe_allow_html=True,
         )
 
@@ -47,11 +44,12 @@ def render_momentum_indicator(direction: str | None) -> None:
         return
 
     arrows = {
-        "Improving": ("↑", "#22c55e"),
-        "Stable": ("→", "#6b7280"),
-        "Declining": ("↓", "#ef4444"),
+        "Improving": "↑",
+        "Stable": "→",
+        "Declining": "↓",
     }
-    arrow, color = arrows.get(direction, ("?", "#6b7280"))
+    arrow = arrows.get(direction, "?")
+    color = Colors.direction_color(direction)
     st.markdown(
         f'<span style="color:{color};font-size:20px;font-weight:bold">{arrow}</span> '
         f'<span style="color:{color}">{direction}</span>',
@@ -65,17 +63,10 @@ def render_forecast_badge(category: str | None) -> None:
         st.markdown("--")
         return
 
-    colors = {
-        "Commit": "#22c55e",
-        "Best Case": "#3b82f6",
-        "Pipeline": "#8b5cf6",
-        "Upside": "#06b6d4",
-        "At Risk": "#f59e0b",
-        "No Decision Risk": "#ef4444",
-    }
-    color = colors.get(category, "#6b7280")
+    color = Colors.FORECAST.get(category, Colors.NEUTRAL)
     st.markdown(
         f'<span style="padding:2px 8px;border-radius:4px;'
-        f'background:{color}20;color:{color};font-weight:600;font-size:13px">{category}</span>',
+        f'background:{Colors.with_alpha(color)};color:{color};'
+        f'font-weight:600;font-size:{Typography.CAPTION}px">{category}</span>',
         unsafe_allow_html=True,
     )

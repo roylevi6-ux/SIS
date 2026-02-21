@@ -4,14 +4,19 @@ import streamlit as st
 
 from sis.services.account_service import list_accounts
 from sis.services.transcript_service import list_transcripts
+from sis.ui.components.layout import page_header, empty_state
 
 
 def render():
-    st.title("Run Analysis")
+    page_header("Run Analysis")
 
     accounts = list_accounts()
     if not accounts:
-        st.info("No accounts yet. Upload transcripts first.")
+        empty_state(
+            "No accounts yet",
+            "\U0001f4e5",
+            "Upload transcripts first.",
+        )
         return
 
     account_names = [a["account_name"] for a in accounts]
@@ -21,7 +26,6 @@ def render():
     idx = account_names.index(selected_name)
     account_id = account_ids[idx]
 
-    # Show transcript count
     transcripts = list_transcripts(account_id)
     st.info(f"{len(transcripts)} active transcripts for this account")
 
@@ -70,7 +74,6 @@ def render():
                     for w in result["validation_warnings"]:
                         st.warning(w)
 
-            # Link to deal detail
             st.session_state["selected_account_id"] = account_id
             if st.button("View Deal Detail →"):
                 st.rerun()

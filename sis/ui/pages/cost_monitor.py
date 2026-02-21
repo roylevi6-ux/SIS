@@ -4,11 +4,14 @@ import streamlit as st
 
 from sis.db.session import get_session
 from sis.db.models import AnalysisRun
+from sis.ui.components.layout import (
+    page_header, section_divider, metric_row, status_badge, empty_state,
+)
+from sis.ui.theme import Colors
 
 
 def render():
-    st.title("Cost Monitor")
-    st.caption("Track LLM usage and costs across pipeline runs")
+    page_header("Cost Monitor", "Track LLM usage and costs across pipeline runs")
 
     # Load data within session scope and convert to dicts
     with get_session() as session:
@@ -32,7 +35,11 @@ def render():
         ]
 
     if not runs:
-        st.info("No analysis runs yet.")
+        empty_state(
+            "No analysis runs yet",
+            "\U0001f4ca",
+            "Run an analysis pipeline to start tracking costs.",
+        )
         return
 
     # Summary
@@ -40,15 +47,12 @@ def render():
     total_input = sum(r["total_input_tokens"] for r in runs)
     total_output = sum(r["total_output_tokens"] for r in runs)
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Runs", len(runs))
-    with col2:
-        st.metric("Total Cost", f"${total_cost:.2f}")
-    with col3:
-        st.metric("Total Input Tokens", f"{total_input:,}")
-    with col4:
-        st.metric("Total Output Tokens", f"{total_output:,}")
+    metric_row([
+        {"label": "Total Runs", "value": len(runs)},
+        {"label": "Total Cost", "value": f"${total_cost:.2f}"},
+        {"label": "Total Input Tokens", "value": f"{total_input:,}"},
+        {"label": "Total Output Tokens", "value": f"{total_output:,}"},
+    ])
 
     # Monthly projection
     avg_cost = total_cost / len(runs)
@@ -57,7 +61,7 @@ def render():
         f"**Monthly projection (400 runs):** ${avg_cost * 400:.2f}"
     )
 
-    st.divider()
+    section_divider()
 
     # Per-run table
     st.subheader("Recent Runs")
@@ -70,8 +74,16 @@ def render():
             with c2:
                 st.caption("Status")
                 status = run["status"]
-                color = "#22c55e" if status == "completed" else "#f59e0b" if status == "partial" else "#ef4444"
-                st.markdown(f'<span style="color:{color}">{status}</span>', unsafe_allow_html=True)
+                if status == "completed":
+                    badge_status = "success"
+                elif status == "partial":
+                    badge_status = "warning"
+                else:
+                    badge_status = "danger"
+                st.markdown(
+                    status_badge(status, badge_status),
+                    unsafe_allow_html=True,
+                )
             with c3:
                 st.caption("Cost")
                 st.markdown(f"${run['total_cost_usd']:.4f}")
