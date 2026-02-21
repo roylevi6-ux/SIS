@@ -4,9 +4,13 @@ Shows 4 behavioral dimensions per rep with team-level aggregates
 and per-account drill-down.
 """
 
+import hashlib
+import html
+
 import streamlit as st
 
 from sis.services.rep_scorecard_service import get_rep_scorecard, DIMENSIONS
+from sis.services import coaching_service
 
 
 def _dimension_color(score: float | None) -> str:
@@ -120,3 +124,104 @@ def render():
                                     f'{val:.0f}</span>' if val is not None else "--",
                                     unsafe_allow_html=True,
                                 )
+
+            # --- Coaching Log ---
+            rep_key = hashlib.md5(sc["rep_name"].encode()).hexdigest()[:12]
+            coaching_entries = coaching_service.list_coaching(rep_name=sc["rep_name"])
+            with st.expander(f"Coaching Log ({len(coaching_entries)})"):
+                # Submit form
+                st.markdown("**Log Coaching Feedback**")
+                all_accounts = sc["accounts"]
+                acct_options = {a["account_name"]: a["account_id"] for a in all_accounts}
+                if not acct_options:
+                    st.info("No accounts for this rep.")
+                else:
+                    form_key = f"coaching_form_{rep_key}"
+                    with st.form(form_key):
+                        sel_acct_name = st.selectbox(
+                            "Account",
+                            list(acct_options.keys()),
+                            key=f"coaching_acct_{rep_key}",
+                        )
+                        sel_dimension = st.selectbox(
+                            "Dimension",
+                            DIMENSIONS,
+                            key=f"coaching_dim_{rep_key}",
+                        )
+                        coach_name = st.text_input(
+                            "Coach Name",
+                            key=f"coaching_coach_{rep_key}",
+                        )
+                        feedback_text = st.text_area(
+                            "Coaching Feedback",
+                            key=f"coaching_text_{rep_key}",
+                        )
+                        submitted = st.form_submit_button("Submit Coaching")
+                        if submitted:
+                            if not coach_name.strip():
+                                st.error("Coach name is required.")
+                            elif not feedback_text.strip():
+                                st.error("Feedback text is required.")
+                            else:
+                                try:
+                                    coaching_service.submit_coaching(
+                                        account_id=acct_options[sel_acct_name],
+                                        rep_name=sc["rep_name"],
+                                        coach_name=coach_name.strip(),
+                                        dimension=sel_dimension,
+                                        feedback_text=feedback_text,
+                                    )
+                                    st.success("Coaching entry saved.")
+                                    st.rerun()
+                                except ValueError as e:
+                                    st.error(str(e))
+
+                # History
+                if coaching_entries:
+                    st.markdown("**History**")
+                    for entry in coaching_entries:
+                        entry_key = entry["id"]
+                        inc_badge = (
+                            '<span style="color:#22c55e;font-weight:bold">Incorporated</span>'
+                            if entry["incorporated"]
+                            else '<span style="color:#f59e0b">Pending</span>'
+                        )
+                        dim_score = entry["dimension_score_at_time"]
+                        dim_label = f" | Score: {dim_score}" if dim_score is not None else ""
+                        escaped_text = html.escape(entry["feedback_text"])
+                        escaped_coach = html.escape(entry["coach_name"])
+                        escaped_acct = html.escape(entry["account_name"])
+                        st.markdown(
+                            f'<div style="padding:8px;margin:4px 0;border-left:3px solid #6366f1;'
+                            f'background:#f8f9fa;border-radius:0 6px 6px 0">'
+                            f'<div style="font-size:12px;color:#666">'
+                            f'{html.escape(entry["dimension"])} | {escaped_acct}{dim_label} | '
+                            f'{html.escape(entry["coaching_date"][:10])} | Coach: {escaped_coach} | '
+                            f'{inc_badge}</div>'
+                            f'<div style="margin-top:4px">{escaped_text}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                        if not entry["incorporated"]:
+                            inc_col1, inc_col2 = st.columns([3, 1])
+                            with inc_col1:
+                                notes = st.text_input(
+                                    "Notes",
+                                    key=f"inc_notes_{rep_key}_{entry_key}",
+                                    label_visibility="collapsed",
+                                    placeholder="Incorporation notes (optional)",
+                                )
+                            with inc_col2:
+                                if st.button(
+                                    "Mark Incorporated",
+                                    key=f"inc_btn_{rep_key}_{entry_key}",
+                                ):
+                                    coaching_service.mark_incorporated(
+                                        entry["id"],
+                                        notes=notes if notes.strip() else None,
+                                    )
+                                    st.rerun()
+                        elif entry["incorporated_notes"]:
+                            st.caption(f"Notes: {html.escape(entry['incorporated_notes'])}")
+                else:
+                    st.info("No coaching entries yet.")

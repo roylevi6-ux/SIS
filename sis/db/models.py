@@ -50,6 +50,7 @@ class Account(Base):
     analysis_runs = relationship("AnalysisRun", back_populates="account", order_by="AnalysisRun.started_at.desc()")
     deal_assessments = relationship("DealAssessment", back_populates="account", order_by="DealAssessment.created_at.desc()")
     score_feedback = relationship("ScoreFeedback", back_populates="account")
+    coaching_entries = relationship("CoachingEntry", back_populates="account")
 
 
 # ─── transcripts ────────────────────────────────────────────────────────
@@ -234,6 +235,35 @@ class ScoreFeedback(Base):
 
     __table_args__ = (
         Index("ix_score_feedback_account", "account_id", "created_at"),
+    )
+
+
+# ─── coaching_entries ──────────────────────────────────────────────────
+
+
+class CoachingEntry(Base):
+    __tablename__ = "coaching_entries"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    account_id = Column(Text, ForeignKey("accounts.id"), nullable=False)
+    rep_name = Column(Text, nullable=False)
+    coach_name = Column(Text, nullable=False)
+    dimension = Column(Text, nullable=False)
+    coaching_date = Column(Text, nullable=False, default=_now)
+    feedback_text = Column(Text, nullable=False)
+    dimension_score_at_time = Column(Integer, nullable=True)
+    health_score_at_time = Column(Integer, nullable=True)
+    incorporated = Column(Integer, default=0)  # boolean
+    incorporated_at = Column(Text, nullable=True)
+    incorporated_notes = Column(Text, nullable=True)
+    created_at = Column(Text, nullable=False, default=_now)
+
+    # Relationships
+    account = relationship("Account", back_populates="coaching_entries")
+
+    __table_args__ = (
+        Index("ix_coaching_entries_rep", "rep_name", "coaching_date"),
+        Index("ix_coaching_entries_account", "account_id", "dimension"),
     )
 
 

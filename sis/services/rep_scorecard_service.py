@@ -24,7 +24,7 @@ DIMENSIONS = [
 ]
 
 # Map agent_id prefixes to dimensions
-_AGENT_DIMENSION_MAP = {
+AGENT_DIMENSION_MAP = {
     "agent_2": "Stakeholder Engagement",
     "agent_3": "Objection Handling",
     "agent_4": "Commercial Progression",
@@ -43,14 +43,14 @@ def _safe_json(val, default=None):
         return default
 
 
-def _score_from_confidence(confidence: float | None) -> int:
+def score_from_confidence(confidence: float | None) -> int:
     """Convert a 0-1 confidence to a 0-100 score."""
     if confidence is None:
         return 50  # neutral default
     return max(0, min(100, round(confidence * 100)))
 
 
-def _score_from_findings(findings_json: str | None, dimension: str) -> int:
+def score_from_findings(findings_json: str | None, dimension: str) -> int:
     """Extract a score from agent findings JSON based on dimension heuristics."""
     findings = _safe_json(findings_json, {})
     if not isinstance(findings, dict):
@@ -75,7 +75,7 @@ def _score_from_findings(findings_json: str | None, dimension: str) -> int:
     return 50
 
 
-def _score_from_momentum(momentum: str | None) -> int:
+def score_from_momentum(momentum: str | None) -> int:
     """Convert momentum direction to a numeric score."""
     return {"Improving": 80, "Stable": 55, "Declining": 25}.get(momentum or "", 50)
 
@@ -128,16 +128,16 @@ def get_rep_scorecard(ae_owner: Optional[str] = None) -> list[dict]:
             # Compute dimension scores from agent data
             dimension_scores = {}
             for agent in agent_rows:
-                for prefix, dim in _AGENT_DIMENSION_MAP.items():
+                for prefix, dim in AGENT_DIMENSION_MAP.items():
                     if agent.agent_id.startswith(prefix):
                         if dim == "Stakeholder Engagement":
-                            dimension_scores[dim] = _score_from_confidence(agent.confidence_overall)
+                            dimension_scores[dim] = score_from_confidence(agent.confidence_overall)
                         elif dim == "Commercial Progression":
-                            dimension_scores[dim] = _score_from_momentum(
+                            dimension_scores[dim] = score_from_momentum(
                                 latest_assessment.momentum_direction
                             )
                         else:
-                            dimension_scores[dim] = _score_from_findings(
+                            dimension_scores[dim] = score_from_findings(
                                 agent.findings, dim
                             )
 

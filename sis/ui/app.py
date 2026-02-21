@@ -52,6 +52,7 @@ def main():
         "Divergence View",
         "Team Rollup",
         "Rep Scorecard",
+        "Trend Analysis",
         "Forecast Comparison",
     ]
 
@@ -114,6 +115,9 @@ def main():
         render()
     elif page == "Rep Scorecard":
         from sis.ui.pages.rep_scorecard import render
+        render()
+    elif page == "Trend Analysis":
+        from sis.ui.pages.trend_analysis import render
         render()
     elif page == "Forecast Comparison":
         from sis.ui.pages.forecast_comparison import render
