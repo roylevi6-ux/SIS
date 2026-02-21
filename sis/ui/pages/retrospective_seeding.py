@@ -7,18 +7,22 @@ and compares AI health scores against actual outcomes for calibration.
 import streamlit as st
 
 from sis.services.account_service import list_accounts
+from sis.ui.components.layout import page_header, section_divider, metric_row, empty_state
 
 
 OUTCOME_OPTIONS = ["Unknown", "Won", "Lost", "Stalled"]
 
 
 def render():
-    st.title("Retrospective Seeding")
-    st.caption("Tag historical deal outcomes and compare against AI assessments")
+    page_header("Retrospective Seeding", "Tag historical deal outcomes and compare against AI assessments")
 
     accounts = list_accounts()
     if not accounts:
-        st.info("No accounts in the system.")
+        empty_state(
+            "No accounts in the system",
+            "\U0001f4c1",
+            "Upload transcripts and run analysis first.",
+        )
         return
 
     # Initialize outcome store in session state
@@ -51,9 +55,13 @@ def render():
                     st.session_state.retro_outcomes[a["id"]] = outcome
                     st.toast(f"Set {a['account_name']} → {outcome}")
     else:
-        st.info("No scored accounts. Run analysis on accounts first.")
+        empty_state(
+            "No scored accounts",
+            "\U0001f3af",
+            "Run analysis on accounts first.",
+        )
 
-    st.divider()
+    section_divider()
 
     # --- Results Comparison ---
     st.subheader("AI Score vs Known Outcome")
@@ -65,7 +73,10 @@ def render():
     }
 
     if not tagged:
-        st.info("Tag account outcomes above to see accuracy comparison.")
+        empty_state(
+            "Tag account outcomes above to see accuracy comparison",
+            "\U0001f50d",
+        )
         return
 
     # Build comparison table
@@ -85,49 +96,36 @@ def render():
         st.dataframe(comparison, use_container_width=True, hide_index=True)
 
         # --- Accuracy Summary ---
-        st.divider()
+        section_divider()
         st.subheader("Accuracy Summary")
 
         won_deals = [c for c in comparison if c["Known Outcome"] == "Won"]
         lost_deals = [c for c in comparison if c["Known Outcome"] == "Lost"]
 
-        ac1, ac2, ac3 = st.columns(3)
-        with ac1:
-            if won_deals:
-                won_high = sum(1 for d in won_deals if d["Health Score"] >= 60)
-                pct = won_high / len(won_deals) * 100
-                st.metric(
-                    "Won Deals with Score >= 60",
-                    f"{pct:.0f}%",
-                    delta=f"{won_high}/{len(won_deals)}",
-                    delta_color="off",
-                )
-            else:
-                st.metric("Won Deals with Score >= 60", "N/A")
-        with ac2:
-            if lost_deals:
-                lost_low = sum(1 for d in lost_deals if d["Health Score"] < 50)
-                pct = lost_low / len(lost_deals) * 100
-                st.metric(
-                    "Lost Deals with Score < 50",
-                    f"{pct:.0f}%",
-                    delta=f"{lost_low}/{len(lost_deals)}",
-                    delta_color="off",
-                )
-            else:
-                st.metric("Lost Deals with Score < 50", "N/A")
-        with ac3:
-            aligned = sum(1 for c in comparison if c["Aligned"] == "Yes")
-            total = len(comparison)
-            st.metric(
-                "Overall Alignment",
-                f"{aligned}/{total}",
-                delta=f"{aligned / total * 100:.0f}%" if total > 0 else "N/A",
-                delta_color="off",
-            )
+        won_value = "N/A"
+        if won_deals:
+            won_high = sum(1 for d in won_deals if d["Health Score"] >= 60)
+            pct = won_high / len(won_deals) * 100
+            won_value = f"{pct:.0f}%"
+
+        lost_value = "N/A"
+        if lost_deals:
+            lost_low = sum(1 for d in lost_deals if d["Health Score"] < 50)
+            pct = lost_low / len(lost_deals) * 100
+            lost_value = f"{pct:.0f}%"
+
+        aligned = sum(1 for c in comparison if c["Aligned"] == "Yes")
+        total = len(comparison)
+        alignment_value = f"{aligned}/{total}"
+
+        metric_row([
+            {"label": "Won Deals with Score >= 60", "value": won_value},
+            {"label": "Lost Deals with Score < 50", "value": lost_value},
+            {"label": "Overall Alignment", "value": alignment_value},
+        ])
 
         # Export for calibration
-        st.divider()
+        section_divider()
         export_lines = ["Account,Health Score,AI Forecast,Known Outcome,Aligned"]
         for c in comparison:
             export_lines.append(

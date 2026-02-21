@@ -8,11 +8,11 @@ import streamlit as st
 
 from sis.services.query_service import query as llm_query
 from sis.services.usage_tracking_service import track_event
+from sis.ui.components.layout import page_header
 
 
 def render():
-    st.title("Chat — Pipeline Intelligence")
-    st.caption("Ask questions about your pipeline, deals, and forecasts")
+    page_header("Chat", "Ask questions about your pipeline, deals, and forecasts")
 
     # Initialize chat history
     if "chat_messages" not in st.session_state:
@@ -39,7 +39,7 @@ def render():
         st.session_state.chat_messages.append({"role": "user", "content": prompt})
         st.session_state.chat_messages.append({"role": "assistant", "content": response})
 
-    # Suggested queries
+    # Suggested queries (3-col layout instead of 5-col)
     if not st.session_state.chat_messages:
         st.markdown("**Suggested queries:**")
         suggestions = [
@@ -49,13 +49,22 @@ def render():
             "Tell me about the highest health deal",
             "What's the team rollup?",
         ]
-        cols = st.columns(len(suggestions))
-        for i, suggestion in enumerate(suggestions):
-            with cols[i]:
-                if st.button(suggestion, key=f"suggest_{i}", use_container_width=True):
+        row1 = st.columns(3)
+        for i in range(3):
+            with row1[i]:
+                if st.button(suggestions[i], key=f"suggest_{i}", use_container_width=True):
                     with st.spinner("Thinking..."):
-                        response = _process_query(suggestion)
-                    st.session_state.chat_messages.append({"role": "user", "content": suggestion})
+                        response = _process_query(suggestions[i])
+                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[i]})
+                    st.session_state.chat_messages.append({"role": "assistant", "content": response})
+                    st.rerun()
+        row2 = st.columns(3)
+        for i in range(3, 5):
+            with row2[i - 3]:
+                if st.button(suggestions[i], key=f"suggest_{i}", use_container_width=True):
+                    with st.spinner("Thinking..."):
+                        response = _process_query(suggestions[i])
+                    st.session_state.chat_messages.append({"role": "user", "content": suggestions[i]})
                     st.session_state.chat_messages.append({"role": "assistant", "content": response})
                     st.rerun()
 

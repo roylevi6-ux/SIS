@@ -4,6 +4,8 @@ import html
 
 import streamlit as st
 
+from sis.ui.theme import Colors, Typography
+
 
 def render_agent_card(analysis: dict) -> None:
     """Render an agent analysis as a styled expandable card.
@@ -17,17 +19,8 @@ def render_agent_card(analysis: dict) -> None:
     sparse = analysis.get("sparse_data_flag", False)
 
     # Confidence color
-    if confidence is not None:
-        if confidence >= 0.7:
-            conf_color = "#22c55e"
-        elif confidence >= 0.4:
-            conf_color = "#f59e0b"
-        else:
-            conf_color = "#ef4444"
-        conf_label = f"{confidence:.0%}"
-    else:
-        conf_color = "#6b7280"
-        conf_label = "N/A"
+    conf_color = Colors.confidence_color(confidence)
+    conf_label = f"{confidence:.0%}" if confidence is not None else "N/A"
 
     # Build header
     header_parts = [agent_name]
@@ -37,7 +30,8 @@ def render_agent_card(analysis: dict) -> None:
 
     badge = (
         f'<span style="padding:2px 6px;border-radius:4px;'
-        f'background:{conf_color}20;color:{conf_color};font-size:12px;font-weight:600">'
+        f'background:{Colors.with_alpha(conf_color)};color:{conf_color};'
+        f'font-size:{Typography.CAPTION}px;font-weight:{Typography.SEMIBOLD}">'
         f'{conf_label}</span>'
     )
 

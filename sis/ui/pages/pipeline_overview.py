@@ -8,6 +8,10 @@ import streamlit as st
 
 from sis.services.dashboard_service import get_pipeline_overview, get_pipeline_insights
 from sis.ui.components.health_badge import render_health_badge, render_momentum_indicator, render_forecast_badge
+from sis.ui.components.layout import (
+    page_header, section_divider, metric_row, status_badge,
+)
+from sis.ui.theme import Colors
 
 
 def _render_insight_items(items: list[dict], color: str, section_key: str) -> None:
@@ -28,7 +32,7 @@ def _render_insight_items(items: list[dict], color: str, section_key: str) -> No
 
 
 def render():
-    st.title("Pipeline Overview")
+    page_header("Pipeline Overview")
 
     # Pipeline Insights panel
     insights = get_pipeline_insights()
@@ -36,12 +40,12 @@ def render():
     if has_insights:
         with st.expander("Pipeline Insights", expanded=True):
             insight_sections = [
-                ("Stuck Deals", insights["stuck"], "#ef4444"),
-                ("Declining Deals", insights["declining"], "#ef4444"),
-                ("Improving Deals", insights["improving"], "#22c55e"),
-                ("New Risks", insights["new_risks"], "#f59e0b"),
-                ("Forecast Flips", insights["forecast_flips"], "#8b5cf6"),
-                ("Stale Deals", insights["stale"], "#6b7280"),
+                ("Stuck Deals", insights["stuck"], Colors.DANGER),
+                ("Declining Deals", insights["declining"], Colors.DANGER),
+                ("Improving Deals", insights["improving"], Colors.SUCCESS),
+                ("New Risks", insights["new_risks"], Colors.WARNING),
+                ("Forecast Flips", insights["forecast_flips"], Colors.ACCENT),
+                ("Stale Deals", insights["stale"], Colors.NEUTRAL),
             ]
             for section_name, items, color in insight_sections:
                 if items:
@@ -55,24 +59,21 @@ def render():
     # Team filter
     overview = get_pipeline_overview()
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Deals", overview["total_deals"])
-    with col2:
-        st.metric("Healthy (70+)", overview["summary"]["healthy_count"])
-    with col3:
-        st.metric("At Risk (45-69)", overview["summary"]["at_risk_count"])
-    with col4:
-        st.metric("Critical (<45)", overview["summary"]["critical_count"])
+    metric_row([
+        {"label": "Total Deals", "value": overview["total_deals"]},
+        {"label": "Healthy (70+)", "value": overview["summary"]["healthy_count"]},
+        {"label": "At Risk (45-69)", "value": overview["summary"]["at_risk_count"]},
+        {"label": "Critical (<45)", "value": overview["summary"]["critical_count"]},
+    ])
 
-    st.divider()
+    section_divider()
 
     # Render each tier
     for tier_name, tier_deals, tier_color in [
-        ("Critical", overview["critical"], "#ef4444"),
-        ("At Risk", overview["at_risk"], "#f59e0b"),
-        ("Healthy", overview["healthy"], "#22c55e"),
-        ("Unscored", overview["unscored"], "#6b7280"),
+        ("Critical", overview["critical"], Colors.DANGER),
+        ("At Risk", overview["at_risk"], Colors.WARNING),
+        ("Healthy", overview["healthy"], Colors.SUCCESS),
+        ("Unscored", overview["unscored"], Colors.NEUTRAL),
     ]:
         if not tier_deals:
             continue
@@ -125,7 +126,7 @@ def render():
                         render_forecast_badge(ic)
                         if deal.get("divergence_flag"):
                             st.markdown(
-                                '<span style="color:#ef4444;font-size:12px">⚠ DIVERGENT</span>',
+                                status_badge("DIVERGENT", "danger"),
                                 unsafe_allow_html=True,
                             )
                     else:

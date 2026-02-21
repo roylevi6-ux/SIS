@@ -4,20 +4,28 @@ import streamlit as st
 
 from sis.services.dashboard_service import get_divergence_report
 from sis.ui.components.health_badge import render_forecast_badge
+from sis.ui.components.layout import (
+    page_header, section_divider, metric_row, empty_state,
+)
 
 
 def render():
-    st.title("Divergence View")
-    st.caption("Deals where AI and IC forecasts differ, sorted by MRR impact")
+    page_header("Divergence View", "Deals where AI and IC forecasts differ, sorted by MRR impact")
 
     divergences = get_divergence_report()
 
     if not divergences:
-        st.info("No divergences found. Either no IC forecasts have been entered, or AI and IC agree on all deals.")
+        empty_state(
+            "No divergences found.",
+            "\u2705",
+            "Either no IC forecasts have been entered, or AI and IC agree on all deals.",
+        )
         return
 
-    st.metric("Divergent Deals", len(divergences))
-    st.divider()
+    metric_row([
+        {"label": "Divergent Deals", "value": len(divergences)},
+    ])
+    section_divider()
 
     for d in divergences:
         with st.container(border=True):

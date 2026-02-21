@@ -9,11 +9,12 @@ import streamlit as st
 from sis.alerts.engine import check_alerts
 from sis.alerts.email_digest import generate_daily_digest
 from sis.alerts.slack_notifier import send_critical_alerts
+from sis.ui.components.layout import page_header, section_divider, metric_row
+from sis.ui.theme import Colors
 
 
 def render():
-    st.title("Daily Digest")
-    st.caption("Morning summary: deal changes, new risks, significant score drops")
+    page_header("Daily Digest", "Morning summary: deal changes, new risks, significant score drops")
 
     # Single check_alerts call, reused everywhere
     alerts = check_alerts()
@@ -34,15 +35,13 @@ def render():
                 st.toast("No critical alerts to send (or Slack not configured)", icon="\u2139\ufe0f")
 
     # Alert summary metrics
-    mc1, mc2, mc3 = st.columns(3)
-    with mc1:
-        st.metric("Total Alerts", len(alerts))
-    with mc2:
-        st.metric("Critical", len(critical))
-    with mc3:
-        st.metric("Warnings", len(warnings))
+    metric_row([
+        {"label": "Total Alerts", "value": len(alerts)},
+        {"label": "Critical", "value": len(critical), "color": Colors.DANGER},
+        {"label": "Warnings", "value": len(warnings), "color": Colors.WARNING},
+    ])
 
-    st.divider()
+    section_divider()
 
     # Critical alerts with clickable accounts
     if critical:
@@ -57,11 +56,11 @@ def render():
                 with c2:
                     type_label = a["type"].replace("_", " ").title()
                     st.markdown(
-                        f'<span style="color:#ef4444;font-weight:bold">{type_label}</span>: '
+                        f'<span style="color:{Colors.DANGER};font-weight:bold">{type_label}</span>: '
                         f'{a["details"]}',
                         unsafe_allow_html=True,
                     )
-        st.divider()
+        section_divider()
 
     # Full digest markdown (pass alerts to avoid re-querying)
     digest_md = generate_daily_digest()

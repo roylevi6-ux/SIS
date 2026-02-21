@@ -11,11 +11,11 @@ from sis.testing.golden_test import (
     create_baseline,
 )
 from sis.services.account_service import list_accounts
+from sis.ui.components.layout import page_header, section_divider, metric_row, empty_state
 
 
 def render():
-    st.title("Golden Tests")
-    st.caption("Regression gates for deal assessment quality — 4 automated checks")
+    page_header("Golden Tests", "Regression gates for deal assessment quality — 4 automated checks")
 
     # Show toast from previous rerun
     if st.session_state.get("_gt_toast"):
@@ -43,17 +43,14 @@ def render():
             failed = sum(1 for r in results if r["status"] == "FAIL")
             skipped = sum(1 for r in results if r["status"] == "SKIP")
 
-            mc1, mc2, mc3, mc4 = st.columns(4)
-            with mc1:
-                st.metric("Passed", passed)
-            with mc2:
-                st.metric("Warnings", warned)
-            with mc3:
-                st.metric("Failed", failed)
-            with mc4:
-                st.metric("Skipped", skipped)
+            metric_row([
+                {"label": "Passed", "value": passed},
+                {"label": "Warnings", "value": warned},
+                {"label": "Failed", "value": failed},
+                {"label": "Skipped", "value": skipped},
+            ])
 
-            st.divider()
+            section_divider()
 
             # Detail table
             for r in results:
@@ -88,7 +85,7 @@ def render():
             # Store results in session state for reference
             st.session_state["_gt_last_results"] = results
 
-    st.divider()
+    section_divider()
 
     # --- Create Baseline ---
     st.subheader("Create Baseline from Account")
@@ -108,9 +105,13 @@ def render():
             except Exception as e:
                 st.error(f"Error: {e}")
     else:
-        st.info("No scored accounts. Run analysis first.")
+        empty_state(
+            "No scored accounts",
+            "\U0001f3af",
+            "Run analysis on accounts first.",
+        )
 
-    st.divider()
+    section_divider()
 
     # --- Current Fixtures ---
     st.subheader("Current Golden Set")
@@ -129,4 +130,8 @@ def render():
         ]
         st.dataframe(fixture_data, use_container_width=True, hide_index=True)
     else:
-        st.info("No golden fixtures yet. Create baselines from scored accounts above.")
+        empty_state(
+            "No golden fixtures yet",
+            "\U0001f9ea",
+            "Create baselines from scored accounts above.",
+        )

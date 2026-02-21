@@ -7,20 +7,30 @@ the latest deal assessment: topics, questions, risks, unresolved items.
 import streamlit as st
 
 from sis.services.account_service import list_accounts, get_account_detail
+from sis.ui.components.layout import (
+    page_header, section_divider, metric_row, empty_state,
+)
 
 
 def render():
-    st.title("Meeting Prep")
-    st.caption("Pre-call brief for upcoming prospect meetings")
+    page_header("Meeting Prep", "Pre-call brief for upcoming prospect meetings")
 
     accounts = list_accounts()
     if not accounts:
-        st.info("No accounts yet. Create one in Upload Transcript.")
+        empty_state(
+            "No accounts yet",
+            "📋",
+            "Create one in Upload Transcript.",
+        )
         return
 
     scored = [a for a in accounts if a.get("health_score") is not None]
     if not scored:
-        st.info("No scored accounts. Run analysis first.")
+        empty_state(
+            "No scored accounts",
+            "📊",
+            "Run analysis first.",
+        )
         return
 
     names = [a["account_name"] for a in scored]
@@ -33,18 +43,16 @@ def render():
         st.warning(f"No assessment for {account['account_name']}.")
         return
 
-    st.divider()
+    section_divider()
 
     # Header metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Health Score", f"{assessment['health_score']}/100")
-    with col2:
-        st.metric("Stage", f"{assessment['inferred_stage']} — {assessment['stage_name']}")
-    with col3:
-        st.metric("Momentum", assessment["momentum_direction"])
+    metric_row([
+        {"label": "Health Score", "value": f"{assessment['health_score']}/100"},
+        {"label": "Stage", "value": f"{assessment['inferred_stage']} — {assessment['stage_name']}"},
+        {"label": "Momentum", "value": assessment["momentum_direction"]},
+    ])
 
-    st.divider()
+    section_divider()
 
     # 1. Key Topics to Raise (from low-scoring health components)
     st.subheader("Key Topics to Raise")

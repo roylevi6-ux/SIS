@@ -12,11 +12,11 @@ from sis.services.calibration_service import (
     create_calibration_log,
     list_calibration_history,
 )
+from sis.ui.components.layout import page_header, section_divider, metric_row, empty_state
 
 
 def render():
-    st.title("Calibration")
-    st.caption("Feedback pattern analysis and calibration change logging")
+    page_header("Calibration", "Feedback pattern analysis and calibration change logging")
 
     # Show toast from previous rerun
     if st.session_state.get("_cal_toast"):
@@ -27,19 +27,22 @@ def render():
     patterns = get_feedback_patterns()
 
     if patterns["total_feedback"] == 0:
-        st.info("No feedback data yet. Submit score feedback to see patterns here.")
+        empty_state(
+            "No feedback data yet",
+            "\U0001f4cb",
+            "Submit score feedback to see patterns here.",
+        )
     else:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Feedback", patterns["total_feedback"])
-        with col2:
-            too_high = patterns["by_direction"].get("too_high", 0)
-            too_low = patterns["by_direction"].get("too_low", 0)
-            skew = "Too High" if too_high > too_low else "Too Low" if too_low > too_high else "Balanced"
-            st.metric("Direction Skew", skew)
-        with col3:
-            top_reason = patterns["top_flagged_reasons"][0] if patterns["top_flagged_reasons"] else ("N/A", 0)
-            st.metric("Top Flagged Reason", top_reason[0].replace("_", " ").title())
+        too_high = patterns["by_direction"].get("too_high", 0)
+        too_low = patterns["by_direction"].get("too_low", 0)
+        skew = "Too High" if too_high > too_low else "Too Low" if too_low > too_high else "Balanced"
+        top_reason = patterns["top_flagged_reasons"][0] if patterns["top_flagged_reasons"] else ("N/A", 0)
+
+        metric_row([
+            {"label": "Total Feedback", "value": patterns["total_feedback"]},
+            {"label": "Direction Skew", "value": skew},
+            {"label": "Top Flagged Reason", "value": top_reason[0].replace("_", " ").title()},
+        ])
 
         # Top flagged reasons
         st.markdown("**Feedback by Reason**")
@@ -62,7 +65,7 @@ def render():
                 })
             st.dataframe(agent_skew, use_container_width=True, hide_index=True)
 
-    st.divider()
+    section_divider()
 
     # --- Current Calibration Config ---
     st.subheader("Current Calibration Config")
@@ -73,9 +76,12 @@ def render():
             language="yaml",
         )
     else:
-        st.info("No calibration config file found.")
+        empty_state(
+            "No calibration config file found",
+            "\u2699\ufe0f",
+        )
 
-    st.divider()
+    section_divider()
 
     # --- Log Calibration Change ---
     st.subheader("Log Calibration Change")
@@ -104,7 +110,7 @@ def render():
             except Exception as e:
                 st.error(f"Error: {e}")
 
-    st.divider()
+    section_divider()
 
     # --- Calibration History ---
     st.subheader("Calibration History")
@@ -123,7 +129,10 @@ def render():
                     st.markdown("**Changes:**")
                     st.text(h["config_changes"])
     else:
-        st.info("No calibration history logged yet.")
+        empty_state(
+            "No calibration history logged yet",
+            "\U0001f4c6",
+        )
 
 
 def _format_config(config: dict) -> str:

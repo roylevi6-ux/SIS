@@ -14,33 +14,22 @@ from sis.services.trend_service import (
     get_team_trends,
     get_portfolio_summary,
 )
-
-
-def _direction_badge(direction: str) -> str:
-    colors = {
-        "Improving": "#22c55e",
-        "Stable": "#f59e0b",
-        "Declining": "#ef4444",
-    }
-    color = colors.get(direction, "#6b7280")
-    return (
-        f'<span style="background:{color}20;color:{color};padding:2px 8px;'
-        f'border-radius:4px;font-weight:bold;font-size:13px">'
-        f'{html.escape(direction)}</span>'
-    )
+from sis.ui.components.layout import (
+    page_header, section_divider, metric_row, direction_badge, empty_state,
+)
+from sis.ui.theme import Colors, Typography
 
 
 def _delta_display(delta: int | float) -> str:
     if delta > 0:
-        return f'<span style="color:#22c55e;font-weight:bold">+{delta}</span>'
+        return f'<span style="color:{Colors.SUCCESS};font-weight:bold">+{delta}</span>'
     elif delta < 0:
-        return f'<span style="color:#ef4444;font-weight:bold">{delta}</span>'
-    return f'<span style="color:#6b7280">0</span>'
+        return f'<span style="color:{Colors.DANGER};font-weight:bold">{delta}</span>'
+    return f'<span style="color:{Colors.NEUTRAL}">0</span>'
 
 
 def render():
-    st.title("Trend Analysis")
-    st.caption("Pipeline health change over time — per-deal and per-team")
+    page_header("Trend Analysis", "Pipeline health change over time — per-deal and per-team")
 
     # Time range selector
     week_options = {
@@ -65,28 +54,32 @@ def render():
     # --- Portfolio Summary ---
     st.subheader("Portfolio Summary")
     if portfolio["total_deals"] == 0:
-        st.info("No assessment data in the selected time range. Run analysis on accounts first.")
+        empty_state(
+            "No assessment data in the selected time range",
+            "📈",
+            "Run analysis on accounts first.",
+        )
         return
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        st.metric("Total Deals", portfolio["total_deals"])
-    with c2:
-        st.metric("Improving", portfolio["improving"])
-    with c3:
-        st.metric("Stable", portfolio["stable"])
-    with c4:
-        st.metric("Declining", portfolio["declining"])
-    with c5:
+    metric_row([
+        {"label": "Total Deals", "value": portfolio["total_deals"]},
+        {"label": "Improving", "value": portfolio["improving"]},
+        {"label": "Stable", "value": portfolio["stable"]},
+        {"label": "Declining", "value": portfolio["declining"]},
+    ])
+
+    # Portfolio direction badge + avg delta on a separate row
+    dir_col, delta_col = st.columns(2)
+    with dir_col:
         st.markdown(
             f'<div style="text-align:center;padding:8px">'
-            f'<div style="font-size:11px;color:#666">Trend</div>'
-            f'<div style="margin-top:4px">{_direction_badge(portfolio["portfolio_direction"])}</div>'
+            f'<div style="font-size:{Typography.CAPTION}px;color:{Colors.TEXT_MUTED}">Trend</div>'
+            f'<div style="margin-top:4px">{direction_badge(portfolio["portfolio_direction"])}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
-
-    st.metric("Avg Delta", f"{portfolio['avg_delta']:+.1f}")
+    with delta_col:
+        st.metric("Avg Delta", f"{portfolio['avg_delta']:+.1f}")
 
     # Biggest movers
     mover_cols = st.columns(2)
@@ -109,12 +102,12 @@ def render():
         else:
             st.caption("No declining deals")
 
-    st.divider()
+    section_divider()
 
     # --- Team Trends ---
     st.subheader("Team Trends")
     if not team_trends:
-        st.info("No team data available.")
+        empty_state("No team data available", "👥")
     else:
         for team in team_trends:
             with st.container(border=True):
@@ -122,21 +115,17 @@ def render():
                 with h_col:
                     st.markdown(f"#### {html.escape(team['team_name'])}")
                 with badge_col:
-                    st.markdown(_direction_badge(team["team_direction"]), unsafe_allow_html=True)
+                    st.markdown(direction_badge(team["team_direction"]), unsafe_allow_html=True)
 
-                tc1, tc2, tc3, tc4, tc5 = st.columns(5)
-                with tc1:
-                    st.metric("Deals", team["deal_count"])
-                with tc2:
-                    st.metric("Avg Health", f"{team['avg_health']:.0f}")
-                with tc3:
-                    st.metric("Avg Delta", f"{team['avg_delta']:+.1f}")
-                with tc4:
-                    st.metric("Improving", team["improving_count"])
-                with tc5:
-                    st.metric("Declining", team["declining_count"])
+                metric_row([
+                    {"label": "Deals", "value": team["deal_count"]},
+                    {"label": "Avg Health", "value": f"{team['avg_health']:.0f}"},
+                    {"label": "Avg Delta", "value": f"{team['avg_delta']:+.1f}"},
+                    {"label": "Improving", "value": team["improving_count"]},
+                    {"label": "Declining", "value": team["declining_count"]},
+                ])
 
-    st.divider()
+    section_divider()
 
     # --- Per-Deal Trajectories ---
     st.subheader("Per-Deal Trajectories")
@@ -158,7 +147,7 @@ def render():
         filtered = [d for d in filtered if d["team_name"] == sel_team]
 
     if not filtered:
-        st.info("No deals match the selected filters.")
+        empty_state("No deals match the selected filters", "🔍")
     else:
         for deal in filtered:
             with st.container(border=True):
@@ -176,7 +165,7 @@ def render():
                 with d_col2:
                     st.markdown(
                         f'<div style="text-align:center">'
-                        f'<div style="font-size:11px;color:#666">Score</div>'
+                        f'<div style="font-size:{Typography.CAPTION}px;color:{Colors.TEXT_MUTED}">Score</div>'
                         f'<div style="font-size:22px;font-weight:bold">{deal["last_score"]}</div>'
                         f'</div>',
                         unsafe_allow_html=True,
@@ -184,13 +173,13 @@ def render():
                 with d_col3:
                     st.markdown(
                         f'<div style="text-align:center">'
-                        f'<div style="font-size:11px;color:#666">Delta</div>'
+                        f'<div style="font-size:{Typography.CAPTION}px;color:{Colors.TEXT_MUTED}">Delta</div>'
                         f'<div style="font-size:22px">{_delta_display(deal["delta"])}</div>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
 
-                st.markdown(_direction_badge(deal["trend_direction"]), unsafe_allow_html=True)
+                st.markdown(direction_badge(deal["trend_direction"]), unsafe_allow_html=True)
 
                 # Line chart for deals with 2+ data points
                 points = deal["data_points"]

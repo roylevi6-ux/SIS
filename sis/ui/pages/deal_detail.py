@@ -15,15 +15,19 @@ from sis.services.feedback_service import list_feedback
 from sis.ui.components.health_badge import render_health_badge, render_momentum_indicator, render_forecast_badge
 from sis.ui.components.divergence_badge import render_divergence_badge
 from sis.ui.components.agent_card import render_agent_card
+from sis.ui.components.layout import (
+    page_header, section_divider, empty_state,
+)
+from sis.ui.theme import Colors
 
 
 def render():
-    st.title("Deal Detail")
+    page_header("Deal Detail")
 
     # Account selector
     accounts = list_accounts()
     if not accounts:
-        st.info("No accounts yet. Upload transcripts first.")
+        empty_state("No accounts yet.", "\U0001f4ed", "Upload transcripts first.")
         return
 
     # Check if coming from pipeline overview click
@@ -70,7 +74,7 @@ def render():
                     assessment.get("divergence_explanation"),
                 )
 
-    st.divider()
+    section_divider()
 
     # ── Deal Memo ──
     st.subheader("Deal Memo")
@@ -88,16 +92,18 @@ def render():
                     score = component.get("score", 0)
                     max_score = component.get("max_score", 20)
                     pct = score / max_score if max_score > 0 else 0
-                    color = "#22c55e" if pct >= 0.7 else "#f59e0b" if pct >= 0.45 else "#ef4444"
+                    color = Colors.status_color(pct * 100)
                     st.markdown(
-                        f'<div style="padding:8px;border-radius:8px;background:{color}10;border:1px solid {color}40">'
+                        f'<div style="padding:8px;border-radius:8px;'
+                        f'background:{Colors.with_alpha(color)};'
+                        f'border:1px solid {Colors.with_alpha(color, "40")}">'
                         f'<b>{name}</b><br>'
                         f'<span style="font-size:24px;color:{color}">{score}/{max_score}</span>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
 
-    st.divider()
+    section_divider()
 
     # ── Signals & Risks ──
     col_left, col_right = st.columns(2)
@@ -115,27 +121,30 @@ def render():
         for risk in assessment.get("top_risks", []):
             if isinstance(risk, dict):
                 severity = risk.get("severity", "Medium")
-                icon = "🔴" if severity == "Critical" else "🟡" if severity == "High" else "🟠"
+                icon = "\U0001f534" if severity == "Critical" else "\U0001f7e1" if severity == "High" else "\U0001f7e0"
                 st.warning(f"{icon} **{risk.get('risk', '')}** ({severity})")
                 agents = ", ".join(risk.get("supporting_agents", []))
                 if agents:
                     st.caption(f"Sources: {agents}")
 
-    st.divider()
+    section_divider()
 
     # ── Recommended Actions ──
     st.subheader("Recommended Actions")
     for action in assessment.get("recommended_actions", []):
         if isinstance(action, dict):
             priority = html.escape(action.get("priority", "P2"))
-            color = "#ef4444" if priority == "P0" else "#f59e0b" if priority == "P1" else "#6b7280"
+            color = Colors.DANGER if priority == "P0" else Colors.WARNING if priority == "P1" else Colors.NEUTRAL
+            css_class = "p0" if priority == "P0" else "p1" if priority == "P1" else "p2"
             action_text = html.escape(action.get("action", ""))
             owner_text = html.escape(action.get("owner", "TBD"))
             rationale_text = html.escape(action.get("rationale", ""))
             st.markdown(
-                f'<div style="padding:8px;margin:4px 0;border-left:4px solid {color};background:{color}08">'
+                f'<div class="sis-action-item sis-action-item-{css_class}" '
+                f'style="padding:8px;margin:4px 0;border-left:4px solid {color};'
+                f'background:{Colors.with_alpha(color, "08")}">'
                 f'<b>[{priority}]</b> {action_text}<br>'
-                f'<span style="color:#6b7280">Owner: {owner_text} | {rationale_text}</span>'
+                f'<span style="color:{Colors.NEUTRAL}">Owner: {owner_text} | {rationale_text}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -144,7 +153,8 @@ def render():
     unfollowed = get_carry_forward_actions(account_id)
     if unfollowed:
         st.markdown(
-            f'<div style="padding:8px;margin:8px 0;border-left:4px solid #ef4444;background:#ef444408">'
+            f'<div style="padding:8px;margin:8px 0;border-left:4px solid {Colors.DANGER};'
+            f'background:{Colors.with_alpha(Colors.DANGER, "08")}">'
             f'<b>Unfollowed Actions from Previous Run ({len(unfollowed)})</b></div>',
             unsafe_allow_html=True,
         )
@@ -154,11 +164,11 @@ def render():
                 action_text = html.escape(uf.get("action", ""))
                 owner_text = html.escape(uf.get("owner", "TBD"))
                 st.markdown(
-                    f'<div style="padding:6px;margin:2px 0;border-left:4px solid #ef4444;'
-                    f'background:#ef444408;opacity:0.85">'
+                    f'<div style="padding:6px;margin:2px 0;border-left:4px solid {Colors.DANGER};'
+                    f'background:{Colors.with_alpha(Colors.DANGER, "08")};opacity:0.85">'
                     f'<b>[{priority}]</b> {action_text} '
-                    f'<span style="color:#ef4444;font-weight:600">(not addressed)</span><br>'
-                    f'<span style="color:#6b7280">Owner: {owner_text}</span>'
+                    f'<span style="color:{Colors.DANGER};font-weight:600">(not addressed)</span><br>'
+                    f'<span style="color:{Colors.NEUTRAL}">Owner: {owner_text}</span>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
@@ -173,10 +183,10 @@ def render():
                     st.markdown(f"- Agree: {', '.join(c.get('agents_agree', []))}")
                     st.markdown(f"- Contradict: {', '.join(c.get('agents_contradict', []))}")
                     st.markdown(f"- Resolution: {c.get('resolution', 'N/A')}")
-                    st.divider()
+                    section_divider()
 
     # ── Per-Agent Analysis (collapsed) ──
-    st.divider()
+    section_divider()
     st.subheader("Per-Agent Analysis")
 
     # Find the latest run ID via service layer
@@ -187,7 +197,7 @@ def render():
             render_agent_card(analysis)
 
     # ── Score Feedback Button ──
-    st.divider()
+    section_divider()
     with st.expander("Flag This Score"):
         with st.form("feedback_form"):
             direction = st.radio("Score is:", ["too_high", "too_low"])
