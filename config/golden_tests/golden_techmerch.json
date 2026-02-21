@@ -1,0 +1,13 @@
+{
+  "fixture_id": "golden_techmerch",
+  "account_id": "53920afd-2507-5883-bc5c-d092f316cbd7",
+  "account_name": "TechMerch Solutions",
+  "created_at": "2026-02-21T13:56:13.602301+00:00",
+  "baseline": {
+    "health_score": 50,
+    "ai_forecast_category": "Pipeline",
+    "inferred_stage": 2,
+    "overall_confidence": 0.58,
+    "momentum_direction": "Stable"
+  }
+}

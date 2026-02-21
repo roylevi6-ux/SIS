@@ -1,0 +1,13 @@
+{
+  "fixture_id": "golden_urbanstyle",
+  "account_id": "3206f1af-8cf4-5176-924d-45b33ceec619",
+  "account_name": "UrbanStyle Inc",
+  "created_at": "2026-02-21T13:56:13.602404+00:00",
+  "baseline": {
+    "health_score": 62,
+    "ai_forecast_category": "Best Case",
+    "inferred_stage": 3,
+    "overall_confidence": 0.7,
+    "momentum_direction": "Improving"
+  }
+}

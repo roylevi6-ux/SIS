@@ -1,0 +1,13 @@
+{
+  "fixture_id": "golden_homegoods",
+  "account_id": "547fd42c-1864-5f73-be50-f21de25c9658",
+  "account_name": "HomeGoods Direct",
+  "created_at": "2026-02-21T13:56:13.601870+00:00",
+  "baseline": {
+    "health_score": 48,
+    "ai_forecast_category": "At Risk",
+    "inferred_stage": 3,
+    "overall_confidence": 0.55,
+    "momentum_direction": "Declining"
+  }
+}

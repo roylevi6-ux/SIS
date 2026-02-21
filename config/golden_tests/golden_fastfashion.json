@@ -1,0 +1,13 @@
+{
+  "fixture_id": "golden_fastfashion",
+  "account_id": "ed6b9dc5-5cc9-52b1-82ad-69505dce887a",
+  "account_name": "FastFashion Online",
+  "created_at": "2026-02-21T13:56:13.601764+00:00",
+  "baseline": {
+    "health_score": 55,
+    "ai_forecast_category": "Pipeline",
+    "inferred_stage": 3,
+    "overall_confidence": 0.62,
+    "momentum_direction": "Stable"
+  }
+}
