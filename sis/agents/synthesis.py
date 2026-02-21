@@ -70,6 +70,10 @@ class RecommendedAction(BaseModel):
     owner: str = Field(description="Who should do this: AE, SE, Sales Manager, VP Sales, etc.")
     priority: str = Field(description="P0 (this week), P1 (next 2 weeks), P2 (this month)")
     rationale: str = Field(description="Why this matters now")
+    action_id: str = Field(
+        default="",
+        description="Stable identifier for carry-forward tracking across runs",
+    )
 
 
 class SynthesisConfidence(BaseModel):

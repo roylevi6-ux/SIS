@@ -10,9 +10,11 @@ import json
 import streamlit as st
 
 from sis.services.account_service import get_account_detail, list_accounts
-from sis.services.analysis_service import get_agent_analyses, get_latest_run_id
+from sis.services.analysis_service import get_agent_analyses, get_latest_run_id, get_carry_forward_actions
 from sis.services.feedback_service import list_feedback
 from sis.ui.components.health_badge import render_health_badge, render_momentum_indicator, render_forecast_badge
+from sis.ui.components.divergence_badge import render_divergence_badge
+from sis.ui.components.agent_card import render_agent_card
 
 
 def render():
@@ -62,7 +64,11 @@ def render():
         if detail.get("ic_forecast_category"):
             st.caption(f"IC: {detail['ic_forecast_category']}")
             if assessment.get("divergence_flag"):
-                st.error("DIVERGENT — AI and IC forecasts differ")
+                render_divergence_badge(
+                    assessment["ai_forecast_category"],
+                    detail["ic_forecast_category"],
+                    assessment.get("divergence_explanation"),
+                )
 
     st.divider()
 
@@ -134,6 +140,29 @@ def render():
                 unsafe_allow_html=True,
             )
 
+    # ── Carry-Forward: Unfollowed Actions from Previous Run ──
+    unfollowed = get_carry_forward_actions(account_id)
+    if unfollowed:
+        st.markdown(
+            f'<div style="padding:8px;margin:8px 0;border-left:4px solid #ef4444;background:#ef444408">'
+            f'<b>Unfollowed Actions from Previous Run ({len(unfollowed)})</b></div>',
+            unsafe_allow_html=True,
+        )
+        for uf in unfollowed:
+            if isinstance(uf, dict):
+                priority = html.escape(uf.get("priority", "P2"))
+                action_text = html.escape(uf.get("action", ""))
+                owner_text = html.escape(uf.get("owner", "TBD"))
+                st.markdown(
+                    f'<div style="padding:6px;margin:2px 0;border-left:4px solid #ef4444;'
+                    f'background:#ef444408;opacity:0.85">'
+                    f'<b>[{priority}]</b> {action_text} '
+                    f'<span style="color:#ef4444;font-weight:600">(not addressed)</span><br>'
+                    f'<span style="color:#6b7280">Owner: {owner_text}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
     # ── Contradiction Map ──
     contradictions = assessment.get("contradiction_map", [])
     if contradictions:
@@ -155,29 +184,7 @@ def render():
     if latest_run_id:
         agent_analyses = get_agent_analyses(latest_run_id)
         for analysis in agent_analyses:
-            conf = analysis.get('confidence_overall')
-            label = (
-                f"Agent: {analysis['agent_name']} (confidence: {conf:.0%})"
-                if conf else f"Agent: {analysis['agent_name']}"
-            )
-            with st.expander(label):
-                st.markdown(analysis.get("narrative", ""))
-
-                findings = analysis.get("findings", {})
-                if findings:
-                    st.json(findings)
-
-                evidence = analysis.get("evidence", [])
-                if evidence:
-                    st.markdown("**Evidence:**")
-                    for ev in evidence[:5]:
-                        if isinstance(ev, dict):
-                            st.markdown(
-                                f'> *"{ev.get("quote", "")}"*\n'
-                                f'> — {ev.get("speaker", "Unknown")}, '
-                                f'Call {ev.get("transcript_index", "?")}\n'
-                                f'> {ev.get("interpretation", "")}'
-                            )
+            render_agent_card(analysis)
 
     # ── Score Feedback Button ──
     st.divider()
