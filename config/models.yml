@@ -1,0 +1,56 @@
+## SIS Model Routing — per Technical Architecture Section 3.5
+## Maps agents to LLM models. Environment variables override these defaults.
+##
+## Cost optimization strategy:
+##   - Agents 1-9: smaller model for focused single-lens analysis
+##   - Agent 10:   full model for synthesis/contradiction mapping
+##   - Chat:       full model for natural language query understanding
+
+model_routing:
+  agent_1:
+    model: "anthropic/claude-haiku-4-5-20251001"
+    env_override: "MODEL_AGENT_1"
+    rationale: "Stage classification is well-defined; Haiku handles it well"
+
+  agent_2:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENTS_2_8"
+
+  agent_3:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENTS_2_8"
+
+  agent_4:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENTS_2_8"
+
+  agent_5:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENTS_2_8"
+
+  agent_6:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENTS_2_8"
+
+  agent_7:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENTS_2_8"
+
+  agent_8:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENTS_2_8"
+
+  agent_9:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_AGENT_9"
+    rationale: "Open discovery needs good reasoning but not full Opus"
+
+  agent_10:
+    model: "anthropic/claude-opus-4-20250514"
+    env_override: "MODEL_AGENT_10"
+    rationale: "Synthesis requires strongest reasoning for contradiction mapping"
+
+  chat:
+    model: "anthropic/claude-sonnet-4-20250514"
+    env_override: "MODEL_CHAT"
+    rationale: "Chat needs strong reasoning for NL query translation"

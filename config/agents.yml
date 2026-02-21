@@ -1,0 +1,53 @@
+## SIS Agent Registry — per Technical Architecture Section 7
+## Maps agent IDs to metadata. Model assignments live in models.yml.
+
+agents:
+  agent_1:
+    name: "Stage & Progress Classifier"
+    description: "Blind stage inference from transcript alone (no CRM data)"
+    prompt_file: "agent_01_stage.yml"
+
+  agent_2:
+    name: "Relationship & Power Map"
+    description: "Stakeholder mapping, champion identification, multithreading depth"
+    prompt_file: "agent_02_relationship.yml"
+
+  agent_3:
+    name: "Commercial & Risk"
+    description: "Pricing status, objections, ROI framing, commercial readiness"
+    prompt_file: "agent_03_commercial.yml"
+
+  agent_4:
+    name: "Momentum & Engagement"
+    description: "Call cadence, buyer engagement quality, momentum direction"
+    prompt_file: "agent_04_momentum.yml"
+
+  agent_5:
+    name: "Technical Validation"
+    description: "Integration readiness, POC status, technical champion, blockers"
+    prompt_file: "agent_05_technical.yml"
+
+  agent_6:
+    name: "Economic Buyer"
+    description: "EB identification, access risk, budget status, decision authority"
+    prompt_file: "agent_06_economic_buyer.yml"
+
+  agent_7:
+    name: "MSP & Next Steps"
+    description: "Mutual success plan, go-live dates, next step specificity"
+    prompt_file: "agent_07_msp_next_steps.yml"
+
+  agent_8:
+    name: "Competitive Displacement"
+    description: "Status quo solution, displacement readiness, no-decision risk"
+    prompt_file: "agent_08_competitive.yml"
+
+  agent_9:
+    name: "Open Discovery / Adversarial Validator"
+    description: "Novel findings, adversarial challenges, upstream gap identification"
+    prompt_file: "agent_09_open_discovery.yml"
+
+  agent_10:
+    name: "Synthesis"
+    description: "Contradiction mapping, deal memo, health score, forecast, actions"
+    prompt_file: "agent_10_synthesis.yml"
