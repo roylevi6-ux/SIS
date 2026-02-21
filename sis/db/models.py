@@ -313,3 +313,23 @@ class ChatMessage(Base):
     __table_args__ = (
         Index("ix_chat_messages_session", "session_id", "created_at"),
     )
+
+
+# ─── usage_events ──────────────────────────────────────────────────────
+
+
+class UsageEvent(Base):
+    __tablename__ = "usage_events"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    event_type = Column(Text, nullable=False)  # page_view, chat_query, brief_view, feedback_submit, etc.
+    user_name = Column(Text, nullable=True)
+    account_id = Column(Text, nullable=True)
+    page_name = Column(Text, nullable=True)
+    metadata = Column(Text, nullable=True)  # JSON
+    created_at = Column(Text, nullable=False, default=_now)
+
+    __table_args__ = (
+        Index("ix_usage_events_type_date", "event_type", "created_at"),
+        Index("ix_usage_events_user", "user_name", "created_at"),
+    )

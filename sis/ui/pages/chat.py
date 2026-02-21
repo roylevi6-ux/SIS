@@ -7,6 +7,7 @@ full pipeline context. Supports follow-up questions via conversation history.
 import streamlit as st
 
 from sis.services.query_service import query as llm_query
+from sis.services.usage_tracking_service import track_event
 
 
 def render():
@@ -24,6 +25,7 @@ def render():
 
     # Chat input
     if prompt := st.chat_input("Ask about your pipeline..."):
+        track_event("chat_query")
         with st.chat_message("user"):
             st.markdown(prompt)
 

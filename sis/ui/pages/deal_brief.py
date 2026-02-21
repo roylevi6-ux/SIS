@@ -10,6 +10,7 @@ import streamlit as st
 
 from sis.services.account_service import list_accounts
 from sis.services.export_service import export_deal_brief
+from sis.services.usage_tracking_service import track_event
 
 
 def render():
@@ -44,6 +45,7 @@ def render():
     st.divider()
 
     # Generate brief
+    track_event("brief_view", account_id=account["id"], page_name="Deal Brief")
     brief = export_deal_brief(account["id"], format=chosen_format)
 
     # Display
