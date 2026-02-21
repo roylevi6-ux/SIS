@@ -122,7 +122,7 @@ def main():
         f'<div style="padding:8px 0 4px 0">'
         f'<span style="color:{Colors.PRIMARY};font-size:24px;font-weight:800;'
         f'letter-spacing:-0.5px">SIS</span>'
-        f'<br><span style="color:#94a3b8;font-size:12px">Sales Intelligence System</span>'
+        f'<br><span style="color:{Colors.TEXT_SUBTLE};font-size:12px">Sales Intelligence System</span>'
         f'</div>',
         unsafe_allow_html=True,
     )

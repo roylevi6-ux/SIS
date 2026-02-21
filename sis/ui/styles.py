@@ -12,17 +12,17 @@ def inject_global_css() -> None:
 /* ── Dark sidebar ── */
 section[data-testid="stSidebar"] {{
     background-color: {Colors.SIDEBAR_BG};
-    color: #e2e8f0;
+    color: {Colors.SIDEBAR_TEXT_BRIGHT};
 }}
 section[data-testid="stSidebar"] .stMarkdown,
 section[data-testid="stSidebar"] .stMarkdown p,
 section[data-testid="stSidebar"] .stMarkdown span,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] .stRadio label {{
-    color: #cbd5e1 !important;
+    color: {Colors.SIDEBAR_TEXT} !important;
 }}
 section[data-testid="stSidebar"] .stRadio [role="radiogroup"] label[data-checked="true"] {{
-    color: #ffffff !important;
+    color: #fff !important;
     font-weight: 600;
 }}
 section[data-testid="stSidebar"] .stRadio [role="radiogroup"] label[data-checked="true"]::before {{
@@ -78,31 +78,31 @@ hr {{
 }}
 .sis-badge-success {{
     background: {Colors.with_alpha(Colors.SUCCESS)};
-    color: {Colors.SUCCESS};
+    color: {Colors.BADGE_SUCCESS};
 }}
 .sis-badge-warning {{
     background: {Colors.with_alpha(Colors.WARNING)};
-    color: {Colors.WARNING};
+    color: {Colors.BADGE_WARNING};
 }}
 .sis-badge-danger {{
     background: {Colors.with_alpha(Colors.DANGER)};
-    color: {Colors.DANGER};
+    color: {Colors.BADGE_DANGER};
 }}
 .sis-badge-info {{
     background: {Colors.with_alpha(Colors.INFO)};
-    color: {Colors.INFO};
+    color: {Colors.BADGE_INFO};
 }}
 .sis-badge-neutral {{
     background: {Colors.with_alpha(Colors.NEUTRAL)};
-    color: {Colors.NEUTRAL};
+    color: {Colors.BADGE_NEUTRAL};
 }}
 .sis-badge-accent {{
     background: {Colors.with_alpha(Colors.ACCENT)};
-    color: {Colors.ACCENT};
+    color: {Colors.BADGE_ACCENT};
 }}
 .sis-badge-primary {{
     background: {Colors.with_alpha(Colors.PRIMARY)};
-    color: {Colors.PRIMARY};
+    color: {Colors.BADGE_PRIMARY};
 }}
 
 /* ── Large health score display ── */
@@ -193,7 +193,7 @@ small, .small-text {{
     font-size: {Typography.CAPTION}px;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: #64748b;
+    color: {Colors.SIDEBAR_TEXT_MUTED};
     margin: 16px 0 4px 0;
     font-weight: 600;
 }}
