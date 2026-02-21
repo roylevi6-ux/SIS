@@ -91,3 +91,25 @@ def render():
                             )
                     else:
                         st.markdown("*Not set*")
+
+                # IC Forecast entry (P0-8c)
+                with st.expander("Set IC Forecast", expanded=False):
+                    categories = ["", "Commit", "Best Case", "Pipeline", "Upside", "At Risk", "No Decision Risk"]
+                    current_ic = deal.get("ic_forecast_category") or ""
+                    current_idx = categories.index(current_ic) if current_ic in categories else 0
+                    new_ic = st.selectbox(
+                        "IC Forecast",
+                        categories,
+                        index=current_idx,
+                        key=f"ic_{deal['account_id']}",
+                        label_visibility="collapsed",
+                    )
+                    if new_ic and new_ic != current_ic:
+                        if st.button("Save", key=f"save_ic_{deal['account_id']}"):
+                            from sis.services.account_service import set_ic_forecast
+                            result = set_ic_forecast(deal["account_id"], new_ic)
+                            if result["divergence_flag"]:
+                                st.warning(f"Divergence: {result['explanation'][:100]}")
+                            else:
+                                st.success("IC forecast saved. Matches AI forecast.")
+                            st.rerun()
