@@ -33,7 +33,7 @@ def track_event(
                 user_name=user_name,
                 account_id=account_id,
                 page_name=page_name,
-                metadata=json.dumps(metadata) if metadata else None,
+                event_metadata=json.dumps(metadata) if metadata else None,
             )
             session.add(event)
     except Exception:
