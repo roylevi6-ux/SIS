@@ -18,6 +18,7 @@ sys.path.insert(0, str(project_root))
 import streamlit as st
 
 from sis.db.engine import init_db
+from sis.services.usage_tracking_service import track_event
 
 
 @st.cache_resource
@@ -65,6 +66,11 @@ def main():
         "Feedback Dashboard",
         "Cost Monitor",
         "Daily Digest",
+        "Prompt Versions",
+        "Calibration",
+        "Golden Tests",
+        "Usage Dashboard",
+        "Retrospective Seeding",
     ]
 
     ALL_PAGES = ANALYTICS_PAGES + ACTIONS_PAGES + ADMIN_PAGES
@@ -86,6 +92,9 @@ def main():
     # Visual section dividers in sidebar
     analytics_end = len(ANALYTICS_PAGES) - 1
     actions_end = analytics_end + len(ACTIONS_PAGES)
+
+    # Track page view
+    track_event("page_view", page_name=page)
 
     # Route to pages
     if page == "Pipeline Overview":
@@ -129,6 +138,21 @@ def main():
         render()
     elif page == "Daily Digest":
         from sis.ui.pages.daily_digest import render
+        render()
+    elif page == "Prompt Versions":
+        from sis.ui.pages.prompt_versions import render
+        render()
+    elif page == "Calibration":
+        from sis.ui.pages.calibration import render
+        render()
+    elif page == "Golden Tests":
+        from sis.ui.pages.golden_tests import render
+        render()
+    elif page == "Usage Dashboard":
+        from sis.ui.pages.usage_dashboard import render
+        render()
+    elif page == "Retrospective Seeding":
+        from sis.ui.pages.retrospective_seeding import render
         render()
     else:
         st.info("Select a page from the sidebar.")
