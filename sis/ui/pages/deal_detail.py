@@ -4,6 +4,8 @@ Synthesis-first: deal memo + health breakdown + recommended actions.
 Per-agent analysis collapsed behind expand controls.
 """
 
+from __future__ import annotations
+
 import html
 import json
 
@@ -12,6 +14,7 @@ import streamlit as st
 from sis.services.account_service import get_account_detail, list_accounts
 from sis.services.analysis_service import get_agent_analyses, get_latest_run_id, get_carry_forward_actions
 from sis.services.feedback_service import list_feedback
+from sis.services.user_action_log_service import log_action, ACTION_FEEDBACK_SUBMIT
 from sis.ui.components.health_badge import render_health_badge, render_momentum_indicator, render_forecast_badge
 from sis.ui.components.divergence_badge import render_divergence_badge
 from sis.ui.components.agent_card import render_agent_card
@@ -214,6 +217,14 @@ def render():
                     st.error("Please enter your name.")
                 else:
                     from sis.services.feedback_service import submit_feedback
+                    log_action(
+                        ACTION_FEEDBACK_SUBMIT,
+                        action_detail=f"Feedback: {direction} ({reason}) by {author}",
+                        account_id=account_id,
+                        account_name=selected_name,
+                        page_name="Deal Detail",
+                        metadata={"direction": direction, "reason": reason},
+                    )
                     result = submit_feedback(
                         account_id=account_id,
                         assessment_id=assessment["id"],

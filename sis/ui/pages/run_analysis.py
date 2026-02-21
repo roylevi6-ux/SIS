@@ -1,9 +1,12 @@
 """Run Analysis — trigger pipeline + progress view per PRD P0-2."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.account_service import list_accounts
 from sis.services.transcript_service import list_transcripts
+from sis.services.user_action_log_service import log_action, ACTION_ANALYSIS_RUN
 from sis.ui.components.layout import page_header, empty_state
 
 
@@ -44,6 +47,13 @@ def render():
         try:
             from sis.services.analysis_service import analyze_account
 
+            log_action(
+                ACTION_ANALYSIS_RUN,
+                action_detail=f"Running 10-agent pipeline for {selected_name}",
+                account_id=account_id,
+                account_name=selected_name,
+                page_name="Run Analysis",
+            )
             result = analyze_account(
                 account_id=account_id,
                 progress_callback=progress_callback,

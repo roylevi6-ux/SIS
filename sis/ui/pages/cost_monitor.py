@@ -1,5 +1,7 @@
 """Cost Monitor — LLM cost tracking per Technical Architecture Section 3.5."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.db.session import get_session

@@ -1,5 +1,7 @@
 """Team Rollup — aggregate health metrics per team per PRD P0-12."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.dashboard_service import get_team_rollup

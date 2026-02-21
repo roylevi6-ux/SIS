@@ -1,5 +1,7 @@
 """Health score badge — color-coded display per PRD Section 7.11."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.ui.theme import Colors, Typography

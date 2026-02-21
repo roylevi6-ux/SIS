@@ -4,6 +4,8 @@ Tags accounts with known outcomes (won/lost/stalled), runs pipeline,
 and compares AI health scores against actual outcomes for calibration.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.account_service import list_accounts

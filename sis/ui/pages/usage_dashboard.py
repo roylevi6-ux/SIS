@@ -4,6 +4,8 @@ Displays the 6 CRO metrics with pass/fail indicators, event counts,
 per-user activity breakdown, and per-page view counts.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.usage_tracking_service import get_usage_summary, get_cro_metrics

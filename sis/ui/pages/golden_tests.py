@@ -3,6 +3,8 @@
 Run regression tests, view results, and create baselines from accounts.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.testing.golden_test import (

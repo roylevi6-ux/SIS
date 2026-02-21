@@ -363,3 +363,28 @@ class UsageEvent(Base):
         Index("ix_usage_events_type_date", "event_type", "created_at"),
         Index("ix_usage_events_user", "user_name", "created_at"),
     )
+
+
+# ─── user_action_logs ─────────────────────────────────────────────────
+
+
+class UserActionLog(Base):
+    __tablename__ = "user_action_logs"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    user_name = Column(Text, nullable=True)
+    action_type = Column(Text, nullable=False)  # page_view / ic_forecast_set / analysis_run / transcript_upload / feedback_submit / chat_query / brief_export / calibration / setting_change
+    action_detail = Column(Text, nullable=True)  # Human-readable description
+    account_id = Column(Text, ForeignKey("accounts.id"), nullable=True)
+    account_name = Column(Text, nullable=True)  # denormalized for fast display
+    page_name = Column(Text, nullable=True)
+    ip_address = Column(Text, nullable=True)
+    session_id = Column(Text, nullable=True)
+    metadata_json = Column(Text, nullable=True)  # JSON: extra context
+    created_at = Column(Text, nullable=False, default=_now)
+
+    __table_args__ = (
+        Index("ix_action_logs_user_date", "user_name", "created_at"),
+        Index("ix_action_logs_type_date", "action_type", "created_at"),
+        Index("ix_action_logs_account", "account_id", "created_at"),
+    )

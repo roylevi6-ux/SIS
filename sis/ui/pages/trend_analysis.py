@@ -4,6 +4,8 @@ Shows portfolio summary, team trends, and per-deal health trajectories
 with line charts for deals with multiple data points.
 """
 
+from __future__ import annotations
+
 import html
 
 import pandas as pd

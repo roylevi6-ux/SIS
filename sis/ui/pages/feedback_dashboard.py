@@ -4,6 +4,8 @@ Filterable by TL, signal direction, resolution status.
 Includes resolution buttons and account drill-down.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.feedback_service import list_feedback, resolve_feedback, get_feedback_summary

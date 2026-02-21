@@ -4,6 +4,8 @@ Displays feedback patterns, current calibration config, calibration log form,
 and calibration history.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.calibration_service import (

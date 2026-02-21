@@ -1,9 +1,12 @@
 """Upload Transcript — account creation + transcript upload per PRD P0-4, P0-1."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.account_service import create_account, list_accounts
 from sis.services.transcript_service import upload_transcript, list_transcripts
+from sis.services.user_action_log_service import log_action, ACTION_TRANSCRIPT_UPLOAD
 from sis.ui.components.layout import page_header, empty_state
 
 
@@ -71,6 +74,13 @@ def render():
                 if not raw_text or len(raw_text.strip()) < 50:
                     st.error("Transcript must be at least 50 characters.")
                 else:
+                    log_action(
+                        ACTION_TRANSCRIPT_UPLOAD,
+                        action_detail=f"Uploading transcript for {selected_name}",
+                        account_id=account_id,
+                        account_name=selected_name,
+                        page_name="Upload Transcript",
+                    )
                     transcript = upload_transcript(
                         account_id=account_id,
                         raw_text=raw_text,

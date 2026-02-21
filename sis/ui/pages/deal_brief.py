@@ -6,11 +6,14 @@ Generates exportable deal briefs in three styles:
 3. Inspection questions (3-5 questions with evidence)
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.account_service import list_accounts
 from sis.services.export_service import export_deal_brief
 from sis.services.usage_tracking_service import track_event
+from sis.services.user_action_log_service import log_action, ACTION_BRIEF_EXPORT
 from sis.ui.components.layout import page_header, section_divider, empty_state
 
 
@@ -51,11 +54,19 @@ def render():
     # Display
     st.markdown(brief)
 
-    # Download button
+    # Download button — log action only on actual export
     section_divider()
-    st.download_button(
+    if st.download_button(
         label="Download as Markdown",
         data=brief,
         file_name=f"deal-brief-{account['account_name'].lower().replace(' ', '-')}.md",
         mime="text/markdown",
-    )
+    ):
+        log_action(
+            ACTION_BRIEF_EXPORT,
+            action_detail=f"Exported {chosen_format} brief for {account['account_name']}",
+            account_id=account["id"],
+            account_name=account["account_name"],
+            page_name="Deal Brief",
+            metadata={"format": chosen_format},
+        )

@@ -4,6 +4,8 @@ Shows 4 behavioral dimensions per rep with team-level aggregates
 and per-account drill-down.
 """
 
+from __future__ import annotations
+
 import hashlib
 import html
 
