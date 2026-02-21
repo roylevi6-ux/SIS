@@ -326,7 +326,7 @@ class UsageEvent(Base):
     user_name = Column(Text, nullable=True)
     account_id = Column(Text, nullable=True)
     page_name = Column(Text, nullable=True)
-    metadata = Column(Text, nullable=True)  # JSON
+    event_metadata = Column(Text, nullable=True)  # JSON
     created_at = Column(Text, nullable=False, default=_now)
 
     __table_args__ = (
