@@ -16,7 +16,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "sis"))
 
-from config import MODEL_AGENTS_1_8, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
+from sis.config import MODEL_AGENTS_1_8, ANTHROPIC_BASE_URL, MAX_TOKENS_PER_TRANSCRIPT
 from preprocessor import load_account_calls
 from agents.stage_classifier import run_stage_classifier
 

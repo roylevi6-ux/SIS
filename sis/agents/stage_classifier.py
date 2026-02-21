@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from .runner import AgentResult, run_agent
 from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
 
-from config import MODEL_AGENT_1
+from sis.config import MODEL_AGENT_1
 
 
 # --- Sub-models ---

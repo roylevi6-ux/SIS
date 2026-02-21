@@ -9,7 +9,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "sis"))
 
-from config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_AGENTS_1_8
+from sis.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_AGENTS_1_8
 
 import anthropic
 

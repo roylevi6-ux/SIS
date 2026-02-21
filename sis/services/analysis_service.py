@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from sis.db.session import get_session
 from sis.db.models import AnalysisRun, AgentAnalysis, DealAssessment
 from sis.orchestrator.pipeline import AnalysisPipeline, PipelineResult
-from sis.services.transcript_service import get_active_transcript_texts
+from sis.services.transcript_service import get_active_transcript_texts, get_active_transcript_ids
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,8 @@ def analyze_account(
     result = pipeline.run(account_id, transcript_texts)
 
     # Persist to DB
-    run_id = _persist_pipeline_result(account_id, result, transcript_texts)
+    transcript_ids = get_active_transcript_ids(account_id)
+    run_id = _persist_pipeline_result(account_id, result, transcript_texts, transcript_ids)
     result.run_id = run_id
 
     return {
@@ -74,7 +75,8 @@ async def analyze_account_async(
     pipeline = AnalysisPipeline(progress_callback=progress_callback)
     result = await pipeline.run_async(account_id, transcript_texts)
 
-    run_id = _persist_pipeline_result(account_id, result, transcript_texts)
+    transcript_ids = get_active_transcript_ids(account_id)
+    run_id = _persist_pipeline_result(account_id, result, transcript_texts, transcript_ids)
     result.run_id = run_id
 
     return {
@@ -93,6 +95,7 @@ def _persist_pipeline_result(
     account_id: str,
     result: PipelineResult,
     transcript_texts: list[str],
+    transcript_ids: list[str] | None = None,
 ) -> str:
     """Persist pipeline results to DB. Returns run_id."""
     with get_session() as session:
@@ -102,6 +105,7 @@ def _persist_pipeline_result(
             started_at=result.started_at,
             completed_at=result.completed_at,
             status=result.status,
+            transcript_ids=json.dumps(transcript_ids) if transcript_ids else None,
             total_input_tokens=result.cost_summary.total_input_tokens,
             total_output_tokens=result.cost_summary.total_output_tokens,
             total_cost_usd=result.cost_summary.total_cost_usd,
@@ -134,7 +138,7 @@ def _persist_pipeline_result(
                 output_tokens=meta.get("output_tokens"),
                 cost_usd=None,  # calculated from cost_summary
                 model_used=meta.get("model"),
-                retries=meta.get("retries", 1) - 1,
+                retries=meta.get("attempts", 1) - 1,
             )
             session.add(agent_analysis)
 
@@ -267,7 +271,9 @@ def rerun_agent(run_id: str, agent_id: str) -> dict:
 
     # Load the original run context
     with get_session() as session:
-        run = session.query(AnalysisRun).filter_by(id=run_id).one()
+        run = session.query(AnalysisRun).filter_by(id=run_id).one_or_none()
+        if not run:
+            raise ValueError(f"Analysis run not found: {run_id}")
         account_id = run.account_id
 
     # Get current transcript texts
@@ -356,7 +362,9 @@ def resynthesize(run_id: str) -> dict:
 
     # Load all agent outputs from the run
     with get_session() as session:
-        run = session.query(AnalysisRun).filter_by(id=run_id).one()
+        run = session.query(AnalysisRun).filter_by(id=run_id).one_or_none()
+        if not run:
+            raise ValueError(f"Analysis run not found: {run_id}")
         account_id = run.account_id
 
         agent_rows = (

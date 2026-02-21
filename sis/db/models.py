@@ -157,8 +157,6 @@ class DealAssessment(Base):
     # Synthesis narrative
     deal_memo = Column(Text, nullable=False)
     contradiction_map = Column(Text, nullable=True)  # JSON array
-    synthesis_reasoning = Column(Text, nullable=True)
-
     # Stage inference
     inferred_stage = Column(Integer, nullable=False)
     stage_name = Column(Text, nullable=False)

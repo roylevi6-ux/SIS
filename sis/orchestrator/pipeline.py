@@ -38,7 +38,7 @@ class PipelineResult:
     status: str = "pending"  # pending/running/completed/partial/failed
     stage_output: dict | None = None
     agent_outputs: dict[str, dict] = field(default_factory=dict)  # agent_id -> output dict
-    agent_metadata: dict[str, dict] = field(default_factory=dict)  # agent_id -> {tokens, time, model, retries}
+    agent_metadata: dict[str, dict] = field(default_factory=dict)  # agent_id -> {tokens, time, model, attempts}
     synthesis_output: dict | None = None
     validation_warnings: list[str] = field(default_factory=list)
     cost_summary: RunCostSummary = field(default_factory=RunCostSummary)
@@ -136,7 +136,7 @@ class AnalysisPipeline:
                 "output_tokens": agent1_result.output_tokens,
                 "elapsed_seconds": agent1_result.elapsed_seconds,
                 "model": agent1_result.model,
-                "retries": agent1_result.attempts,
+                "attempts": agent1_result.attempts,
             }
             result.cost_summary.add(
                 "agent_1", agent1_result.model,
@@ -193,7 +193,7 @@ class AnalysisPipeline:
                     "output_tokens": agent_result.output_tokens,
                     "elapsed_seconds": agent_result.elapsed_seconds,
                     "model": agent_result.model,
-                    "retries": agent_result.attempts,
+                    "attempts": agent_result.attempts,
                 }
                 result.cost_summary.add(
                     agent_id, agent_result.model,
@@ -219,7 +219,7 @@ class AnalysisPipeline:
                 "output_tokens": agent9_result.output_tokens,
                 "elapsed_seconds": agent9_result.elapsed_seconds,
                 "model": agent9_result.model,
-                "retries": agent9_result.attempts,
+                "attempts": agent9_result.attempts,
             }
             result.cost_summary.add(
                 "agent_9", agent9_result.model,
