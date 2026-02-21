@@ -1,12 +1,18 @@
 """Pipeline Overview — main dashboard page per PRD P0-9.
 
 Two-level grouping: Team/TL then Forecast Category.
+
 Shows: deal name, MRR, stage, health score, momentum, AI forecast, IC forecast, days since last call.
 """
+
+from __future__ import annotations
+
+import html
 
 import streamlit as st
 
 from sis.services.dashboard_service import get_pipeline_overview, get_pipeline_insights
+from sis.services.user_action_log_service import log_action, ACTION_IC_FORECAST
 from sis.ui.components.health_badge import render_health_badge, render_momentum_indicator, render_forecast_badge
 from sis.ui.components.layout import (
     page_header, section_divider, metric_row, status_badge,
@@ -24,9 +30,10 @@ def _render_insight_items(items: list[dict], color: str, section_key: str) -> No
                 st.rerun()
         with col_desc:
             delta = item.get("score_delta")
-            delta_str = f" ({'+' if delta > 0 else ''}{delta} pts)" if delta else ""
+            delta_str = f" ({'+' if delta > 0 else ''}{delta} pts)" if delta is not None else ""
+            desc = html.escape(item.get("description", ""))
             st.markdown(
-                f'<span style="color:{color}">{item["description"]}{delta_str}</span>',
+                f'<span style="color:{color}">{desc}{delta_str}</span>',
                 unsafe_allow_html=True,
             )
 
@@ -147,6 +154,14 @@ def render():
                     if new_ic and new_ic != current_ic:
                         if st.button("Save", key=f"save_ic_{deal['account_id']}"):
                             from sis.services.account_service import set_ic_forecast
+                            log_action(
+                                ACTION_IC_FORECAST,
+                                action_detail=f"Set IC forecast to '{new_ic}' (was '{current_ic or 'unset'}')",
+                                account_id=deal["account_id"],
+                                account_name=deal.get("account_name"),
+                                page_name="Pipeline Overview",
+                                metadata={"old": current_ic, "new": new_ic},
+                            )
                             result = set_ic_forecast(deal["account_id"], new_ic)
                             if result["divergence_flag"]:
                                 st.toast(f"Divergence: {result['explanation'][:100]}", icon="\u26a0\ufe0f")

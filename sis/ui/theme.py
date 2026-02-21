@@ -1,5 +1,7 @@
 """SIS Design System — single source of truth for all design tokens."""
 
+from __future__ import annotations
+
 
 class Colors:
     """Color palette inspired by Riskified enterprise dashboard."""

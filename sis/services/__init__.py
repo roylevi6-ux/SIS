@@ -12,3 +12,4 @@ from . import prompt_version_service
 from . import calibration_service
 from . import coaching_service
 from . import trend_service
+from . import user_action_log_service

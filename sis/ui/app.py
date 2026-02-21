@@ -8,6 +8,8 @@ Per Technical Architecture Appendix B:
 - st.session_state for chat history and selected account context
 """
 
+from __future__ import annotations
+
 import importlib
 import sys
 from pathlib import Path
@@ -57,6 +59,7 @@ ACTIONS_PAGES = [
 ADMIN_PAGES = [
     "Feedback Dashboard",
     "Cost Monitor",
+    "Activity Log",
     "Daily Digest",
     "Prompt Versions",
     "Calibration",

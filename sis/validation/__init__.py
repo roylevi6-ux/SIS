@@ -1,13 +1,17 @@
 """Output validation — schema + content guardrails per PRD Section 7.10.
 
-Two layers of validation:
-1. validate_agent_output() — rules-based checks on LLM output quality
-2. apply_confidence_penalties() — automatic confidence adjustments
+Three layers of validation:
+1. validate_agent_output() — rules-based checks on individual agent output quality
+2. validate_synthesis_output() — post-synthesis schema + NEVER-rule validation
+3. apply_confidence_penalties() — automatic confidence adjustments
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def validate_agent_output(output: dict) -> list[str]:
@@ -55,6 +59,102 @@ def validate_agent_output(output: dict) -> list[str]:
     # Rule 5: Agent ID present
     if not output.get("agent_id"):
         warnings.append("Missing agent_id field")
+
+    return warnings
+
+
+# ── Synthesis (Agent 10) validation ────────────────────────────────────
+
+# Required top-level fields in synthesis output
+_SYNTHESIS_REQUIRED_FIELDS = [
+    "deal_memo",
+    "inferred_stage",
+    "inferred_stage_name",
+    "health_score",
+    "health_score_breakdown",
+    "momentum_direction",
+    "forecast_category",
+    "top_positive_signals",
+    "top_risks",
+    "recommended_actions",
+    "confidence_interval",
+]
+
+
+def validate_synthesis_output(
+    synthesis_output: dict,
+    agent_outputs: dict | None = None,
+) -> list[str]:
+    """Validate Agent 10 synthesis output before persistence.
+
+    Checks:
+    1. Required fields present and non-empty
+    2. Health score in valid range (0-100)
+    3. Stage in valid range (1-7)
+    4. Confidence in valid range (0.0-1.0)
+    5. Momentum direction is valid enum
+    6. Forecast category is valid enum
+    7. NEVER rules (if agent_outputs provided)
+
+    Returns:
+        List of warning/error strings. Empty = clean.
+    """
+    warnings: list[str] = []
+
+    # Check 1: Required fields
+    for field in _SYNTHESIS_REQUIRED_FIELDS:
+        val = synthesis_output.get(field)
+        if val is None:
+            warnings.append(f"SYNTHESIS_MISSING_FIELD: '{field}' is None")
+        elif isinstance(val, str) and not val.strip():
+            warnings.append(f"SYNTHESIS_EMPTY_FIELD: '{field}' is empty string")
+
+    # Check 2: Health score range
+    health = synthesis_output.get("health_score")
+    if health is not None:
+        if not isinstance(health, (int, float)) or health < 0 or health > 100:
+            warnings.append(f"SYNTHESIS_INVALID_HEALTH: {health} not in [0, 100]")
+
+    # Check 3: Stage range
+    stage = synthesis_output.get("inferred_stage")
+    if stage is not None:
+        if not isinstance(stage, (int, float)) or stage < 1 or stage > 7:
+            warnings.append(f"SYNTHESIS_INVALID_STAGE: {stage} not in [1, 7]")
+
+    # Check 4: Confidence range
+    conf_interval = synthesis_output.get("confidence_interval", {})
+    if isinstance(conf_interval, dict):
+        overall = conf_interval.get("overall_confidence")
+        if overall is not None:
+            if not isinstance(overall, (int, float)) or overall < 0.0 or overall > 1.0:
+                warnings.append(f"SYNTHESIS_INVALID_CONFIDENCE: {overall} not in [0.0, 1.0]")
+
+    # Check 5: Momentum direction
+    valid_momentum = {"Improving", "Stable", "Declining", "Unknown"}
+    momentum = synthesis_output.get("momentum_direction")
+    if momentum and momentum not in valid_momentum:
+        warnings.append(f"SYNTHESIS_INVALID_MOMENTUM: '{momentum}' not in {valid_momentum}")
+
+    # Check 6: Forecast category
+    valid_forecasts = {"Commit", "Best Case", "Pipeline", "Upside", "At Risk", "No Decision Risk"}
+    forecast = synthesis_output.get("forecast_category")
+    if forecast and forecast not in valid_forecasts:
+        warnings.append(f"SYNTHESIS_INVALID_FORECAST: '{forecast}' not in {valid_forecasts}")
+
+    # Check 7: NEVER rules (if agent outputs provided)
+    if agent_outputs:
+        try:
+            from sis.validation.never_rules import check_all_never_rules
+            violations = check_all_never_rules(agent_outputs, synthesis_output)
+            for v in violations:
+                warnings.append(f"NEVER_RULE_{v.rule_id}: {v.description}")
+        except Exception as e:
+            logger.warning("Failed to run NEVER rules: %s", e)
+
+    # Check 8: Deal memo minimum length
+    memo = synthesis_output.get("deal_memo", "")
+    if isinstance(memo, str) and len(memo) < 100:
+        warnings.append(f"SYNTHESIS_SHORT_MEMO: deal_memo is {len(memo)} chars (min 100)")
 
     return warnings
 

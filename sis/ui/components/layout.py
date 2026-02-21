@@ -1,5 +1,7 @@
 """SIS reusable layout components — replaces duplicated patterns across 20 pages."""
 
+from __future__ import annotations
+
 import html as html_mod
 
 import streamlit as st

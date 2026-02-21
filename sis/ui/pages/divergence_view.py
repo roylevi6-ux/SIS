@@ -1,5 +1,7 @@
 """Divergence View — AI vs IC forecast comparison per PRD P0-11."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.dashboard_service import get_divergence_report

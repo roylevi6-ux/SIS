@@ -3,6 +3,8 @@
 Agent selector, version history, create new version, rollback, and side-by-side diff.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.prompt_version_service import (

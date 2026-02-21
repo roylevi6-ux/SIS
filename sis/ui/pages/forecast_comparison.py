@@ -8,6 +8,8 @@ Interactive Streamlit rendering of the forecast report with:
   - Export button
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.forecast_data_service import load_forecast_data, get_team_names

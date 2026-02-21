@@ -4,6 +4,8 @@ Generates a preparation guide for upcoming prospect calls using
 the latest deal assessment: topics, questions, risks, unresolved items.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.account_service import list_accounts, get_account_detail

@@ -4,6 +4,10 @@ Renders the daily digest markdown in-app. Actual email delivery is post-POC.
 Also provides Slack push button for critical alerts.
 """
 
+from __future__ import annotations
+
+import html
+
 import streamlit as st
 
 from sis.alerts.engine import check_alerts
@@ -55,9 +59,10 @@ def render():
                         st.rerun()
                 with c2:
                     type_label = a["type"].replace("_", " ").title()
+                    details = html.escape(a.get("details", ""))
                     st.markdown(
                         f'<span style="color:{Colors.DANGER};font-weight:bold">{type_label}</span>: '
-                        f'{a["details"]}',
+                        f'{details}',
                         unsafe_allow_html=True,
                     )
         section_divider()

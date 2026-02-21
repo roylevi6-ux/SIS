@@ -4,10 +4,13 @@ Uses the query service to send natural language questions to the LLM with
 full pipeline context. Supports follow-up questions via conversation history.
 """
 
+from __future__ import annotations
+
 import streamlit as st
 
 from sis.services.query_service import query as llm_query
 from sis.services.usage_tracking_service import track_event
+from sis.services.user_action_log_service import log_action, ACTION_CHAT_QUERY
 from sis.ui.components.layout import page_header
 
 
@@ -26,6 +29,7 @@ def render():
     # Chat input
     if prompt := st.chat_input("Ask about your pipeline..."):
         track_event("chat_query")
+        log_action(ACTION_CHAT_QUERY, action_detail=prompt[:200], page_name="Chat")
         with st.chat_message("user"):
             st.markdown(prompt)
 

@@ -1,5 +1,7 @@
 """Divergence badge — visual indicator when AI and IC forecasts differ per PRD P0-12."""
 
+from __future__ import annotations
+
 import html
 
 import streamlit as st

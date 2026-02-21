@@ -240,6 +240,19 @@ class AnalysisPipeline:
                 agent10_result.elapsed_seconds, agent10_result.attempts - 1,
             )
 
+            # ── POST-SYNTHESIS VALIDATION ──────────────────────────────
+            from sis.validation import validate_synthesis_output
+            synthesis_warnings = validate_synthesis_output(
+                synthesis_output, agent_outputs=result.agent_outputs,
+            )
+            if synthesis_warnings:
+                result.validation_warnings.extend(synthesis_warnings)
+                logger.warning(
+                    "Synthesis validation: %d warnings: %s",
+                    len(synthesis_warnings),
+                    synthesis_warnings,
+                )
+
             # Determine final status
             failed_agents = [e for e in result.errors]
             if failed_agents:
