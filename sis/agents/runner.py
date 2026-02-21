@@ -25,44 +25,15 @@ from typing import Generic, TypeVar
 import anthropic
 from pydantic import BaseModel, ValidationError
 
-from sis.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MAX_OUTPUT_TOKENS_PER_AGENT, MODEL_AGENTS_1_8
+from sis.config import MAX_OUTPUT_TOKENS_PER_AGENT, MODEL_AGENTS_1_8
+from sis.llm.client import get_client, get_async_client
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
-# Shared clients (reused across agents for connection pooling)
-_client: anthropic.Anthropic | None = None
-_async_client: anthropic.AsyncAnthropic | None = None
-
 # Semaphore to limit concurrent proxy requests (adjust if DevOps confirms higher limit)
 DEFAULT_MAX_CONCURRENT = 7
-
-
-def get_client() -> anthropic.Anthropic:
-    """Get or create the shared Anthropic client with timeout."""
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(
-            api_key=ANTHROPIC_API_KEY,
-            base_url=ANTHROPIC_BASE_URL,
-            timeout=120.0,
-            max_retries=0,
-        )
-    return _client
-
-
-def get_async_client() -> anthropic.AsyncAnthropic:
-    """Get or create the shared async Anthropic client."""
-    global _async_client
-    if _async_client is None:
-        _async_client = anthropic.AsyncAnthropic(
-            api_key=ANTHROPIC_API_KEY,
-            base_url=ANTHROPIC_BASE_URL,
-            timeout=120.0,
-            max_retries=0,
-        )
-    return _async_client
 
 
 @dataclass

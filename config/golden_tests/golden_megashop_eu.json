@@ -1,0 +1,13 @@
+{
+  "fixture_id": "golden_megashop_eu",
+  "account_id": "45cb5678-2373-579d-80b4-4c6faaae4dbd",
+  "account_name": "MegaShop EU",
+  "created_at": "2026-02-21T13:56:13.601309+00:00",
+  "baseline": {
+    "health_score": 82,
+    "ai_forecast_category": "Commit",
+    "inferred_stage": 5,
+    "overall_confidence": 0.85,
+    "momentum_direction": "Improving"
+  }
+}

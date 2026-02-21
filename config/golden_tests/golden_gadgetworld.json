@@ -1,0 +1,13 @@
+{
+  "fixture_id": "golden_gadgetworld",
+  "account_id": "e30c6a23-f661-5d91-84bd-fd76f27be5e0",
+  "account_name": "GadgetWorld",
+  "created_at": "2026-02-21T13:56:13.602172+00:00",
+  "baseline": {
+    "health_score": 35,
+    "ai_forecast_category": "At Risk",
+    "inferred_stage": 1,
+    "overall_confidence": 0.4,
+    "momentum_direction": "Declining"
+  }
+}
