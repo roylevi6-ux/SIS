@@ -109,7 +109,7 @@ def render():
                             from sis.services.account_service import set_ic_forecast
                             result = set_ic_forecast(deal["account_id"], new_ic)
                             if result["divergence_flag"]:
-                                st.warning(f"Divergence: {result['explanation'][:100]}")
+                                st.toast(f"Divergence: {result['explanation'][:100]}", icon="\u26a0\ufe0f")
                             else:
-                                st.success("IC forecast saved. Matches AI forecast.")
+                                st.toast("IC forecast saved. Matches AI forecast.", icon="\u2705")
                             st.rerun()
