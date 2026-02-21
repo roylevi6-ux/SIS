@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from sis.db.session import get_session
 from sis.db.models import Account, DealAssessment, AnalysisRun, Transcript
+from sis.config import STALE_CALL_DAYS_THRESHOLD
 
 
 def get_pipeline_overview(team: Optional[str] = None) -> dict:
@@ -181,3 +183,136 @@ def get_team_rollup(team: Optional[str] = None) -> list[dict]:
 
         rollup.sort(key=lambda r: -(r["total_mrr"]))
         return rollup
+
+
+def get_pipeline_insights() -> dict:
+    """Auto-generated pipeline insights: stuck, improving, declining, new risks, stale, forecast flips.
+
+    Compares latest vs previous DealAssessment per account to detect changes.
+    Per PRD P0-20.
+    """
+    with get_session() as session:
+        accounts = session.query(Account).all()
+
+        stuck = []
+        improving = []
+        declining = []
+        new_risks = []
+        stale = []
+        forecast_flips = []
+
+        now = datetime.now(timezone.utc)
+        stale_cutoff = (now - timedelta(days=STALE_CALL_DAYS_THRESHOLD)).strftime("%Y-%m-%d")
+
+        def _parse_risks(val):
+            if not val:
+                return []
+            try:
+                parsed = json.loads(val)
+                return [r.get("risk", str(r)) if isinstance(r, dict) else str(r) for r in parsed]
+            except (json.JSONDecodeError, TypeError):
+                return []
+
+        for acct in accounts:
+            # Get latest two assessments
+            assessments = (
+                session.query(DealAssessment)
+                .filter_by(account_id=acct.id)
+                .order_by(DealAssessment.created_at.desc())
+                .limit(2)
+                .all()
+            )
+
+            # Check for stale deals (no transcript in threshold days)
+            latest_transcript = (
+                session.query(Transcript)
+                .filter_by(account_id=acct.id, is_active=1)
+                .order_by(Transcript.call_date.desc())
+                .first()
+            )
+            if latest_transcript and latest_transcript.call_date[:10] < stale_cutoff:
+                stale.append({
+                    "account_id": acct.id,
+                    "account_name": acct.account_name,
+                    "last_call_date": latest_transcript.call_date,
+                    "description": f"No transcript in {STALE_CALL_DAYS_THRESHOLD}+ days",
+                })
+            elif not latest_transcript and assessments:
+                stale.append({
+                    "account_id": acct.id,
+                    "account_name": acct.account_name,
+                    "last_call_date": None,
+                    "description": "No transcripts on file",
+                })
+
+            if len(assessments) < 2:
+                continue
+
+            latest, previous = assessments[0], assessments[1]
+            score_delta = latest.health_score - previous.health_score
+
+            # Stuck deals: health < 50, momentum Stable or Declining for 2+ runs
+            if (latest.health_score < 50
+                    and latest.momentum_direction in ("Stable", "Declining")
+                    and previous.momentum_direction in ("Stable", "Declining")):
+                stuck.append({
+                    "account_id": acct.id,
+                    "account_name": acct.account_name,
+                    "health_score": latest.health_score,
+                    "momentum": latest.momentum_direction,
+                    "score_delta": score_delta,
+                    "description": f"Health {latest.health_score}, {latest.momentum_direction} for 2+ runs",
+                })
+
+            # Improving: score increased by 10+ points
+            if score_delta >= 10:
+                improving.append({
+                    "account_id": acct.id,
+                    "account_name": acct.account_name,
+                    "health_score": latest.health_score,
+                    "score_delta": score_delta,
+                    "description": f"Health improved {previous.health_score} -> {latest.health_score} (+{score_delta})",
+                })
+
+            # Declining: score dropped by 10+ points
+            if score_delta <= -10:
+                declining.append({
+                    "account_id": acct.id,
+                    "account_name": acct.account_name,
+                    "health_score": latest.health_score,
+                    "score_delta": score_delta,
+                    "description": f"Health dropped {previous.health_score} -> {latest.health_score} ({score_delta})",
+                })
+
+            # New risks: compare top_risks JSON
+            latest_risks = set(_parse_risks(latest.top_risks))
+            previous_risks = set(_parse_risks(previous.top_risks))
+            added_risks = latest_risks - previous_risks
+            if added_risks:
+                new_risks.append({
+                    "account_id": acct.id,
+                    "account_name": acct.account_name,
+                    "health_score": latest.health_score,
+                    "new_risks": list(added_risks),
+                    "description": f"{len(added_risks)} new risk(s) identified",
+                })
+
+            # Forecast flips
+            if latest.ai_forecast_category != previous.ai_forecast_category:
+                forecast_flips.append({
+                    "account_id": acct.id,
+                    "account_name": acct.account_name,
+                    "health_score": latest.health_score,
+                    "previous_forecast": previous.ai_forecast_category,
+                    "current_forecast": latest.ai_forecast_category,
+                    "description": f"Forecast changed: {previous.ai_forecast_category} -> {latest.ai_forecast_category}",
+                })
+
+        return {
+            "stuck": stuck,
+            "improving": improving,
+            "declining": declining,
+            "new_risks": new_risks,
+            "stale": stale,
+            "forecast_flips": forecast_flips,
+        }

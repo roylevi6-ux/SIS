@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from sis.db.session import get_session
-from sis.db.models import ScoreFeedback, DealAssessment
+from sis.db.models import ScoreFeedback, DealAssessment, Account
 
 
 VALID_DIRECTIONS = {"too_high", "too_low"}
@@ -63,20 +63,25 @@ def list_feedback(
     author: Optional[str] = None,
     status: Optional[str] = None,
 ) -> list[dict]:
-    """List feedback with optional filters."""
+    """List feedback with optional filters. Includes account_name via join."""
     with get_session() as session:
-        query = session.query(ScoreFeedback)
+        query = (
+            session.query(ScoreFeedback, Account.account_name)
+            .join(Account, ScoreFeedback.account_id == Account.id)
+        )
         if account_id:
-            query = query.filter_by(account_id=account_id)
+            query = query.filter(ScoreFeedback.account_id == account_id)
         if author:
-            query = query.filter_by(author=author)
+            query = query.filter(ScoreFeedback.author == author)
         if status:
-            query = query.filter_by(resolution=status)
-        feedback_list = query.order_by(ScoreFeedback.created_at.desc()).all()
+            query = query.filter(ScoreFeedback.resolution == status)
+        results = query.order_by(ScoreFeedback.created_at.desc()).all()
         return [
             {
                 "id": f.id,
                 "account_id": f.account_id,
+                "account_name": account_name,
+                "deal_assessment_id": f.deal_assessment_id,
                 "author": f.author,
                 "direction": f.disagreement_direction,
                 "reason": f.reason_category,
@@ -86,7 +91,7 @@ def list_feedback(
                 "resolution": f.resolution,
                 "created_at": f.created_at,
             }
-            for f in feedback_list
+            for f, account_name in results
         ]
 
 
@@ -112,3 +117,38 @@ def resolve_feedback(
         feedback.resolved_at = datetime.now(timezone.utc).isoformat()
         session.flush()
         return {"id": feedback.id, "resolution": feedback.resolution}
+
+
+def get_feedback_summary() -> dict:
+    """Aggregate feedback counts by direction, reason, author, and resolution status.
+
+    Per PRD P0-17: VP sees all TL feedback across deals with summary metrics.
+    """
+    all_feedback = list_feedback()
+
+    by_direction = {}
+    by_reason = {}
+    by_author = {}
+    by_resolution = {}
+
+    for f in all_feedback:
+        d = f["direction"]
+        by_direction[d] = by_direction.get(d, 0) + 1
+
+        r = f["reason"]
+        by_reason[r] = by_reason.get(r, 0) + 1
+
+        a = f["author"]
+        by_author[a] = by_author.get(a, 0) + 1
+
+        res = f["resolution"]
+        by_resolution[res] = by_resolution.get(res, 0) + 1
+
+    return {
+        "total": len(all_feedback),
+        "by_direction": by_direction,
+        "by_reason": by_reason,
+        "by_author": by_author,
+        "by_resolution": by_resolution,
+        "authors": sorted(by_author.keys()),
+    }

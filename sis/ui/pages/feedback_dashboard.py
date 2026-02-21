@@ -1,65 +1,135 @@
-"""Feedback Dashboard — aggregated feedback view for VP per PRD P0-17."""
+"""Feedback Dashboard — VP-level aggregated feedback view per PRD P0-17.
+
+Filterable by TL, signal direction, resolution status.
+Includes resolution buttons and account drill-down.
+"""
 
 import streamlit as st
 
-from sis.services.feedback_service import list_feedback
+from sis.services.feedback_service import list_feedback, resolve_feedback, get_feedback_summary
 
 
 def render():
     st.title("Feedback Dashboard")
-    st.caption("All TL score feedback across deals")
+    st.caption("All TL score feedback across deals — filterable and actionable")
 
-    feedback = list_feedback()
+    # Show resolution toasts from previous rerun
+    for key in list(st.session_state.keys()):
+        if key.startswith("resolved_"):
+            resolution = st.session_state.pop(key)
+            icon = "\u2705" if resolution == "accepted" else "\u274c"
+            st.toast(f"Feedback {resolution}", icon=icon)
 
-    if not feedback:
+    summary = get_feedback_summary()
+
+    if summary["total"] == 0:
         st.info("No feedback submitted yet.")
         return
 
-    # Summary metrics
-    col1, col2, col3, col4 = st.columns(4)
+    # --- Summary metrics ---
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.metric("Total Feedback", len(feedback))
+        st.metric("Total Feedback", summary["total"])
     with col2:
-        too_high = sum(1 for f in feedback if f["direction"] == "too_high")
-        st.metric("Score Too High", too_high)
+        st.metric("Too High", summary["by_direction"].get("too_high", 0))
     with col3:
-        too_low = sum(1 for f in feedback if f["direction"] == "too_low")
-        st.metric("Score Too Low", too_low)
+        st.metric("Too Low", summary["by_direction"].get("too_low", 0))
     with col4:
-        pending = sum(1 for f in feedback if f["resolution"] == "pending")
-        st.metric("Pending Resolution", pending)
+        st.metric("Pending", summary["by_resolution"].get("pending", 0))
+    with col5:
+        resolved = summary["by_resolution"].get("accepted", 0) + summary["by_resolution"].get("rejected", 0)
+        st.metric("Resolved", resolved)
 
     st.divider()
 
-    # Reason breakdown
+    # --- Filter sidebar ---
+    with st.sidebar:
+        st.markdown("**Feedback Filters**")
+        author_options = ["All"] + summary["authors"]
+        selected_author = st.selectbox("Author", author_options, key="fb_author_filter")
+        selected_direction = st.radio(
+            "Direction", ["All", "too_high", "too_low"], key="fb_direction_filter"
+        )
+        selected_status = st.radio(
+            "Resolution", ["All", "pending", "accepted", "rejected"], key="fb_status_filter"
+        )
+
+    # --- Apply filters ---
+    filter_author = None if selected_author == "All" else selected_author
+    filter_status = None if selected_status == "All" else selected_status
+    feedback = list_feedback(author=filter_author, status=filter_status)
+    if selected_direction != "All":
+        feedback = [f for f in feedback if f["direction"] == selected_direction]
+
+    if not feedback:
+        st.info("No feedback matches the current filters.")
+        return
+
+    # --- Reason breakdown ---
     st.subheader("Feedback by Reason")
     reasons = {}
     for f in feedback:
         r = f["reason"]
         reasons[r] = reasons.get(r, 0) + 1
-
-    for reason, count in sorted(reasons.items(), key=lambda x: -x[1]):
-        st.markdown(f"- **{reason}**: {count} submissions")
+    cols = st.columns(min(len(reasons), 4))
+    for i, (reason, count) in enumerate(sorted(reasons.items(), key=lambda x: -x[1])):
+        with cols[i % len(cols)]:
+            st.metric(reason.replace("_", " ").title(), count)
 
     st.divider()
 
-    # Individual feedback items
-    st.subheader("All Feedback")
-    for f in feedback:
-        status_color = "#22c55e" if f["resolution"] == "accepted" else "#ef4444" if f["resolution"] == "rejected" else "#f59e0b"
-        direction_icon = "↑" if f["direction"] == "too_low" else "↓"
+    # --- Group by account for drill-down ---
+    st.subheader(f"Feedback Items ({len(feedback)})")
 
-        with st.container(border=True):
-            c1, c2, c3, c4 = st.columns([2, 1, 1, 2])
-            with c1:
-                st.markdown(f"**{f['author']}** {direction_icon} Score at time: {f['health_score_at_time']}")
-            with c2:
-                st.caption(f["reason"])
-            with c3:
-                st.markdown(
-                    f'<span style="color:{status_color}">{f["resolution"]}</span>',
-                    unsafe_allow_html=True,
+    by_account: dict[str, list] = {}
+    for f in feedback:
+        name = f.get("account_name", f["account_id"])
+        if name not in by_account:
+            by_account[name] = []
+        by_account[name].append(f)
+
+    for account_name, items in sorted(by_account.items()):
+        with st.expander(f"{account_name} ({len(items)} items)", expanded=len(by_account) <= 5):
+            for f in items:
+                status_color = (
+                    "#22c55e" if f["resolution"] == "accepted"
+                    else "#ef4444" if f["resolution"] == "rejected"
+                    else "#f59e0b"
                 )
-            with c4:
-                if f.get("free_text"):
-                    st.caption(f["free_text"][:100])
+                direction_icon = "\u2191" if f["direction"] == "too_low" else "\u2193"
+
+                with st.container(border=True):
+                    c1, c2, c3, c4 = st.columns([2, 1, 1, 2])
+                    with c1:
+                        st.markdown(f"**{f['author']}** {direction_icon} Score: {f['health_score_at_time']}")
+                    with c2:
+                        st.caption(f["reason"].replace("_", " "))
+                    with c3:
+                        st.markdown(
+                            f'<span style="color:{status_color}">{f["resolution"]}</span>',
+                            unsafe_allow_html=True,
+                        )
+                    with c4:
+                        if f.get("free_text"):
+                            st.caption(f["free_text"][:120])
+
+                    # Resolution buttons for pending items
+                    if f["resolution"] == "pending":
+                        rc1, rc2, rc3 = st.columns([2, 1, 1])
+                        with rc1:
+                            notes = st.text_input(
+                                "Resolution notes",
+                                key=f"resolve_notes_{f['id']}",
+                                placeholder="Optional notes...",
+                                label_visibility="collapsed",
+                            )
+                        with rc2:
+                            if st.button("Accept", key=f"accept_{f['id']}", type="primary"):
+                                resolve_feedback(f["id"], "accepted", notes, "VP")
+                                st.session_state[f"resolved_{f['id']}"] = "accepted"
+                                st.rerun()
+                        with rc3:
+                            if st.button("Reject", key=f"reject_{f['id']}"):
+                                resolve_feedback(f["id"], "rejected", notes, "VP")
+                                st.session_state[f"resolved_{f['id']}"] = "rejected"
+                                st.rerun()
