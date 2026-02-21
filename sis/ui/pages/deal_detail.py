@@ -4,6 +4,7 @@ Synthesis-first: deal memo + health breakdown + recommended actions.
 Per-agent analysis collapsed behind expand controls.
 """
 
+import html
 import json
 
 import streamlit as st
@@ -77,7 +78,7 @@ def render():
         for i, component in enumerate(breakdown):
             with cols[i % 4]:
                 if isinstance(component, dict):
-                    name = component.get("component", "Unknown")
+                    name = html.escape(component.get("component", "Unknown"))
                     score = component.get("score", 0)
                     max_score = component.get("max_score", 20)
                     pct = score / max_score if max_score > 0 else 0
@@ -120,12 +121,15 @@ def render():
     st.subheader("Recommended Actions")
     for action in assessment.get("recommended_actions", []):
         if isinstance(action, dict):
-            priority = action.get("priority", "P2")
+            priority = html.escape(action.get("priority", "P2"))
             color = "#ef4444" if priority == "P0" else "#f59e0b" if priority == "P1" else "#6b7280"
+            action_text = html.escape(action.get("action", ""))
+            owner_text = html.escape(action.get("owner", "TBD"))
+            rationale_text = html.escape(action.get("rationale", ""))
             st.markdown(
                 f'<div style="padding:8px;margin:4px 0;border-left:4px solid {color};background:{color}08">'
-                f'<b>[{priority}]</b> {action.get("action", "")}<br>'
-                f'<span style="color:#6b7280">Owner: {action.get("owner", "TBD")} | {action.get("rationale", "")}</span>'
+                f'<b>[{priority}]</b> {action_text}<br>'
+                f'<span style="color:#6b7280">Owner: {owner_text} | {rationale_text}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
