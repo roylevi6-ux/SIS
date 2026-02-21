@@ -24,12 +24,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-import nest_asyncio
-
 from .cost_tracker import RunCostSummary
-
-# Allow nested event loops (required for Streamlit which runs its own loop)
-nest_asyncio.apply()
 
 logger = logging.getLogger(__name__)
 
