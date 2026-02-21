@@ -7,6 +7,8 @@ query layer over stored data — NOT re-running the pipeline per query.
 
 from __future__ import annotations
 
+import logging
+
 import anthropic
 
 from sis.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_CHAT
@@ -16,6 +18,8 @@ from sis.services.dashboard_service import (
     get_divergence_report,
     get_team_rollup,
 )
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are the SIS (Sales Intelligence System) assistant for Riskified's sales team.
 You answer questions about deal health, pipeline status, forecasts, and team performance.
@@ -31,6 +35,22 @@ Rules:
 - For pipeline questions, summarize by health tier (Healthy 70+, At Risk 45-69, Critical <45).
 - When asked about forecast divergence, explain both AI and IC categories and the delta.
 """
+
+# Module-level singleton client (connection pooling, matches runner.py pattern)
+_client: anthropic.Anthropic | None = None
+
+
+def _get_client() -> anthropic.Anthropic:
+    """Get or create the shared chat Anthropic client."""
+    global _client
+    if _client is None:
+        _client = anthropic.Anthropic(
+            api_key=ANTHROPIC_API_KEY,
+            base_url=ANTHROPIC_BASE_URL,
+            timeout=120.0,
+            max_retries=1,
+        )
+    return _client
 
 
 def _build_context() -> str:
@@ -93,6 +113,7 @@ def query(user_message: str, history: list[dict] | None = None) -> str:
     Args:
         user_message: The user's question.
         history: Previous messages as [{"role": "user"|"assistant", "content": str}].
+                 Should NOT include the current user_message.
 
     Returns:
         The LLM's answer as a string.
@@ -104,23 +125,34 @@ def query(user_message: str, history: list[dict] | None = None) -> str:
         for msg in history[-10:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
 
+    # Current query with injected pipeline context
     messages.append({
         "role": "user",
         "content": f"<pipeline_data>\n{context}\n</pipeline_data>\n\n{user_message}",
     })
 
-    client = anthropic.Anthropic(
-        api_key=ANTHROPIC_API_KEY,
-        base_url=ANTHROPIC_BASE_URL,
-        timeout=60.0,
-        max_retries=1,
-    )
+    client = _get_client()
 
-    response = client.messages.create(
-        model=MODEL_CHAT,
-        max_tokens=1500,
-        system=SYSTEM_PROMPT,
-        messages=messages,
-    )
+    try:
+        # Use streaming to avoid Riskified proxy 60s timeout (matches runner.py pattern)
+        with client.messages.stream(
+            model=MODEL_CHAT,
+            max_tokens=1500,
+            system=SYSTEM_PROMPT,
+            messages=messages,
+        ) as stream:
+            response = stream.get_final_message()
 
-    return response.content[0].text
+        return response.content[0].text
+    except anthropic.APITimeoutError:
+        logger.warning("Chat query timed out")
+        return "Sorry, the request timed out. Please try again."
+    except anthropic.RateLimitError:
+        logger.warning("Chat query rate limited")
+        return "Rate limit reached. Please wait a moment and try again."
+    except anthropic.APIConnectionError as e:
+        logger.error("Chat API connection error: %s", e)
+        return "Could not reach the AI service. Please check your connection and try again."
+    except anthropic.APIError as e:
+        logger.error("Chat API error: %s", e)
+        return f"API error: {e}"

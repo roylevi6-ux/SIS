@@ -24,16 +24,18 @@ def render():
 
     # Chat input
     if prompt := st.chat_input("Ask about your pipeline..."):
-        st.session_state.chat_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Process query via LLM
+        # Query LLM with history BEFORE appending current message (avoid duplicate)
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 response = _process_query(prompt)
                 st.markdown(response)
-                st.session_state.chat_messages.append({"role": "assistant", "content": response})
+
+        # Append both to history AFTER the query
+        st.session_state.chat_messages.append({"role": "user", "content": prompt})
+        st.session_state.chat_messages.append({"role": "assistant", "content": response})
 
     # Suggested queries
     if not st.session_state.chat_messages:
@@ -49,7 +51,8 @@ def render():
         for i, suggestion in enumerate(suggestions):
             with cols[i]:
                 if st.button(suggestion, key=f"suggest_{i}", use_container_width=True):
-                    response = _process_query(suggestion)
+                    with st.spinner("Thinking..."):
+                        response = _process_query(suggestion)
                     st.session_state.chat_messages.append({"role": "user", "content": suggestion})
                     st.session_state.chat_messages.append({"role": "assistant", "content": response})
                     st.rerun()
