@@ -23,6 +23,21 @@ class Colors:
     # Text
     TEXT_PRIMARY = "#0f172a"
     TEXT_MUTED = "#6b7280"
+    TEXT_SUBTLE = "#94a3b8"
+
+    # Sidebar text
+    SIDEBAR_TEXT = "#cbd5e1"
+    SIDEBAR_TEXT_MUTED = "#64748b"
+    SIDEBAR_TEXT_BRIGHT = "#e2e8f0"
+
+    # WCAG AA-compliant badge text (darker shades for 4.5:1+ contrast on tinted bg)
+    BADGE_SUCCESS = "#15803d"
+    BADGE_WARNING = "#92400e"
+    BADGE_DANGER = "#b91c1c"
+    BADGE_INFO = "#1d4ed8"
+    BADGE_ACCENT = "#6d28d9"
+    BADGE_NEUTRAL = "#374151"
+    BADGE_PRIMARY = "#15803d"
 
     # Forecast category colors
     FORECAST = {
