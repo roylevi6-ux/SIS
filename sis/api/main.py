@@ -35,3 +35,11 @@ app.add_middleware(
 def health_check() -> dict:
     """Liveness probe."""
     return {"status": "ok", "version": "2.0.0"}
+
+
+# ── Route registration ───────────────────────────────────────────────
+
+from sis.api.routes import accounts, transcripts  # noqa: E402
+
+app.include_router(accounts.router)
+app.include_router(transcripts.router)
