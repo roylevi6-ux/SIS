@@ -66,13 +66,51 @@ def session(session_factory):
 
 @pytest.fixture
 def mock_get_session(session):
-    """Patch sis.db.session.get_session to use the test session."""
+    """Patch sis.db.session.get_session to use the test session.
+
+    Patches both the canonical location and all service modules that may have
+    already imported get_session via ``from sis.db.session import get_session``.
+    This prevents test-order-dependent failures when modules are imported early
+    (e.g., by the FastAPI app import chain in test_api/).
+    """
     @contextmanager
     def _test_get_session():
         yield session
 
-    with patch("sis.db.session.get_session", _test_get_session):
+    # All modules that do ``from sis.db.session import get_session``
+    _patch_targets = [
+        "sis.db.session.get_session",
+        "sis.services.account_service.get_session",
+        "sis.services.transcript_service.get_session",
+        "sis.services.feedback_service.get_session",
+        "sis.services.analysis_service.get_session",
+        "sis.services.dashboard_service.get_session",
+        "sis.services.coaching_service.get_session",
+        "sis.services.trend_service.get_session",
+        "sis.services.export_service.get_session",
+        "sis.services.usage_tracking_service.get_session",
+        "sis.services.user_action_log_service.get_session",
+        "sis.services.calibration_service.get_session",
+        "sis.services.prompt_version_service.get_session",
+        "sis.services.forecast_data_service.get_session",
+        "sis.services.rep_scorecard_service.get_session",
+        "sis.alerts.engine.get_session",
+        "sis.api.deps.get_session",
+    ]
+    import sys
+    patches = []
+    for target in _patch_targets:
+        module_path, _, attr = target.rpartition(".")
+        if module_path in sys.modules:
+            p = patch(target, _test_get_session)
+            p.start()
+            patches.append(p)
+
+    try:
         yield session
+    finally:
+        for p in patches:
+            p.stop()
 
 
 # ── Seeded data fixture ────────────────────────────────────────────────
