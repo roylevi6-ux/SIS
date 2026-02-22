@@ -2,10 +2,9 @@
 
 Run with: streamlit run sis/ui/app.py
 
-Per Technical Architecture Appendix B:
-- Sidebar navigation
-- Multi-page app using Streamlit's page routing
-- st.session_state for chat history and selected account context
+Uses st.navigation() (Streamlit 1.36+) for explicit page routing.
+This disables Streamlit's auto-detection of the pages/ directory
+and gives us grouped sidebar navigation with proper render() calls.
 """
 
 from __future__ import annotations
@@ -35,84 +34,61 @@ def _init_database():
 # Initialize DB on first load (cached — runs only once)
 _init_database()
 
-# ── Page registry ──────────────────────────────────────────────────────
-# Maps display name → module path under sis.ui.pages
+# ── Page definitions ──────────────────────────────────────────────────
+# Each entry: (display_name, module_name under sis.ui.pages)
 
 ANALYTICS_PAGES = [
-    "Pipeline Overview",
-    "Deal Detail",
-    "Deal Brief",
-    "Divergence View",
-    "Team Rollup",
-    "Rep Scorecard",
-    "Trend Analysis",
-    "Forecast Comparison",
+    ("Pipeline Overview", "pipeline_overview"),
+    ("Deal Detail", "deal_detail"),
+    ("Deal Brief", "deal_brief"),
+    ("Divergence View", "divergence_view"),
+    ("Team Rollup", "team_rollup"),
+    ("Rep Scorecard", "rep_scorecard"),
+    ("Trend Analysis", "trend_analysis"),
+    ("Forecast Comparison", "forecast_comparison"),
 ]
 
 ACTIONS_PAGES = [
-    "Meeting Prep",
-    "Upload Transcript",
-    "Run Analysis",
-    "Chat",
+    ("Meeting Prep", "meeting_prep"),
+    ("Upload Transcript", "upload_transcript"),
+    ("Run Analysis", "run_analysis"),
+    ("Chat", "chat"),
 ]
 
 ADMIN_PAGES = [
-    "Feedback Dashboard",
-    "Cost Monitor",
-    "Activity Log",
-    "Daily Digest",
-    "Prompt Versions",
-    "Calibration",
-    "Golden Tests",
-    "Usage Dashboard",
-    "Retrospective Seeding",
+    ("Feedback Dashboard", "feedback_dashboard"),
+    ("Cost Monitor", "cost_monitor"),
+    ("Activity Log", "activity_log"),
+    ("Daily Digest", "daily_digest"),
+    ("Prompt Versions", "prompt_versions"),
+    ("Calibration", "calibration"),
+    ("Golden Tests", "golden_tests"),
+    ("Usage Dashboard", "usage_dashboard"),
+    ("Retrospective Seeding", "retrospective_seeding"),
 ]
 
-PAGE_REGISTRY: dict[str, str] = {}
-for name in ANALYTICS_PAGES + ACTIONS_PAGES + ADMIN_PAGES:
-    module_name = name.lower().replace(" ", "_")
-    PAGE_REGISTRY[name] = f"sis.ui.pages.{module_name}"
+
+def _make_page_callable(display_name: str, module_name: str):
+    """Create a callable that imports and renders a page module."""
+    def _render_page():
+        track_event("page_view", page_name=display_name)
+        mod = importlib.import_module(f"sis.ui.pages.{module_name}")
+        mod.render()
+    return _render_page
 
 
-def _render_sidebar_section(
-    label: str,
-    pages: list[str],
-    section_key: str,
-) -> str | None:
-    """Render a sidebar section with header and radio group.
-
-    Returns the selected page name, or None if nothing selected in this section.
-    """
-    st.sidebar.markdown(
-        f'<div class="sidebar-section-header">{label}</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Determine default index: 0 if this section owns the active page, else None
-    active = st.session_state.get("active_section")
-    default_idx = 0 if active == section_key else None
-
-    # If this section is active and has a stored page, find its index
-    if active == section_key:
-        stored = st.session_state.get("active_page", pages[0])
-        if stored in pages:
-            default_idx = pages.index(stored)
-
-    selected = st.sidebar.radio(
-        label,
-        pages,
-        index=default_idx,
-        key=f"nav_{section_key}",
-        label_visibility="collapsed",
-    )
-
-    return selected
+def _build_st_pages(page_defs: list[tuple[str, str]]) -> list:
+    """Build list of st.Page objects from (display_name, module_name) tuples."""
+    return [
+        st.Page(_make_page_callable(name, mod), title=name, url_path=mod)
+        for name, mod in page_defs
+    ]
 
 
 def main():
     st.set_page_config(
         page_title="SIS — Sales Intelligence System",
-        page_icon="📊",
+        page_icon="\U0001f4ca",
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -131,42 +107,14 @@ def main():
     )
     st.sidebar.markdown('<hr class="sis-section-divider">', unsafe_allow_html=True)
 
-    # ── Initialize session state ───────────────────────────────────────
-    if "active_section" not in st.session_state:
-        st.session_state.active_section = "analytics"
-    if "active_page" not in st.session_state:
-        st.session_state.active_page = ANALYTICS_PAGES[0]
+    # ── Navigation (disables pages/ auto-detection) ────────────────────
+    pg = st.navigation({
+        "Analytics": _build_st_pages(ANALYTICS_PAGES),
+        "Actions": _build_st_pages(ACTIONS_PAGES),
+        "Admin": _build_st_pages(ADMIN_PAGES),
+    })
 
-    # ── Grouped navigation radios ──────────────────────────────────────
-    sections = [
-        ("Analytics", ANALYTICS_PAGES, "analytics"),
-        ("Actions", ACTIONS_PAGES, "actions"),
-        ("Admin", ADMIN_PAGES, "admin"),
-    ]
-
-    page = None
-    for label, pages, key in sections:
-        selected = _render_sidebar_section(label, pages, key)
-        # Detect if user clicked in this section
-        if selected and selected != st.session_state.get(f"_prev_{key}"):
-            st.session_state.active_section = key
-            st.session_state.active_page = selected
-            page = selected
-        st.session_state[f"_prev_{key}"] = selected
-
-    # Fallback: use stored active page
-    if page is None:
-        page = st.session_state.get("active_page", ANALYTICS_PAGES[0])
-
-    # ── Track + route ──────────────────────────────────────────────────
-    track_event("page_view", page_name=page)
-
-    module_path = PAGE_REGISTRY.get(page)
-    if module_path:
-        mod = importlib.import_module(module_path)
-        mod.render()
-    else:
-        st.info("Select a page from the sidebar.")
+    pg.run()
 
 
 if __name__ == "__main__":
