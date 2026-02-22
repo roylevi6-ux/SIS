@@ -48,6 +48,8 @@ from sis.api.routes import (  # noqa: E402
     calibration,
     admin,
     export,
+    chat,
+    sse,
 )
 
 app.include_router(accounts.router)
@@ -58,3 +60,5 @@ app.include_router(feedback.router)
 app.include_router(calibration.router)
 app.include_router(admin.router)
 app.include_router(export.router)
+app.include_router(chat.router)
+app.include_router(sse.router)
