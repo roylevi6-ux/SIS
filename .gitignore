@@ -50,3 +50,6 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Worktrees
+.worktrees/
