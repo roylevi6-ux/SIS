@@ -613,24 +613,44 @@ SQLAlchemy's `Column` definitions should use type mapping that auto-switches:
 
 ---
 
-## 5. Agentforce Migration Path
+## 5. Salesforce Lightning Web Component (LWC) Migration Path
 
-### 5.1 Design Patterns for Portability
+### 5.1 Three-Phase Frontend Strategy
 
-The system is designed so that each component maps cleanly to an Agentforce concept:
+The frontend follows a deliberate migration path designed for speed-to-value now and Salesforce-native deployment later:
 
-| SIS Component | Agentforce Equivalent | Migration Strategy |
-|--------------|----------------------|-------------------|
-| Agent 1-10 (Python functions) | Agent Actions (Apex/Flow) | Each agent's prompt template + output schema becomes an Agent Action. The prompt is the logic; the Python wrapper is disposable. |
-| Orchestrator (asyncio pipeline) | Agentforce Topics + Flow orchestration | The sequential-parallel flow becomes a Flow with parallel paths. Topic routing replaces the orchestrator. |
-| SQLite tables | Salesforce Custom Objects | Each table maps to a custom object. JSON columns become related lists or rich text fields. |
-| Calibration YAML | Custom Metadata Types | Key-value calibration params become Custom Metadata, editable in Setup without code deployment. |
-| Prompt templates (Jinja2) | Prompt Template objects | Agentforce has native prompt template management. Variables map to Jinja2 variables. |
-| Streamlit dashboard | Salesforce Lightning pages | Custom Lightning Web Components for deal health, pipeline views. |
-| Chat interface | Agentforce conversational layer | Native capability — this is Agentforce's core strength. |
-| Output validator | Apex validation triggers | Before-save triggers on custom objects enforce schema and NEVER rules. |
+| Phase | Frontend | Backend | Purpose |
+|-------|----------|---------|---------|
+| **Phase 1 (POC)** | Streamlit | Python services + SQLite | Validate pipeline quality, calibrate prompts, prove value |
+| **Phase 2 (Intermediate)** | Next.js + FastAPI | Python services + PostgreSQL | Production-grade UI, REST API layer, component architecture matching LWC |
+| **Phase 3 (Production)** | Salesforce Lightning Web Components | Apex controllers calling Python API (or Salesforce-native) | Embedded in Salesforce, native CRM integration, enterprise deployment |
 
-### 5.2 Portability Rules (enforced during POC development)
+### 5.2 Design Patterns for Portability
+
+The system is designed so that each component maps cleanly to a Salesforce LWC concept:
+
+| SIS Component | Next.js (Phase 2) | Salesforce LWC (Phase 3) | Migration Strategy |
+|--------------|-------------------|-------------------------|-------------------|
+| Agent 1-10 (Python functions) | Called via FastAPI endpoints | Called via Apex external callouts or Salesforce Functions | Prompt templates + output schemas are the portable artifacts. Python wrappers are disposable. |
+| Orchestrator (asyncio pipeline) | FastAPI async endpoints | Apex Queueable/Flow orchestration | REST API contract stays the same; only the caller changes. |
+| SQLite/PostgreSQL tables | PostgreSQL via SQLAlchemy | Salesforce Custom Objects | Each table maps to a custom object. JSON columns become related lists or JSONB fields. |
+| Calibration YAML | Loaded at API startup | Custom Metadata Types | Key-value calibration params become Custom Metadata, editable in Setup without code deployment. |
+| Prompt templates (Jinja2) | Served by FastAPI | Stored in Custom Metadata or Static Resources | Templates are pure text with `{{variable}}` placeholders — language-agnostic. |
+| Streamlit pages | Next.js React components | Lightning Web Components | Each Next.js component maps 1:1 to an LWC component (props → `@api`, state → `@track`, events → CustomEvent). |
+| Chat interface | Next.js chat component + FastAPI | LWC chat component or Agentforce conversational layer | Same REST API; only the UI shell changes. |
+| Output validator | FastAPI middleware | Apex validation triggers | Before-save triggers on custom objects enforce schema and NEVER rules. |
+
+### 5.3 Why Next.js as the Intermediate Step
+
+Next.js was chosen specifically to minimize the Phase 3 LWC migration effort:
+
+1. **Component-based architecture** — React components map directly to LWC components. Props → `@api` properties, state → `@track` reactivity, event handlers → CustomEvent dispatch.
+2. **REST API consumption** — Next.js fetches data from FastAPI; LWC fetches from Apex controllers calling the same API. The data contracts are identical.
+3. **Ecosystem and AI tooling** — Largest frontend ecosystem. Claude and other AI tools excel at React, accelerating the POC build.
+4. **Server-side rendering** — Next.js SSR patterns align with LWC's server-side data loading via `@wire` decorators.
+5. **TypeScript** — Type-safe component interfaces translate directly to LWC's typed `@api` properties.
+
+### 5.4 Portability Rules (enforced during development)
 
 1. **No Python-specific logic in agent prompts.** Prompts are pure text with `{{variable}}` placeholders. They must work identically when called from Apex or any other language.
 
@@ -638,33 +658,50 @@ The system is designed so that each component maps cleanly to an Agentforce conc
 
 3. **Orchestration logic is separate from agent logic.** The orchestrator knows the order (1 -> 2-8 parallel -> 9 -> 10) and passes outputs between steps. Agents never call other agents directly.
 
-4. **Configuration is data, not code.** Calibration values, model assignments, stage-relevance weights — all live in YAML files that could be loaded into Salesforce Custom Metadata.
+4. **Configuration is data, not code.** Calibration values, model assignments, stage-relevance weights — all live in YAML files that map to Salesforce Custom Metadata.
 
 5. **No state inside agents.** Agents are stateless functions. All state lives in the database. An agent receives everything it needs in its input payload.
 
-### 5.3 Migration Checklist (for Phase 3)
+6. **REST API as the portability boundary.** The FastAPI layer defines the contract between frontend and backend. Any frontend (Next.js, LWC, mobile) can consume the same endpoints. This is the critical migration enabler.
+
+### 5.5 Migration Checklist (Phase 2: Next.js)
 
 ```
-Phase 3 Migration Steps:
-========================
-[ ] Create Custom Objects matching SQLite schema
-[ ] Migrate data from SQLite to Salesforce custom objects
-[ ] Convert each agent's prompt template to Agentforce Prompt Template
-[ ] Create Apex classes for output validation (mirror Python validators)
-[ ] Build Flow to replace asyncio orchestrator (parallel paths supported)
-[ ] Create Agent Actions wrapping LLM calls with prompt templates
-[ ] Build Lightning Web Components for dashboard views
-[ ] Configure Agentforce Topics for conversational interface
+Phase 2 Migration Steps (Streamlit → Next.js):
+================================================
+[ ] Add FastAPI layer exposing all service functions as REST endpoints
+[ ] Migrate SQLite → PostgreSQL (schema already compatible)
+[ ] Build Next.js app with component structure mirroring LWC target
+[ ] Map each Streamlit page to a Next.js page/component
+[ ] Implement authentication (supports SF SSO for Phase 3)
+[ ] Deploy Next.js frontend + FastAPI backend (Vercel + Railway/Render)
+[ ] Validate all user flows work end-to-end via REST API
+[ ] Run golden test set against API endpoints
+```
+
+### 5.6 Migration Checklist (Phase 3: Salesforce LWC)
+
+```
+Phase 3 Migration Steps (Next.js → Salesforce LWC):
+=====================================================
+[ ] Create Custom Objects matching PostgreSQL schema
+[ ] Migrate data from PostgreSQL to Salesforce custom objects
+[ ] Build Apex controllers as proxy to Python API (or rewrite in Apex)
+[ ] Convert each Next.js component to an LWC component (1:1 mapping)
+[ ] Build Lightning App Page layouts for dashboard views
+[ ] Configure Salesforce Connected App for API authentication
 [ ] Set up Custom Metadata Types for calibration config
-[ ] Run golden test set against Agentforce pipeline — compare to Python results
+[ ] Implement LWC chat component (or integrate Agentforce conversational layer)
+[ ] Run golden test set against LWC-powered pipeline — compare to Next.js results
 [ ] Parallel-run both systems for 2 weeks before cutover
+[ ] Decommission standalone Next.js deployment
 ```
 
 ---
 
 ## 6. API Design — Internal Service Interfaces
 
-Even though Streamlit calls Python functions directly (no HTTP), clean interfaces are essential for testability, Agentforce migration, and separation of concerns.
+Even though Streamlit calls Python functions directly (no HTTP) during Phase 1, clean interfaces are essential for testability, the Next.js/FastAPI migration (Phase 2), and the eventual Salesforce LWC deployment (Phase 3).
 
 ### 6.1 Analysis Service
 
@@ -972,7 +1009,7 @@ sis/
 |   |-- run_golden_tests.py         # Regression testing against golden set
 |   |-- seed_db.py                  # Initialize DB with schema + optional seed data
 |   |-- cost_report.py              # Generate monthly cost report from DB
-|   |-- export_for_migration.py     # Export all data in Agentforce-compatible format
+|   |-- export_for_migration.py     # Export all data in Salesforce-compatible format
 |
 |-- docs/
 |   |-- architecture.md             # This document
@@ -1249,4 +1286,4 @@ WEEK 7-8: Calibration + Polish
 
 ---
 
-*Document produced for Riskified SIS POC. Architecture decisions optimized for: builder simplicity, Agentforce portability, cost efficiency, and fast iteration on prompts/calibration.*
+*Document produced for Riskified SIS POC. Architecture decisions optimized for: builder simplicity, Salesforce LWC portability (via Next.js intermediate), cost efficiency, and fast iteration on prompts/calibration.*

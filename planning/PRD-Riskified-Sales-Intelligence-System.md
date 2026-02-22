@@ -190,7 +190,7 @@ Riskified's VP Sales manages ~100 active deals across a team of dozens of sales 
 |-----|-------------|
 | P2-1 | Salesforce data integration: pull deal stages, amounts, close dates, activity logs |
 | P2-2 | Outreach/email integration: analyze email engagement signals |
-| P2-3 | Agentforce deployment: move from local to Salesforce-native agent |
+| P2-3 | Salesforce LWC deployment: move frontend from Next.js to Lightning Web Components embedded in Salesforce |
 | P2-4 | Rep-facing features: self-coaching, deal prep briefs, call debriefs |
 | P2-5 | Historical win/loss correlation: train model on closed deals to improve scoring |
 | P2-6 | Automated CRM write-back: update deal fields from transcript insights |
@@ -671,9 +671,9 @@ Each agent has hard constraints ("NEVER rules") enforced at the prompt level and
 
 ### Design-for-Migration Principles
 
-The POC MUST be architected to migrate to **Agentforce (preferred)** or **N8N**:
+The POC MUST be architected to migrate to **Salesforce Lightning Web Components (LWC)** as the production deployment platform, with **Next.js** as an intermediate frontend (Phase 2) that maps 1:1 to LWC components:
 
-1. **Multi-agent architecture:** Each of the 10 agents is a separate, independently deployable unit that can be ported to an Agentforce agent action or N8N node. Sequential-parallel execution: Agent 1 → Agents 2-8 parallel → Agent 9 → Agent 10.
+1. **Multi-agent architecture:** Each of the 10 agents is a separate, independently deployable unit that can be exposed via FastAPI endpoints and later called from Apex controllers in Salesforce. Sequential-parallel execution: Agent 1 → Agents 2-8 parallel → Agent 9 → Agent 10.
 2. **Structured data model:** All agent outputs use standardized JSON schema (Section 7.4) that maps to Salesforce custom objects.
 3. **Prompt-as-configuration:** Agent prompts use XML-structured templates with `[AGENT-SPECIFIC]` extension points. Calibration values (YAML config) are separated from prompt logic — TLs can tune thresholds without touching prompts.
 4. **API-first:** All system functions accessible via API calls, not just UI.
@@ -921,7 +921,8 @@ The revenue intelligence market (~$5B, growing 15-22% CAGR) is designed for the 
 |-------|-------|-------------|-------|----------|
 | **Phase 1: POC** | Pipeline Intelligence + Objective Forecasting via 10-agent sequential-parallel pipeline (transcript-only, blind scoring, AI stage inference). Includes: preprocessor, orchestrator, output validator, calibration config, golden test set (25 deals), cold start retrospective seeding. | Gong transcripts (last 5/account, manual). Last-5-calls constraint is permanent, not POC-only. | 1-2 champion TLs + VP | 6-8 weeks |
 | **Phase 2: Expand** | Add SF data, email signals as supplementary agent inputs. Full TL rollout. L&D pillar (rep performance agents). Stage inference validated against SF opportunity stage. | Gong (last 5/account) + Salesforce + Outreach | All TLs + middle mgmt | 3-4 months |
-| **Phase 3: Scale** | Agentforce/N8N deployment, rep-facing features, historical training, dynamic agent ontology (agents evolve based on accumulated deal patterns) | Full data stack | Entire GTM org | 3-6 months |
+| **Phase 2.5: Next.js + FastAPI** | Rebuild frontend in Next.js with FastAPI REST layer. Component architecture designed for 1:1 LWC migration. PostgreSQL migration. Production deployment. | Gong (last 5/account) + Salesforce + Outreach | All TLs + middle mgmt | Included in Phase 2 |
+| **Phase 3: Scale** | Salesforce Lightning Web Component deployment, rep-facing features, historical training, dynamic agent ontology (agents evolve based on accumulated deal patterns) | Full data stack | Entire GTM org | 3-6 months |
 
 ---
 
@@ -932,7 +933,7 @@ The revenue intelligence market (~$5B, growing 15-22% CAGR) is designed for the 
 | OQ1 | What is the exact format of Gong transcript exports? (Plain text? JSON? What metadata is included?) | VP Sales / Gong Admin | P0 — blocks POC build |
 | OQ2 | How many accounts should we target for POC? (Recommend 10-15 for meaningful signal calibration) | VP Sales | P0 |
 | OQ3 | Does the CRM and AI team have capacity to own post-launch maintenance and calibration? | CRM/AI Team Lead | P0 |
-| OQ4 | What is Riskified's current Agentforce license/tier? Does it support custom agent actions? | Salesforce Admin | P1 — informs Phase 3 |
+| OQ4 | What is Riskified's current Salesforce license/tier? Does it support Lightning Web Components and Connected Apps for external API access? | Salesforce Admin | P1 — informs Phase 3 |
 | OQ5 | Legal/HR: What are the requirements for informing reps that call transcripts are being analyzed for performance scoring? | Legal / HR | P1 — before L&D pillar |
 | OQ6 | Should the system track BD pipeline separately from AE pipeline, given different cycle dynamics? | VP Sales | P1 |
 | OQ7 | What is the desired calibration cadence post-POC? Weekly? Bi-weekly? | VP Sales + TLs | P1 |
