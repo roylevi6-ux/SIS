@@ -236,7 +236,7 @@ function AgentAnalysesSection({ accountId }: { accountId: string }) {
       ) : (
         <div className="space-y-2">
           {agentList.map((agent) => (
-            <AgentCard key={agent.id} analysis={agent} />
+            <AgentCard key={agent.agent_id} analysis={agent} />
           ))}
         </div>
       )}
