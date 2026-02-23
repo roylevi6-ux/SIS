@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.eggs/
+
+# Data & DB
+data/
+*.db
+*.sqlite3
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Frontend (built separately)
+frontend/
+
+# Docs & planning
+docs/
+planning/
+scripts/
+README.md
+.streamlit/
+
+# Environment
+.env
+.env.local
