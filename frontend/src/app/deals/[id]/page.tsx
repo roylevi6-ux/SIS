@@ -69,12 +69,13 @@ interface AccountDetail {
 }
 
 interface AnalysisRun {
-  id: string;
-  account_id: string;
+  run_id: string;
   status: string;
-  created_at: string;
+  started_at: string;
   completed_at: string | null;
-  [key: string]: unknown;
+  total_cost_usd: number | null;
+  total_input_tokens: number | null;
+  total_output_tokens: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -210,7 +211,7 @@ function AgentAnalysesSection({ accountId }: { accountId: string }) {
 
   // Get the latest completed run
   const latestRun = runs.find((r) => r.status === 'completed') ?? runs[0];
-  const runId = latestRun?.id ?? '';
+  const runId = latestRun?.run_id ?? '';
 
   const { data: agents, isLoading } = useAgentAnalyses(runId);
   const agentList = (agents ?? []) as AgentAnalysis[];
@@ -261,7 +262,7 @@ function AnalysisHistorySection({ accountId }: { accountId: string }) {
           <div className="space-y-2">
             {runs.slice(0, 10).map((run) => (
               <div
-                key={run.id}
+                key={run.run_id}
                 className="flex items-center justify-between text-sm py-1"
               >
                 <div className="flex items-center gap-2">
@@ -278,11 +279,11 @@ function AnalysisHistorySection({ accountId }: { accountId: string }) {
                     {run.status}
                   </Badge>
                   <span className="text-muted-foreground">
-                    {formatDate(run.created_at)}
+                    {formatDate(run.started_at)}
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground font-mono">
-                  {run.id.slice(0, 8)}
+                  {run.run_id.slice(0, 8)}
                 </span>
               </div>
             ))}
