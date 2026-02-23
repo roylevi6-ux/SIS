@@ -83,27 +83,66 @@ function getInternalNames(participants: Participant[] | null): string {
 }
 
 // ---------------------------------------------------------------------------
-// Generate month tick marks for the time axis
+// Generate adaptive axis tick marks
 // ---------------------------------------------------------------------------
 
-function getMonthTicks(startMs: number, endMs: number): { label: string; pct: number }[] {
-  const ticks: { label: string; pct: number }[] = [];
-  const range = endMs - startMs;
-  if (range <= 0) return ticks;
+const DAY_MS = 86_400_000;
 
-  const start = new Date(startMs);
-  // Start from the first day of the month after the start date
-  let cursor = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+function getAxisTicks(
+  sorted: CallEntry[],
+  axisStart: number,
+  axisRange: number,
+): { label: string; pct: number }[] {
+  if (sorted.length === 0 || axisRange <= 0) return [];
 
-  while (cursor.getTime() <= endMs) {
-    const pct = ((cursor.getTime() - startMs) / range) * 100;
-    ticks.push({
-      label: cursor.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-      pct,
+  const rangeDays = axisRange / DAY_MS;
+  let ticks: { label: string; pct: number }[] = [];
+
+  if (rangeDays < 90) {
+    // Short range: show each unique call date
+    const seen = new Set<string>();
+    for (const call of sorted) {
+      if (seen.has(call.call_date)) continue;
+      seen.add(call.call_date);
+      const ms = parseDate(call.call_date).getTime();
+      const pct = ((ms - axisStart) / axisRange) * 100;
+      ticks.push({ label: formatShortDate(parseDate(call.call_date)), pct });
+    }
+  } else {
+    // Longer range: month boundary ticks
+    const start = new Date(axisStart);
+    let cursor = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    while (cursor.getTime() <= axisStart + axisRange) {
+      const pct = ((cursor.getTime() - axisStart) / axisRange) * 100;
+      ticks.push({
+        label: cursor.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        pct,
+      });
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+
+    // Always add first and last call dates
+    const firstMs = parseDate(sorted[0].call_date).getTime();
+    const lastMs = parseDate(sorted[sorted.length - 1].call_date).getTime();
+    ticks.unshift({
+      label: formatShortDate(parseDate(sorted[0].call_date)),
+      pct: ((firstMs - axisStart) / axisRange) * 100,
     });
-    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    ticks.push({
+      label: formatShortDate(parseDate(sorted[sorted.length - 1].call_date)),
+      pct: ((lastMs - axisStart) / axisRange) * 100,
+    });
   }
-  return ticks;
+
+  // Remove ticks that overlap (within 8% of each other), keep first occurrence
+  ticks.sort((a, b) => a.pct - b.pct);
+  const filtered: typeof ticks = [];
+  for (const t of ticks) {
+    if (filtered.length === 0 || t.pct - filtered[filtered.length - 1].pct > 8) {
+      filtered.push(t);
+    }
+  }
+  return filtered;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,7 +170,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
   const axisEnd = maxDate + padMs;
   const axisRange = axisEnd - axisStart;
 
-  const monthTicks = getMonthTicks(axisStart, axisEnd);
+  const axisTicks = getAxisTicks(sorted, axisStart, axisRange);
 
   // Today marker
   const today = Date.now();
@@ -238,8 +277,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
 
           {/* Date axis labels */}
           <div className="relative h-4 mt-0.5">
-            {/* Month ticks */}
-            {monthTicks.map((tick, i) => (
+            {axisTicks.map((tick, i) => (
               <span
                 key={i}
                 className="absolute text-[10px] text-muted-foreground -translate-x-1/2 whitespace-nowrap"
@@ -248,18 +286,6 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
                 {tick.label}
               </span>
             ))}
-
-            {/* First and last date labels if no month ticks */}
-            {monthTicks.length === 0 && sorted.length >= 2 && (
-              <>
-                <span className="absolute left-0 text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatShortDate(parseDate(sorted[0].call_date))}
-                </span>
-                <span className="absolute right-0 text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatShortDate(parseDate(sorted[sorted.length - 1].call_date))}
-                </span>
-              </>
-            )}
           </div>
         </TooltipProvider>
       </CardContent>
