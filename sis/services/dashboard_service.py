@@ -145,7 +145,7 @@ def get_team_rollup(team: Optional[str] = None) -> list[dict]:
         # Group by team
         teams: dict[str, list] = {}
         for acct in accounts:
-            t = acct.team_name or "Unassigned"
+            t = acct.team_lead or acct.team_name or "Unassigned"
             if team and t != team:
                 continue
             if t not in teams:
