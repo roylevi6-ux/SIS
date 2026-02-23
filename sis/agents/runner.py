@@ -305,9 +305,9 @@ def run_agent(
 
         except anthropic.APIStatusError as e:
             last_error = e
-            if e.status_code == 529:  # overloaded
+            if e.status_code in (529, 503, 500):  # overloaded / unavailable / internal
                 wait = 2 ** attempt
-                logger.warning("[%s] API overloaded (529), waiting %ds", agent_name, wait)
+                logger.warning("[%s] API server error (%d), waiting %ds", agent_name, e.status_code, wait)
                 time.sleep(wait)
             else:
                 logger.warning("[%s] API status error %d: %s", agent_name, e.status_code, e)
@@ -391,9 +391,9 @@ async def run_agent_async(
 
         except anthropic.APIStatusError as e:
             last_error = e
-            if e.status_code == 529:  # overloaded
+            if e.status_code in (529, 503, 500):  # overloaded / unavailable / internal
                 wait = 2 ** attempt
-                logger.warning("[%s] API overloaded (529), waiting %ds", agent_name, wait)
+                logger.warning("[%s] API server error (%d), waiting %ds", agent_name, e.status_code, wait)
                 await asyncio.sleep(wait)
             else:
                 logger.warning("[%s] API status error %d: %s", agent_name, e.status_code, e)
