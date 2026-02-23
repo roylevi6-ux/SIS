@@ -1,9 +1,22 @@
+import { getStoredToken } from './auth';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  };
+
+  // Automatically include JWT if a token is stored
+  const token = getStoredToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
     ...options,
+    headers,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
@@ -12,8 +25,16 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-// Account endpoints
+// Auth + Account endpoints
 export const api = {
+  auth: {
+    login: (username: string, role: string) =>
+      apiFetch<{ token: string; username: string; role: string }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, role }),
+      }),
+    me: () => apiFetch<{ username: string; role: string }>('/api/auth/me'),
+  },
   accounts: {
     list: (params?: { sort_by?: string; team?: string }) =>
       apiFetch<any[]>(`/api/accounts/?${new URLSearchParams(params as any)}`),

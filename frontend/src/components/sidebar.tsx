@@ -26,7 +26,11 @@ import {
   ChevronDown,
   ChevronRight,
   Menu,
+  LogOut,
+  User,
 } from 'lucide-react';
+
+import { useAuth } from '@/lib/auth';
 
 import { cn } from '@/lib/utils';
 import {
@@ -167,6 +171,44 @@ function SidebarLogo() {
   );
 }
 
+function SidebarUserFooter() {
+  const { user, logout } = useAuth();
+
+  if (!user) return null;
+
+  const roleLabel =
+    user.role === 'admin'
+      ? 'Admin'
+      : user.role === 'team_lead'
+        ? 'Team Lead'
+        : 'IC';
+
+  return (
+    <div className="border-t border-sidebar-border px-3 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex size-8 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground shrink-0">
+          <User className="size-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-sidebar-foreground truncate">
+            {user.username}
+          </p>
+          <p className="text-xs text-sidebar-foreground/60">{roleLabel}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={logout}
+          className="size-8 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+          aria-label="Sign out"
+        >
+          <LogOut className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function SidebarInner({ onItemClick }: { onItemClick?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-sidebar">
@@ -182,6 +224,7 @@ function SidebarInner({ onItemClick }: { onItemClick?: () => void }) {
           ))}
         </div>
       </div>
+      <SidebarUserFooter />
     </div>
   );
 }

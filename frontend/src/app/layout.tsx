@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
 import { Providers } from '@/components/providers';
+import { AuthGuard } from '@/components/auth-guard';
 import { DesktopSidebar, MobileSidebar } from '@/components/sidebar';
 
 const geistSans = Geist({
@@ -31,17 +32,19 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          {/* Desktop fixed sidebar */}
-          <DesktopSidebar />
+          <AuthGuard>
+            {/* Desktop fixed sidebar */}
+            <DesktopSidebar />
 
-          {/* Mobile Sheet sidebar + hamburger trigger */}
-          <MobileSidebar />
+            {/* Mobile Sheet sidebar + hamburger trigger */}
+            <MobileSidebar />
 
-          {/* Main content area: offset by sidebar width on desktop */}
-          <main className="min-h-screen lg:ml-64">
-            {/* Top padding on mobile to clear the hamburger button */}
-            <div className="pt-16 lg:pt-0">{children}</div>
-          </main>
+            {/* Main content area: offset by sidebar width on desktop */}
+            <main className="min-h-screen lg:ml-64">
+              {/* Top padding on mobile to clear the hamburger button */}
+              <div className="pt-16 lg:pt-0">{children}</div>
+            </main>
+          </AuthGuard>
         </Providers>
       </body>
     </html>
