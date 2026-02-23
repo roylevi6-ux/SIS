@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from sis.api.deps import get_current_user
 from sis.services import export_service
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 
 @router.get("/brief/{account_id}")
-def export_deal_brief(account_id: str, format: str = "markdown"):
+def export_deal_brief(account_id: str, format: str = "markdown", user: dict = Depends(get_current_user)):
     """Export a one-page deal brief for pipeline review prep."""
     content = export_service.export_deal_brief(
         account_id=account_id,
@@ -22,7 +23,7 @@ def export_deal_brief(account_id: str, format: str = "markdown"):
 
 
 @router.get("/forecast")
-def export_forecast_report(team: Optional[str] = None, format: str = "markdown"):
+def export_forecast_report(team: Optional[str] = None, format: str = "markdown", user: dict = Depends(get_current_user)):
     """Export AI vs IC forecast comparison report."""
     content = export_service.export_forecast_report(
         team=team,

@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from sis.api.deps import get_optional_user
+from sis.api.deps import get_current_user
 from sis.services import (
     usage_tracking_service,
     user_action_log_service,
@@ -32,13 +32,13 @@ router = APIRouter(tags=["admin"])
 
 
 @router.get("/api/tracking/summary")
-def get_usage_summary(days: int = 30):
+def get_usage_summary(days: int = 30, user: dict = Depends(get_current_user)):
     """Aggregated usage event counts for the last N days."""
     return usage_tracking_service.get_usage_summary(days=days)
 
 
 @router.get("/api/tracking/cro-metrics")
-def get_cro_metrics():
+def get_cro_metrics(user: dict = Depends(get_current_user)):
     """Compute the 6 CRO success criteria for Week 8 checkpoint."""
     return usage_tracking_service.get_cro_metrics()
 
@@ -46,7 +46,7 @@ def get_cro_metrics():
 @router.post("/api/tracking/event")
 def track_event(
     body: TrackEventBody,
-    user: Optional[dict] = Depends(get_optional_user),
+    user: dict = Depends(get_current_user),
 ):
     """Log a usage event. Fire-and-forget."""
     usage_tracking_service.track_event(
@@ -69,6 +69,7 @@ def get_action_logs(
     user_name: Optional[str] = None,
     account_id: Optional[str] = None,
     limit: int = 500,
+    user: dict = Depends(get_current_user),
 ):
     """Query action logs with filters."""
     return user_action_log_service.get_action_logs(
@@ -81,13 +82,13 @@ def get_action_logs(
 
 
 @router.get("/api/logs/actions/summary")
-def get_action_summary(days: int = 30):
+def get_action_summary(days: int = 30, user: dict = Depends(get_current_user)):
     """Aggregate action counts by type and user."""
     return user_action_log_service.get_action_summary(days=days)
 
 
 @router.post("/api/logs/actions")
-def log_action(body: LogActionBody, user: Optional[dict] = Depends(get_optional_user)):
+def log_action(body: LogActionBody, user: dict = Depends(get_current_user)):
     """Log a user action. Fire-and-forget."""
     user_action_log_service.log_action(
         action_type=body.action_type,
@@ -106,7 +107,7 @@ def log_action(body: LogActionBody, user: Optional[dict] = Depends(get_optional_
 
 
 @router.post("/api/coaching/")
-def submit_coaching(body: CoachingCreate, user: Optional[dict] = Depends(get_optional_user)):
+def submit_coaching(body: CoachingCreate, user: dict = Depends(get_current_user)):
     """Submit a coaching entry for a rep on a specific dimension."""
     try:
         return coaching_service.submit_coaching(
@@ -129,6 +130,7 @@ def list_coaching(
     account_id: Optional[str] = None,
     dimension: Optional[str] = None,
     incorporated: Optional[bool] = None,
+    user: dict = Depends(get_current_user),
 ):
     """List coaching entries with optional filters."""
     return coaching_service.list_coaching(
@@ -140,7 +142,7 @@ def list_coaching(
 
 
 @router.patch("/api/coaching/{entry_id}/incorporate")
-def mark_incorporated(entry_id: str, notes: Optional[str] = None, user: Optional[dict] = Depends(get_optional_user)):
+def mark_incorporated(entry_id: str, notes: Optional[str] = None, user: dict = Depends(get_current_user)):
     """Mark a coaching entry as incorporated."""
     try:
         return coaching_service.mark_incorporated(entry_id=entry_id, notes=notes)
@@ -149,13 +151,13 @@ def mark_incorporated(entry_id: str, notes: Optional[str] = None, user: Optional
 
 
 @router.get("/api/coaching/summary")
-def get_coaching_summary(rep_name: Optional[str] = None):
+def get_coaching_summary(rep_name: Optional[str] = None, user: dict = Depends(get_current_user)):
     """Aggregate coaching stats: total, by dimension, incorporation rate."""
     return coaching_service.get_coaching_summary(rep_name=rep_name)
 
 
 @router.get("/api/coaching/check")
-def check_incorporation(rep_name: str):
+def check_incorporation(rep_name: str, user: dict = Depends(get_current_user)):
     """Check pending coaching entries for score improvements."""
     return coaching_service.check_incorporation(rep_name=rep_name)
 
@@ -164,13 +166,13 @@ def check_incorporation(rep_name: str):
 
 
 @router.get("/api/prompts/versions")
-def list_versions(agent_id: Optional[str] = None):
+def list_versions(agent_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     """List prompt versions, optionally filtered by agent_id."""
     return prompt_version_service.list_versions(agent_id=agent_id)
 
 
 @router.get("/api/prompts/versions/active/{agent_id}")
-def get_active_version(agent_id: str):
+def get_active_version(agent_id: str, user: dict = Depends(get_current_user)):
     """Get the currently active prompt version for an agent."""
     result = prompt_version_service.get_active_version(agent_id=agent_id)
     if result is None:
@@ -179,7 +181,7 @@ def get_active_version(agent_id: str):
 
 
 @router.post("/api/prompts/versions")
-def create_version(body: PromptVersionCreate, user: Optional[dict] = Depends(get_optional_user)):
+def create_version(body: PromptVersionCreate, user: dict = Depends(get_current_user)):
     """Create a new prompt version, deactivating the previous active version."""
     return prompt_version_service.create_version(
         agent_id=body.agent_id,
@@ -191,7 +193,7 @@ def create_version(body: PromptVersionCreate, user: Optional[dict] = Depends(get
 
 
 @router.post("/api/prompts/versions/rollback")
-def rollback_version(body: RollbackVersionBody, user: Optional[dict] = Depends(get_optional_user)):
+def rollback_version(body: RollbackVersionBody, user: dict = Depends(get_current_user)):
     """Reactivate a previous prompt version."""
     try:
         return prompt_version_service.rollback_version(
@@ -206,7 +208,7 @@ def rollback_version(body: RollbackVersionBody, user: Optional[dict] = Depends(g
 
 
 @router.get("/api/prompts/versions/diff")
-def diff_versions(version_id_a: str, version_id_b: str):
+def diff_versions(version_id_a: str, version_id_b: str, user: dict = Depends(get_current_user)):
     """Return a unified diff between two prompt versions."""
     try:
         diff_text = prompt_version_service.diff_versions(
@@ -222,7 +224,7 @@ def diff_versions(version_id_a: str, version_id_b: str):
 
 
 @router.get("/api/scorecard/reps")
-def get_rep_scorecard(ae_owner: Optional[str] = None):
+def get_rep_scorecard(ae_owner: Optional[str] = None, user: dict = Depends(get_current_user)):
     """Compute behavioral scorecards for reps."""
     return rep_scorecard_service.get_rep_scorecard(ae_owner=ae_owner)
 
@@ -231,12 +233,12 @@ def get_rep_scorecard(ae_owner: Optional[str] = None):
 
 
 @router.get("/api/forecast/data")
-def load_forecast_data(team: Optional[str] = None):
+def load_forecast_data(team: Optional[str] = None, user: dict = Depends(get_current_user)):
     """Load deal-level forecast data for the comparison view."""
     return forecast_data_service.load_forecast_data(team=team)
 
 
 @router.get("/api/forecast/teams")
-def get_team_names():
+def get_team_names(user: dict = Depends(get_current_user)):
     """Return distinct non-null team names."""
     return forecast_data_service.get_team_names()

@@ -11,10 +11,10 @@ from unittest.mock import patch, MagicMock
 
 class TestAnalysisProgress:
 
-    @patch("sis.api.routes.sse._get_run_status")
-    def test_completed_run_emits_single_event(self, mock_status, client):
+    @patch("sis.api.routes.sse._get_progress")
+    def test_completed_run_emits_single_event(self, mock_progress, client):
         """A completed run should emit one SSE event and close the stream."""
-        mock_status.return_value = {
+        mock_progress.return_value = {
             "run_id": "run-1",
             "status": "completed",
             "started_at": "2025-06-15T10:00:00+00:00",
@@ -31,10 +31,10 @@ class TestAnalysisProgress:
         assert payload["run_id"] == "run-1"
         assert payload["status"] == "completed"
 
-    @patch("sis.api.routes.sse._get_run_status")
-    def test_failed_run_emits_single_event(self, mock_status, client):
+    @patch("sis.api.routes.sse._get_progress")
+    def test_failed_run_emits_single_event(self, mock_progress, client):
         """A failed run should also close the stream immediately."""
-        mock_status.return_value = {
+        mock_progress.return_value = {
             "run_id": "run-2",
             "status": "failed",
             "started_at": "2025-06-15T10:00:00+00:00",
@@ -47,10 +47,10 @@ class TestAnalysisProgress:
         payload = json.loads(data_lines[0].removeprefix("data: "))
         assert payload["status"] == "failed"
 
-    @patch("sis.api.routes.sse._get_run_status")
-    def test_partial_run_emits_single_event(self, mock_status, client):
+    @patch("sis.api.routes.sse._get_progress")
+    def test_partial_run_emits_single_event(self, mock_progress, client):
         """A partial run (terminal status) closes the stream immediately."""
-        mock_status.return_value = {
+        mock_progress.return_value = {
             "run_id": "run-3",
             "status": "partial",
             "started_at": "2025-06-15T10:00:00+00:00",
@@ -63,10 +63,10 @@ class TestAnalysisProgress:
         payload = json.loads(data_lines[0].removeprefix("data: "))
         assert payload["status"] == "partial"
 
-    @patch("sis.api.routes.sse._get_run_status")
-    def test_running_then_completed_emits_two_events(self, mock_status, client):
+    @patch("sis.api.routes.sse._get_progress")
+    def test_running_then_completed_emits_two_events(self, mock_progress, client):
         """A running run transitions to completed after polling."""
-        mock_status.side_effect = [
+        mock_progress.side_effect = [
             {
                 "run_id": "run-4",
                 "status": "running",
@@ -89,11 +89,11 @@ class TestAnalysisProgress:
         assert first["status"] == "running"
         assert second["status"] == "completed"
 
-    @patch("sis.api.routes.sse._get_run_status")
-    def test_not_found_run_emits_not_found(self, mock_status, client):
+    @patch("sis.api.routes.sse._get_progress")
+    def test_not_found_run_emits_not_found(self, mock_progress, client):
         """A missing run_id should emit a not_found status (non-terminal, but
         we test the shape). In practice the client should handle this."""
-        mock_status.side_effect = [
+        mock_progress.side_effect = [
             {"run_id": "no-such-run", "status": "not_found"},
             # After not_found, if the run is later created, it could appear.
             # For safety, let's terminate the test by returning a terminal status.
@@ -106,10 +106,10 @@ class TestAnalysisProgress:
         first = json.loads(data_lines[0].removeprefix("data: "))
         assert first["status"] == "not_found"
 
-    @patch("sis.api.routes.sse._get_run_status")
-    def test_sse_format_has_double_newline(self, mock_status, client):
+    @patch("sis.api.routes.sse._get_progress")
+    def test_sse_format_has_double_newline(self, mock_progress, client):
         """Each SSE data line must end with double newline (\\n\\n)."""
-        mock_status.return_value = {
+        mock_progress.return_value = {
             "run_id": "run-fmt",
             "status": "completed",
             "started_at": "2025-06-15T10:00:00+00:00",

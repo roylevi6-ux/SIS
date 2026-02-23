@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from sis.api.deps import get_optional_user
+from sis.api.deps import get_current_user
 from sis.services import analysis_service
 from sis.api.schemas.analyses import (
     AgentAnalysisResponse,
@@ -37,7 +37,7 @@ def _run_pipeline_sync(account_id: str, run_id: str):
 
 
 @router.post("/")
-async def run_analysis(body: AnalysisRequest, user: Optional[dict] = Depends(get_optional_user)):
+async def run_analysis(body: AnalysisRequest, user: dict = Depends(get_current_user)):
     """Start analysis pipeline — returns immediately, polls via SSE.
 
     Creates an AnalysisRun row and initializes the progress store before
@@ -62,7 +62,7 @@ async def run_analysis(body: AnalysisRequest, user: Optional[dict] = Depends(get
 
 
 @router.get("/delta/{account_id}")
-def get_delta(account_id: str):
+def get_delta(account_id: str, user: dict = Depends(get_current_user)):
     """Get assessment delta (latest vs previous) for an account."""
     delta = analysis_service.get_assessment_delta(account_id)
     if delta is None:
@@ -71,25 +71,25 @@ def get_delta(account_id: str):
 
 
 @router.get("/timeline/{account_id}")
-def get_timeline(account_id: str):
+def get_timeline(account_id: str, user: dict = Depends(get_current_user)):
     """Get full assessment history timeline for an account."""
     return analysis_service.get_assessment_timeline(account_id)
 
 
 @router.get("/history/{account_id}", response_model=List[AnalysisHistoryItem])
-def get_history(account_id: str):
+def get_history(account_id: str, user: dict = Depends(get_current_user)):
     """Get analysis run history for an account."""
     return analysis_service.get_analysis_history(account_id)
 
 
 @router.get("/{run_id}/agents", response_model=List[AgentAnalysisResponse])
-def get_agents(run_id: str):
+def get_agents(run_id: str, user: dict = Depends(get_current_user)):
     """Get all agent analyses for a specific run."""
     return analysis_service.get_agent_analyses(run_id)
 
 
 @router.post("/{run_id}/rerun/{agent_id}")
-def rerun_agent(run_id: str, agent_id: str, user: Optional[dict] = Depends(get_optional_user)):
+def rerun_agent(run_id: str, agent_id: str, user: dict = Depends(get_current_user)):
     """Re-run a single agent for an existing analysis run."""
     try:
         return analysis_service.rerun_agent(run_id, agent_id)
@@ -100,7 +100,7 @@ def rerun_agent(run_id: str, agent_id: str, user: Optional[dict] = Depends(get_o
 
 
 @router.post("/{run_id}/resynthesize")
-def resynthesize(run_id: str, user: Optional[dict] = Depends(get_optional_user)):
+def resynthesize(run_id: str, user: dict = Depends(get_current_user)):
     """Re-run synthesis (Agent 10) for an existing analysis run."""
     try:
         return analysis_service.resynthesize(run_id)

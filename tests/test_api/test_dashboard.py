@@ -11,7 +11,7 @@ from unittest.mock import patch
 class TestPipelineOverview:
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_pipeline_returns_overview(self, mock_svc, client):
+    def test_pipeline_returns_overview(self, mock_svc, client, auth_headers):
         mock_svc.get_pipeline_overview.return_value = {
             "total_deals": 3,
             "healthy": [{"account_id": "a1", "account_name": "HealthyCo"}],
@@ -28,7 +28,7 @@ class TestPipelineOverview:
                 "total_mrr_critical": 0,
             },
         }
-        resp = client.get("/api/dashboard/pipeline")
+        resp = client.get("/api/dashboard/pipeline", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["total_deals"] == 3
@@ -36,15 +36,15 @@ class TestPipelineOverview:
         assert data["summary"]["healthy_count"] == 1
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_pipeline_passes_team_filter(self, mock_svc, client):
+    def test_pipeline_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_pipeline_overview.return_value = {"total_deals": 0}
-        client.get("/api/dashboard/pipeline?team=Team+Alpha")
+        client.get("/api/dashboard/pipeline?team=Team+Alpha", headers=auth_headers)
         mock_svc.get_pipeline_overview.assert_called_once_with(team="Team Alpha")
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_pipeline_no_team_passes_none(self, mock_svc, client):
+    def test_pipeline_no_team_passes_none(self, mock_svc, client, auth_headers):
         mock_svc.get_pipeline_overview.return_value = {"total_deals": 0}
-        client.get("/api/dashboard/pipeline")
+        client.get("/api/dashboard/pipeline", headers=auth_headers)
         mock_svc.get_pipeline_overview.assert_called_once_with(team=None)
 
 
@@ -54,7 +54,7 @@ class TestPipelineOverview:
 class TestDivergenceReport:
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_divergence_returns_list(self, mock_svc, client):
+    def test_divergence_returns_list(self, mock_svc, client, auth_headers):
         mock_svc.get_divergence_report.return_value = [
             {
                 "account_id": "a1",
@@ -68,22 +68,22 @@ class TestDivergenceReport:
                 "forecast_rationale": "Multiple positive indicators",
             },
         ]
-        resp = client.get("/api/dashboard/divergence")
+        resp = client.get("/api/dashboard/divergence", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
         assert data[0]["account_name"] == "DivergentCo"
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_divergence_passes_team_filter(self, mock_svc, client):
+    def test_divergence_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_divergence_report.return_value = []
-        client.get("/api/dashboard/divergence?team=Team+Beta")
+        client.get("/api/dashboard/divergence?team=Team+Beta", headers=auth_headers)
         mock_svc.get_divergence_report.assert_called_once_with(team="Team Beta")
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_divergence_empty(self, mock_svc, client):
+    def test_divergence_empty(self, mock_svc, client, auth_headers):
         mock_svc.get_divergence_report.return_value = []
-        resp = client.get("/api/dashboard/divergence")
+        resp = client.get("/api/dashboard/divergence", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json() == []
 
@@ -94,7 +94,7 @@ class TestDivergenceReport:
 class TestTeamRollup:
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_team_rollup_returns_list(self, mock_svc, client):
+    def test_team_rollup_returns_list(self, mock_svc, client, auth_headers):
         mock_svc.get_team_rollup.return_value = [
             {
                 "team_name": "Team Alpha",
@@ -108,7 +108,7 @@ class TestTeamRollup:
                 "divergent_count": 1,
             },
         ]
-        resp = client.get("/api/dashboard/team-rollup")
+        resp = client.get("/api/dashboard/team-rollup", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
@@ -116,9 +116,9 @@ class TestTeamRollup:
         assert data[0]["avg_health_score"] == 68.5
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_team_rollup_passes_team_filter(self, mock_svc, client):
+    def test_team_rollup_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_team_rollup.return_value = []
-        client.get("/api/dashboard/team-rollup?team=Team+Alpha")
+        client.get("/api/dashboard/team-rollup?team=Team+Alpha", headers=auth_headers)
         mock_svc.get_team_rollup.assert_called_once_with(team="Team Alpha")
 
 
@@ -128,7 +128,7 @@ class TestTeamRollup:
 class TestPipelineInsights:
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_insights_returns_grouped(self, mock_svc, client):
+    def test_insights_returns_grouped(self, mock_svc, client, auth_headers):
         mock_svc.get_pipeline_insights.return_value = {
             "stuck": [{"account_id": "a1", "description": "Stuck deal"}],
             "improving": [],
@@ -137,7 +137,7 @@ class TestPipelineInsights:
             "stale": [],
             "forecast_flips": [],
         }
-        resp = client.get("/api/dashboard/insights")
+        resp = client.get("/api/dashboard/insights", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["stuck"]) == 1
@@ -145,7 +145,7 @@ class TestPipelineInsights:
         assert data["improving"] == []
 
     @patch("sis.api.routes.dashboard.dashboard_service")
-    def test_insights_all_empty(self, mock_svc, client):
+    def test_insights_all_empty(self, mock_svc, client, auth_headers):
         mock_svc.get_pipeline_insights.return_value = {
             "stuck": [],
             "improving": [],
@@ -154,7 +154,7 @@ class TestPipelineInsights:
             "stale": [],
             "forecast_flips": [],
         }
-        resp = client.get("/api/dashboard/insights")
+        resp = client.get("/api/dashboard/insights", headers=auth_headers)
         assert resp.status_code == 200
         for key in ("stuck", "improving", "declining", "new_risks", "stale", "forecast_flips"):
             assert resp.json()[key] == []
@@ -166,7 +166,7 @@ class TestPipelineInsights:
 class TestDealTrends:
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_deal_trends_returns_list(self, mock_svc, client):
+    def test_deal_trends_returns_list(self, mock_svc, client, auth_headers):
         mock_svc.get_deal_trends.return_value = [
             {
                 "account_id": "a1",
@@ -183,7 +183,7 @@ class TestDealTrends:
                 "trend_direction": "Improving",
             },
         ]
-        resp = client.get("/api/dashboard/trends/deals")
+        resp = client.get("/api/dashboard/trends/deals", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
@@ -191,15 +191,15 @@ class TestDealTrends:
         assert data[0]["trend_direction"] == "Improving"
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_deal_trends_passes_params(self, mock_svc, client):
+    def test_deal_trends_passes_params(self, mock_svc, client, auth_headers):
         mock_svc.get_deal_trends.return_value = []
-        client.get("/api/dashboard/trends/deals?account_id=acct-5&weeks=8")
+        client.get("/api/dashboard/trends/deals?account_id=acct-5&weeks=8", headers=auth_headers)
         mock_svc.get_deal_trends.assert_called_once_with(account_id="acct-5", weeks=8)
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_deal_trends_default_params(self, mock_svc, client):
+    def test_deal_trends_default_params(self, mock_svc, client, auth_headers):
         mock_svc.get_deal_trends.return_value = []
-        client.get("/api/dashboard/trends/deals")
+        client.get("/api/dashboard/trends/deals", headers=auth_headers)
         mock_svc.get_deal_trends.assert_called_once_with(account_id=None, weeks=4)
 
 
@@ -209,7 +209,7 @@ class TestDealTrends:
 class TestTeamTrends:
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_team_trends_returns_list(self, mock_svc, client):
+    def test_team_trends_returns_list(self, mock_svc, client, auth_headers):
         deal_data = [
             {
                 "account_id": "a1",
@@ -232,19 +232,19 @@ class TestTeamTrends:
                 "team_direction": "Stable",
             },
         ]
-        resp = client.get("/api/dashboard/trends/teams")
+        resp = client.get("/api/dashboard/trends/teams", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
         assert data[0]["team_name"] == "Team Alpha"
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_team_trends_composes_deal_data(self, mock_svc, client):
+    def test_team_trends_composes_deal_data(self, mock_svc, client, auth_headers):
         """Verifies that deal_trends data is fetched and passed to get_team_trends."""
         sentinel_deals = [{"account_id": "a1", "delta": 10}]
         mock_svc.get_deal_trends.return_value = sentinel_deals
         mock_svc.get_team_trends.return_value = []
-        client.get("/api/dashboard/trends/teams?weeks=8")
+        client.get("/api/dashboard/trends/teams?weeks=8", headers=auth_headers)
         mock_svc.get_deal_trends.assert_called_once_with(weeks=8)
         mock_svc.get_team_trends.assert_called_once_with(
             weeks=8, deal_trends=sentinel_deals
@@ -257,7 +257,7 @@ class TestTeamTrends:
 class TestPortfolioSummary:
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_portfolio_returns_summary(self, mock_svc, client):
+    def test_portfolio_returns_summary(self, mock_svc, client, auth_headers):
         mock_svc.get_deal_trends.return_value = [
             {"delta": 15, "trend_direction": "Improving"},
             {"delta": -5, "trend_direction": "Stable"},
@@ -272,7 +272,7 @@ class TestPortfolioSummary:
             "biggest_improver": {"account_name": "ImproverCo", "delta": 15, "last_score": 80},
             "biggest_decliner": None,
         }
-        resp = client.get("/api/dashboard/trends/portfolio")
+        resp = client.get("/api/dashboard/trends/portfolio", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["total_deals"] == 2
@@ -280,22 +280,22 @@ class TestPortfolioSummary:
         assert data["biggest_improver"]["account_name"] == "ImproverCo"
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_portfolio_composes_deal_data(self, mock_svc, client):
+    def test_portfolio_composes_deal_data(self, mock_svc, client, auth_headers):
         """Verifies that deal_trends data is fetched and passed to get_portfolio_summary."""
         sentinel_deals = [{"account_id": "a1", "delta": 10}]
         mock_svc.get_deal_trends.return_value = sentinel_deals
         mock_svc.get_portfolio_summary.return_value = {"total_deals": 0}
-        client.get("/api/dashboard/trends/portfolio?weeks=12")
+        client.get("/api/dashboard/trends/portfolio?weeks=12", headers=auth_headers)
         mock_svc.get_deal_trends.assert_called_once_with(weeks=12)
         mock_svc.get_portfolio_summary.assert_called_once_with(
             weeks=12, deal_trends=sentinel_deals
         )
 
     @patch("sis.api.routes.dashboard.trend_service")
-    def test_portfolio_default_weeks(self, mock_svc, client):
+    def test_portfolio_default_weeks(self, mock_svc, client, auth_headers):
         mock_svc.get_deal_trends.return_value = []
         mock_svc.get_portfolio_summary.return_value = {"total_deals": 0}
-        client.get("/api/dashboard/trends/portfolio")
+        client.get("/api/dashboard/trends/portfolio", headers=auth_headers)
         mock_svc.get_deal_trends.assert_called_once_with(weeks=4)
         mock_svc.get_portfolio_summary.assert_called_once_with(
             weeks=4, deal_trends=[]

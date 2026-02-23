@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from sis.api.deps import get_optional_user
+from sis.api.deps import get_current_user
 from sis.services import account_service
 from sis.api.schemas.accounts import (
     AccountCreate,
@@ -18,13 +18,17 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
 
 @router.get("/")
-def list_accounts(sort_by: str = "account_name", team: Optional[str] = None):
+def list_accounts(
+    sort_by: str = "account_name",
+    team: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
     """List all accounts with latest assessment summary."""
     return account_service.list_accounts(team=team, sort_by=sort_by)
 
 
 @router.get("/{account_id}")
-def get_account(account_id: str):
+def get_account(account_id: str, user: dict = Depends(get_current_user)):
     """Get full account detail with assessment and transcripts."""
     try:
         return account_service.get_account_detail(account_id)
@@ -33,7 +37,7 @@ def get_account(account_id: str):
 
 
 @router.post("/")
-def create_account(body: AccountCreate, user: Optional[dict] = Depends(get_optional_user)):
+def create_account(body: AccountCreate, user: dict = Depends(get_current_user)):
     """Create a new account."""
     account = account_service.create_account(
         name=body.name,
@@ -46,7 +50,7 @@ def create_account(body: AccountCreate, user: Optional[dict] = Depends(get_optio
 
 
 @router.put("/{account_id}")
-def update_account(account_id: str, body: AccountUpdate, user: Optional[dict] = Depends(get_optional_user)):
+def update_account(account_id: str, body: AccountUpdate, user: dict = Depends(get_current_user)):
     """Update an existing account's fields."""
     fields = body.model_dump(exclude_none=True)
     # Map schema field 'name' to service field 'account_name'
@@ -60,7 +64,7 @@ def update_account(account_id: str, body: AccountUpdate, user: Optional[dict] = 
 
 
 @router.post("/{account_id}/ic-forecast")
-def set_ic_forecast(account_id: str, body: ICForecastUpdate, user: Optional[dict] = Depends(get_optional_user)):
+def set_ic_forecast(account_id: str, body: ICForecastUpdate, user: dict = Depends(get_current_user)):
     """Set the IC forecast category and compute divergence."""
     try:
         return account_service.set_ic_forecast(account_id, body.category)

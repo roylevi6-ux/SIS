@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from sis.api.deps import get_current_user
 from sis.services import gdrive_service
 from sis.services.account_service import create_account, list_accounts
 from sis.config import GOOGLE_DRIVE_TRANSCRIPTS_PATH
@@ -36,20 +37,20 @@ class ImportRequest(BaseModel):
 
 
 @router.get("/config")
-def get_drive_config():
+def get_drive_config(user: dict = Depends(get_current_user)):
     """Return the configured Google Drive path."""
     return {"path": GOOGLE_DRIVE_TRANSCRIPTS_PATH or ""}
 
 
 @router.post("/validate")
-def validate_path(body: DrivePathRequest):
+def validate_path(body: DrivePathRequest, user: dict = Depends(get_current_user)):
     """Validate a Google Drive folder path."""
     is_valid, message = gdrive_service.validate_drive_path(body.path)
     return {"is_valid": is_valid, "message": message}
 
 
 @router.post("/accounts")
-def list_drive_accounts(body: DrivePathRequest):
+def list_drive_accounts(body: DrivePathRequest, user: dict = Depends(get_current_user)):
     """List account sub-folders in the Drive folder."""
     is_valid, message = gdrive_service.validate_drive_path(body.path)
     if not is_valid:
@@ -63,7 +64,7 @@ def list_drive_accounts(body: DrivePathRequest):
 
 
 @router.post("/calls")
-def list_recent_calls(body: ImportRequest):
+def list_recent_calls(body: ImportRequest, user: dict = Depends(get_current_user)):
     """List the most recent calls for an account."""
     calls = gdrive_service.get_recent_calls_info(
         body.account_path, body.max_calls, account_name=body.account_name
@@ -72,7 +73,7 @@ def list_recent_calls(body: ImportRequest):
 
 
 @router.post("/import")
-def import_from_drive(body: ImportRequest):
+def import_from_drive(body: ImportRequest, user: dict = Depends(get_current_user)):
     """Import calls from Google Drive into the database."""
     # Parse calls from local files
     try:
