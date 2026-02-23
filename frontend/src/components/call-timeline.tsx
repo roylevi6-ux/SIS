@@ -279,34 +279,48 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
               if (internal) tooltipLines.push(`Internal: ${internal}`);
               if (call.analyzed) tooltipLines.push('Included in analysis');
 
-              const shortLabel = extractTopicWord(call.call_title);
+              // Only show labels for analyzed calls to reduce clutter
+              const shortLabel = call.analyzed ? extractTopicWord(call.call_title) : null;
               const labelAbove = idx % 2 === 0;
 
               return (
                 <Tooltip key={call.id}>
                   <TooltipTrigger asChild>
+                    {/*
+                      Outer wrapper: zero-size anchor pinned exactly at (pct%, 50%).
+                      translateX(-50%) centers it horizontally on the pct position.
+                      translateY(-50%) is NOT used here — the dot itself handles its
+                      own vertical centering independently of the label.
+                    */}
                     <div
-                      className="absolute -translate-x-1/2 cursor-default flex flex-col items-center"
-                      style={{ left: `${pct}%`, top: '50%', transform: 'translateX(-50%) translateY(-50%)' }}
+                      className="absolute cursor-default"
+                      style={{ left: `${pct}%`, top: '50%', transform: 'translateX(-50%)' }}
                     >
-                      {/* Label above the dot */}
-                      {shortLabel && labelAbove && (
-                        <span className="mb-1 text-[9px] leading-tight text-muted-foreground whitespace-nowrap max-w-[70px] truncate text-center">
-                          {shortLabel}
-                        </span>
-                      )}
-
+                      {/* Dot — independently centered on the axis line */}
                       {call.analyzed ? (
-                        <div className="relative flex items-center justify-center size-7 rounded-full bg-violet-500 shadow-sm shadow-violet-200 dark:shadow-violet-900 transition-transform hover:scale-110">
+                        <div
+                          className="relative flex items-center justify-center size-7 rounded-full bg-violet-500 shadow-sm shadow-violet-200 dark:shadow-violet-900 transition-transform hover:scale-110"
+                          style={{ transform: 'translateY(-50%)' }}
+                        >
                           <Phone className="size-3 text-white" />
                         </div>
                       ) : (
-                        <div className="size-3 rounded-full bg-muted-foreground/30 transition-transform hover:scale-125 hover:bg-muted-foreground/50" />
+                        <div
+                          className="size-3 rounded-full bg-muted-foreground/30 transition-transform hover:scale-125 hover:bg-muted-foreground/50"
+                          style={{ transform: 'translateY(-50%)' }}
+                        />
                       )}
 
-                      {/* Label below the dot */}
-                      {shortLabel && !labelAbove && (
-                        <span className="mt-1 text-[9px] leading-tight text-muted-foreground whitespace-nowrap max-w-[70px] truncate text-center">
+                      {/* Label — absolutely positioned above or below, never affecting dot position */}
+                      {shortLabel && (
+                        <span
+                          className="absolute left-1/2 -translate-x-1/2 text-[10px] leading-tight text-muted-foreground whitespace-nowrap max-w-[80px] truncate text-center pointer-events-none"
+                          style={
+                            labelAbove
+                              ? { bottom: call.analyzed ? '18px' : '10px' }
+                              : { top: call.analyzed ? '18px' : '10px' }
+                          }
+                        >
                           {shortLabel}
                         </span>
                       )}
