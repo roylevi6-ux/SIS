@@ -10,6 +10,8 @@ import {
   Tooltip,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,9 +32,23 @@ interface RadarDataItem {
   dimension: string;
   score: number;
   fullMark: number;
+  zone100: number;
+  zone70: number;
+  zone45: number;
   rawScore?: string;
   rationale?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Constants — health zone thresholds
+// ---------------------------------------------------------------------------
+
+const ZONE_HEALTHY = 70;
+const ZONE_AT_RISK = 45;
+
+const COLOR_HEALTHY = '#059669';
+const COLOR_AT_RISK = '#d97706';
+const COLOR_CRITICAL = '#dc2626';
 
 // ---------------------------------------------------------------------------
 // Label mapping
@@ -58,14 +74,47 @@ function normalizeKey(key: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Health zone helpers
+// ---------------------------------------------------------------------------
+
+function getZone(score: number): 'healthy' | 'at-risk' | 'critical' {
+  if (score >= ZONE_HEALTHY) return 'healthy';
+  if (score >= ZONE_AT_RISK) return 'at-risk';
+  return 'critical';
+}
+
+function getZoneColor(score: number): string {
+  if (score >= ZONE_HEALTHY) return COLOR_HEALTHY;
+  if (score >= ZONE_AT_RISK) return COLOR_AT_RISK;
+  return COLOR_CRITICAL;
+}
+
+const ZONE_LABEL: Record<'healthy' | 'at-risk' | 'critical', string> = {
+  healthy: 'Healthy',
+  'at-risk': 'At Risk',
+  critical: 'Critical',
+};
+
+const ZONE_BADGE_CLASS: Record<'healthy' | 'at-risk' | 'critical', string> = {
+  healthy:
+    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800',
+  'at-risk':
+    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800',
+  critical:
+    'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800',
+};
+
+// ---------------------------------------------------------------------------
 // Data normalization
 // ---------------------------------------------------------------------------
 
 function toRadarData(breakdown: unknown): RadarDataItem[] {
   if (!breakdown) return [];
 
+  let items: Omit<RadarDataItem, 'zone100' | 'zone70' | 'zone45'>[] = [];
+
   if (Array.isArray(breakdown)) {
-    return (breakdown as BreakdownEntry[])
+    items = (breakdown as BreakdownEntry[])
       .filter((e) => e.component && typeof e.score === 'number')
       .map((entry) => {
         const key = normalizeKey(entry.component);
@@ -86,10 +135,8 @@ function toRadarData(breakdown: unknown): RadarDataItem[] {
           rationale: entry.rationale,
         };
       });
-  }
-
-  if (typeof breakdown === 'object' && breakdown !== null) {
-    return Object.entries(breakdown as Record<string, number>)
+  } else if (typeof breakdown === 'object' && breakdown !== null) {
+    items = Object.entries(breakdown as Record<string, number>)
       .filter(([, v]) => typeof v === 'number')
       .map(([apiKey, score]) => {
         const key = normalizeKey(apiKey);
@@ -107,34 +154,297 @@ function toRadarData(breakdown: unknown): RadarDataItem[] {
       });
   }
 
-  return [];
+  return items.map((item) => ({
+    ...item,
+    zone100: 100,
+    zone70: 70,
+    zone45: 45,
+  }));
+}
+
+function deriveOverallScore(data: RadarDataItem[]): number | null {
+  if (data.length === 0) return null;
+  const sum = data.reduce((acc, d) => acc + d.score, 0);
+  return Math.round(sum / data.length);
+}
+
+// ---------------------------------------------------------------------------
+// Custom angle axis tick — label + coloured score pill
+// ---------------------------------------------------------------------------
+
+interface CustomTickProps {
+  x?: string | number;
+  y?: string | number;
+  cx?: string | number;
+  cy?: string | number;
+  payload?: { value: string };
+  scoreMap?: Map<string, number>;
+  textAnchor?: 'start' | 'middle' | 'end' | 'inherit';
+  index?: number;
+}
+
+function CustomAngleTick({
+  x: xRaw = 0,
+  y: yRaw = 0,
+  cx: cxRaw = 0,
+  cy: cyRaw = 0,
+  payload,
+  scoreMap,
+  textAnchor = 'middle',
+}: CustomTickProps) {
+  if (!payload) return null;
+
+  const x = Number(xRaw);
+  const y = Number(yRaw);
+  const cx = Number(cxRaw);
+  const cy = Number(cyRaw);
+
+  const label = payload.value;
+  const score = scoreMap?.get(label);
+  const color = score !== undefined ? getZoneColor(score) : '#6b7280';
+
+  // Nudge outward from chart centre
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const nudge = dist > 0 ? 10 : 0;
+  const nx = x + (dx / dist) * nudge;
+  const ny = y + (dy / dist) * nudge;
+
+  // Upper vs lower half — if tick is above centre, pill goes below label;
+  // if below, pill goes above label (so it doesn't overlap the chart).
+  const isUpperHalf = ny < cy;
+  const labelY = isUpperHalf ? ny - 10 : ny + 14;
+  const pillY = isUpperHalf ? ny + 1 : ny - 4;
+
+  return (
+    <g>
+      {/* Dimension label */}
+      <text
+        x={nx}
+        y={labelY}
+        textAnchor={textAnchor}
+        dominantBaseline="auto"
+        style={{
+          fontSize: 12,
+          fill: 'hsl(var(--muted-foreground))',
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </text>
+
+      {/* Score pill */}
+      {score !== undefined && (
+        <>
+          <rect
+            x={nx - 16}
+            y={pillY}
+            width={32}
+            height={16}
+            rx={8}
+            fill={color}
+            fillOpacity={0.15}
+          />
+          <rect
+            x={nx - 16}
+            y={pillY}
+            width={32}
+            height={16}
+            rx={8}
+            fill="none"
+            stroke={color}
+            strokeWidth={0.8}
+            strokeOpacity={0.6}
+          />
+          <text
+            x={nx}
+            y={pillY + 12}
+            textAnchor="middle"
+            dominantBaseline="auto"
+            style={{ fontSize: 10.5, fill: color, fontWeight: 700 }}
+          >
+            {score}%
+          </text>
+        </>
+      )}
+    </g>
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function RadarTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
-  if (!active || !payload?.[0]) return null;
-  const data = payload[0].payload as RadarDataItem;
+function RadarTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: unknown[];
+}) {
+  if (!active || !Array.isArray(payload)) return null;
+
+  const scoreEntry = (
+    payload as Array<{ dataKey?: string; payload?: RadarDataItem }>
+  ).find((p) => p.dataKey === 'score');
+
+  const data = scoreEntry?.payload;
+  if (!data || typeof data.score !== 'number') return null;
+
+  const zone = getZone(data.score);
+  const color = getZoneColor(data.score);
+
   return (
-    <div className="rounded-lg border bg-background/95 backdrop-blur px-3 py-2 text-xs shadow-md max-w-[220px]">
-      <p className="font-semibold text-sm">{data.dimension}</p>
-      <p className="mt-0.5 tabular-nums">
-        {data.score}%
+    <div
+      className="rounded-xl border bg-background/98 backdrop-blur-sm px-3.5 py-3 text-xs shadow-xl max-w-[240px]"
+      style={{ borderColor: `${color}30` }}
+    >
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <p className="font-semibold text-sm text-foreground">{data.dimension}</p>
+        <span
+          className="shrink-0 text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-full"
+          style={{ background: `${color}18`, color }}
+        >
+          {data.score}%
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1.5 mb-2">
+        <span
+          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ background: color }}
+        />
+        <span style={{ color }} className="font-medium">
+          {ZONE_LABEL[zone]}
+        </span>
         {data.rawScore && (
-          <span className="text-muted-foreground ml-1">({data.rawScore})</span>
+          <span className="text-muted-foreground ml-auto tabular-nums">
+            {data.rawScore}
+          </span>
         )}
-      </p>
+      </div>
+
+      {/* Mini threshold bar */}
+      <div className="relative h-1.5 rounded-full bg-muted overflow-hidden mb-2.5">
+        <div
+          className="absolute inset-y-0 left-0"
+          style={{ width: '45%', background: COLOR_CRITICAL, opacity: 0.28 }}
+        />
+        <div
+          className="absolute inset-y-0"
+          style={{ left: '45%', width: '25%', background: COLOR_AT_RISK, opacity: 0.38 }}
+        />
+        <div
+          className="absolute inset-y-0 right-0"
+          style={{ left: '70%', background: COLOR_HEALTHY, opacity: 0.42 }}
+        />
+        <div
+          className="absolute inset-y-0 w-0.5 rounded-full"
+          style={{
+            left: `${Math.min(data.score, 99)}%`,
+            background: color,
+            boxShadow: `0 0 4px ${color}`,
+          }}
+        />
+      </div>
+
       {data.rationale && (
-        <p className="mt-1.5 text-muted-foreground leading-snug">{data.rationale}</p>
+        <p className="text-muted-foreground leading-snug text-[11px]">
+          {data.rationale}
+        </p>
       )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Needs Attention / Watch List panels — replaces DimensionLegend
+// ---------------------------------------------------------------------------
+
+function WeaknessPanel({ data }: { data: RadarDataItem[] }) {
+  const critical = data
+    .filter((d) => d.score < ZONE_AT_RISK)
+    .sort((a, b) => a.score - b.score);
+  const atRisk = data
+    .filter((d) => d.score >= ZONE_AT_RISK && d.score < ZONE_HEALTHY)
+    .sort((a, b) => a.score - b.score);
+
+  if (critical.length === 0 && atRisk.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-3">
+      {critical.length > 0 && (
+        <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/30 p-3">
+          <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 mb-2 uppercase tracking-wide">
+            Needs Attention
+          </p>
+          <div className="space-y-1.5">
+            {critical.map((item) => (
+              <div key={item.dimension} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-red-700 dark:text-red-300 truncate">
+                  {item.dimension}
+                </span>
+                <span className="text-xs font-bold tabular-nums text-red-600 dark:text-red-400">
+                  {item.score}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {atRisk.length > 0 && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/30 p-3">
+          <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mb-2 uppercase tracking-wide">
+            Watch List
+          </p>
+          <div className="space-y-1.5">
+            {atRisk.map((item) => (
+              <div key={item.dimension} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-amber-700 dark:text-amber-300 truncate">
+                  {item.dimension}
+                </span>
+                <span className="text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                  {item.score}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Zone legend
+// ---------------------------------------------------------------------------
+
+function ZoneLegend() {
+  return (
+    <div className="flex items-center gap-4 text-[11px] text-muted-foreground whitespace-nowrap">
+      {(
+        [
+          { color: COLOR_CRITICAL, label: 'Critical <45' },
+          { color: COLOR_AT_RISK, label: 'At Risk 45\u201369' },
+          { color: COLOR_HEALTHY, label: 'Healthy 70+' },
+        ] as const
+      ).map(({ color, label }) => (
+        <span key={label} className="flex items-center gap-1.5">
+          <span
+            className="inline-block w-2.5 h-2.5 rounded-sm opacity-80"
+            style={{ background: color }}
+          />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
 // ---------------------------------------------------------------------------
 
 export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
@@ -142,44 +452,216 @@ export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
 
   if (data.length === 0) return null;
 
+  const overallScore = deriveOverallScore(data);
+  const overallZone = overallScore !== null ? getZone(overallScore) : null;
+  const scoreMap = new Map(data.map((d) => [d.dimension, d.score]));
+
+  const radarColor =
+    overallScore !== null ? getZoneColor(overallScore) : '#6366f1';
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Health Breakdown</CardTitle>
+    <Card className="overflow-hidden">
+      {/* Header */}
+      <CardHeader className="pb-0 pt-5 px-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-0.5">
+            <CardTitle className="text-base font-semibold tracking-tight">
+              Health Breakdown
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {data.length} dimensions &middot; scored 0&ndash;100
+            </p>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="flex justify-center">
-        <ResponsiveContainer width="100%" height={340}>
-          <RadarChart cx="50%" cy="50%" outerRadius="72%" data={data}>
-            <PolarGrid
-              stroke="hsl(var(--border))"
-              strokeOpacity={0.5}
-            />
-            <PolarAngleAxis
-              dataKey="dimension"
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-            />
-            <PolarRadiusAxis
-              angle={90}
-              domain={[0, 100]}
-              tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
-              tickCount={5}
-              axisLine={false}
-            />
-            <Radar
-              dataKey="score"
-              stroke="hsl(var(--primary))"
-              fill="hsl(var(--primary))"
-              fillOpacity={0.15}
-              strokeWidth={2}
-              dot={{
-                r: 3.5,
-                fill: 'hsl(var(--primary))',
-                strokeWidth: 0,
-              }}
-            />
-            <Tooltip content={<RadarTooltip />} />
-          </RadarChart>
-        </ResponsiveContainer>
+
+      {/* Chart with centred overall score */}
+      <CardContent className="px-2 pt-2 pb-4">
+        <div className="relative">
+          <ResponsiveContainer width="100%" height={440}>
+            <RadarChart
+              cx="50%"
+              cy="50%"
+              outerRadius="68%"
+              data={data}
+              margin={{ top: 28, right: 40, bottom: 28, left: 40 }}
+            >
+              {/* Zone band: outer healthy ring (green, covers full area) */}
+              <Radar
+                dataKey="zone100"
+                stroke="none"
+                fill={COLOR_HEALTHY}
+                fillOpacity={0.13}
+                dot={false}
+                legendType="none"
+                isAnimationActive={false}
+              />
+              {/* Zone band: middle at-risk ring (amber, overwrites centre of green) */}
+              <Radar
+                dataKey="zone70"
+                stroke="none"
+                fill={COLOR_AT_RISK}
+                fillOpacity={0.16}
+                dot={false}
+                legendType="none"
+                isAnimationActive={false}
+              />
+              {/* Zone band: inner critical ring (red, overwrites centre of amber) */}
+              <Radar
+                dataKey="zone45"
+                stroke="none"
+                fill={COLOR_CRITICAL}
+                fillOpacity={0.20}
+                dot={false}
+                legendType="none"
+                isAnimationActive={false}
+              />
+
+              {/* Dashed threshold rings at 45% and 70% */}
+              <Radar
+                dataKey="zone70"
+                stroke={COLOR_AT_RISK}
+                strokeWidth={1}
+                strokeDasharray="4 3"
+                strokeOpacity={0.45}
+                fill="none"
+                dot={false}
+                legendType="none"
+                isAnimationActive={false}
+              />
+              <Radar
+                dataKey="zone45"
+                stroke={COLOR_CRITICAL}
+                strokeWidth={1}
+                strokeDasharray="4 3"
+                strokeOpacity={0.45}
+                fill="none"
+                dot={false}
+                legendType="none"
+                isAnimationActive={false}
+              />
+
+              {/* Polar grid */}
+              <PolarGrid
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.45}
+              />
+
+              {/* Radius axis — hidden ticks, sets domain */}
+              <PolarRadiusAxis
+                angle={90}
+                domain={[0, 100]}
+                tick={false}
+                tickCount={6}
+                axisLine={false}
+                stroke="transparent"
+              />
+
+              {/* Angle axis with custom ticks */}
+              <PolarAngleAxis
+                dataKey="dimension"
+                tick={(props: CustomTickProps) => (
+                  <CustomAngleTick {...props} scoreMap={scoreMap} />
+                )}
+                tickLine={false}
+              />
+
+              {/* Main score radar */}
+              <Radar
+                dataKey="score"
+                stroke={radarColor}
+                fill={radarColor}
+                fillOpacity={0.22}
+                strokeWidth={2.5}
+                dot={(dotProps: {
+                  cx?: number;
+                  cy?: number;
+                  index?: number;
+                }) => {
+                  const { cx = 0, cy = 0, index = 0 } = dotProps;
+                  const item = data[index];
+                  const dotColor = item ? getZoneColor(item.score) : radarColor;
+                  return (
+                    <circle
+                      key={`dot-${index}`}
+                      cx={cx}
+                      cy={cy}
+                      r={4.5}
+                      fill={dotColor}
+                      stroke="hsl(var(--background))"
+                      strokeWidth={2}
+                    />
+                  );
+                }}
+                activeDot={(dotProps: {
+                  cx?: number;
+                  cy?: number;
+                  index?: number;
+                }) => {
+                  const { cx = 0, cy = 0, index = 0 } = dotProps;
+                  const item = data[index];
+                  const dotColor = item ? getZoneColor(item.score) : radarColor;
+                  return (
+                    <g key={`active-dot-${index}`}>
+                      {/* Outer glow */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={10}
+                        fill={dotColor}
+                        fillOpacity={0.18}
+                      />
+                      {/* Inner dot */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={5.5}
+                        fill={dotColor}
+                        stroke="hsl(var(--background))"
+                        strokeWidth={2}
+                      />
+                    </g>
+                  );
+                }}
+              />
+
+              <Tooltip content={<RadarTooltip />} cursor={false} />
+            </RadarChart>
+          </ResponsiveContainer>
+
+          {/* Centred overall score overlay */}
+          {overallScore !== null && overallZone !== null && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-0.5">
+                <span
+                  className="text-3xl font-bold tabular-nums leading-none"
+                  style={{ color: radarColor }}
+                >
+                  {overallScore}
+                </span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[11px] font-medium border px-1.5 py-0 pointer-events-auto',
+                    ZONE_BADGE_CLASS[overallZone],
+                  )}
+                >
+                  {ZONE_LABEL[overallZone]}
+                </Badge>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Zone legend */}
+        <div className="flex items-center gap-3 px-3 mb-3">
+          <div className="flex-1 h-px bg-border" />
+          <ZoneLegend />
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {/* Weakness panels (replaces old dimension grid) */}
+        <WeaknessPanel data={data} />
       </CardContent>
     </Card>
   );
