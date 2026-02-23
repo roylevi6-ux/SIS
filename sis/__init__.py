@@ -1,6 +1,6 @@
 """Riskified Sales Intelligence System (SIS)"""
 
-# Patch asyncio to allow nested event loops (required for Streamlit + async agents).
+# Patch asyncio to allow nested event loops (required for sync callers wrapping async agents).
 # Skip when running under uvloop (used by uvicorn) — uvloop doesn't support patching.
 import asyncio as _asyncio
 

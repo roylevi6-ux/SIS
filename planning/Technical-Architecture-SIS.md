@@ -67,22 +67,21 @@
     |  3. Retry Manager — per-agent retry with exponential backoff  |
     |  4. Cost Tracker — logs tokens + cost per agent per run       |
     |                                                               |
-    |  STEP 1: Agent 1 (Stage & Progress) ------> stage_context     |
-    |              |                                                 |
-    |              v                                                 |
-    |  STEP 2: +--------+--------+--------+--------+--------+--+    |
-    |          |Agent 2  |Agent 3 |Agent 4 |Agent 5 |Agent 6|  |    |
-    |          |Relation |Commerc |Momentum|Technic |Econ   |  |    |
-    |          +----+----+---+----+---+----+---+----+---+---+  |    |
-    |          |Agent 7  |Agent 8 |                             |    |
-    |          |MSP/Next |Compet  |                             |    |
-    |          +----+----+---+----+                             |    |
+    |  STEP 1: All analysis agents run in PARALLEL                  |
+    |          (asyncio.as_completed, per-agent progress via SSE)  |
+    |  +--------+--------+--------+--------+--------+--------+    |
+    |  |Agent 1 |Agent 2 |Agent 3 |Agent 4 |Agent 5 |Agent 6|    |
+    |  |Stage   |Relat.  |Commerc |Momentum|Technic |Econ   |    |
+    |  +--------+--------+--------+--------+--------+--------+    |
+    |  |Agent 7 |Agent 8 | (Agent 0E if expansion deal)      |    |
+    |  |MSP/Next|Compet  |                                    |    |
+    |  +--------+--------+------------------------------------+    |
     |              |         |                                  |    |
     |              v         v                                  |    |
-    |  STEP 3: Agent 9 (Open Discovery / Adversarial) <-- all  |    |
+    |  STEP 2: Agent 9 (Open Discovery / Adversarial) <-- all  |    |
     |              |                                    outputs |    |
     |              v                                            |    |
-    |  STEP 4: Agent 10 (Synthesis) <-- all 9 agent outputs    |    |
+    |  STEP 3: Agent 10 (Synthesis) <-- all agent outputs      |    |
     +----------------------------+-----------------------------+    |
                                  |                                  |
                                  v                                  |
@@ -205,29 +204,23 @@ t=0s     PREPROCESSOR
          - Pack into context dict (total <= 60K tokens)
          ~2-5 seconds
 
-t=5s     STEP 1: Agent 1 (Stage & Progress)
-         - Model: claude-3-5-haiku (or gpt-4o-mini)
-         - Input: preprocessed transcripts
-         - Output: inferred stage, confidence, reasoning
-         - Must complete before Step 2 begins
-         ~8-15 seconds
+t=5s     STEP 1: Agents 1-8 ALL PARALLEL (asyncio.as_completed)
+         - Model: claude-haiku-4.5 for all 8 agents
+         - Input: preprocessed transcripts (each agent independently)
+         - For expansion deals: Agent 0E also runs in parallel
+         - Per-agent progress reported via SSE as each completes
+         - Wall-clock = slowest agent
+         ~15-25 seconds (wall-clock, not cumulative)
 
-t=20s    STEP 2: Agents 2-8 (PARALLEL via asyncio.gather)
-         - Model: claude-3-5-haiku (or gpt-4o-mini) for all 7
-         - Input: preprocessed transcripts + Agent 1 stage context
-         - All 7 fire simultaneously; wall-clock = slowest agent
-         - Each agent is an independent async coroutine
-         ~10-20 seconds (wall-clock, not cumulative)
-
-t=40s    STEP 3: Agent 9 (Open Discovery / Adversarial)
-         - Model: claude-3-5-haiku (or gpt-4o-mini)
-         - Input: transcripts + all 8 prior agent outputs
+t=30s    STEP 2: Agent 9 (Open Discovery / Adversarial)
+         - Model: claude-haiku-4.5
+         - Input: transcripts + all prior agent outputs
          - Catches gaps + challenges most optimistic finding
          ~10-15 seconds
 
-t=55s    STEP 4: Agent 10 (Synthesis)
-         - Model: claude-sonnet-4 (or gpt-4o) — full model
-         - Input: all 9 agent outputs (no raw transcripts)
+t=45s    STEP 3: Agent 10 (Synthesis)
+         - Model: claude-sonnet-4 — full model
+         - Input: all agent outputs including Agent 9 (no raw transcripts)
          - Produces: contradiction map, deal memo, structured fields
          ~15-25 seconds
 
