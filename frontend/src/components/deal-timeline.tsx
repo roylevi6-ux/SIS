@@ -114,7 +114,7 @@ function HealthSparkline({ entries }: { entries: TimelineEntry[] }) {
 
 export function DealTimeline({ accountId }: { accountId: string }) {
   const { data, isLoading } = useAssessmentTimeline(accountId);
-  const entries = (data ?? []) as TimelineEntry[];
+  const entries = (data ?? []) as unknown as TimelineEntry[];
 
   if (isLoading) {
     return (
