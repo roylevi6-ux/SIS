@@ -493,13 +493,13 @@ export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
       {/* Chart with centred overall score */}
       <CardContent className="px-2 pt-2 pb-4">
         <div className="relative">
-          <ResponsiveContainer width="100%" height={480}>
+          <ResponsiveContainer width="100%" height={520}>
             <RadarChart
               cx="50%"
               cy="50%"
-              outerRadius="72%"
+              outerRadius="80%"
               data={data}
-              margin={{ top: 36, right: 48, bottom: 36, left: 48 }}
+              margin={{ top: 44, right: 56, bottom: 44, left: 56 }}
             >
               {/* Zone band: outer healthy ring (green, covers full area) */}
               <Radar
