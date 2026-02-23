@@ -16,7 +16,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, run_agent
-from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
+from .schemas import ConfidenceAssessment, EvidenceCitation
 
 from sis.config import MODEL_AGENT_1
 
@@ -43,15 +43,10 @@ class StageClassifierFindings(BaseModel):
     secondary_stage: Optional[int] = Field(default=None, ge=1, le=7, description="If the deal straddles two stages, the secondary stage number (1-7)")
     secondary_stage_name: Optional[str] = Field(default=None, description="Name of the secondary stage, if applicable")
     reasoning: str = Field(description="2-4 sentence explanation of why this stage was inferred, citing specific transcript evidence")
-    milestones: list[StageMilestone] = Field(description="3-5 stage-appropriate milestones with achievement status. Max 5 items.")
+    milestones: list[StageMilestone] = Field(description="Up to 3 stage-appropriate milestones with achievement status.")
     stage_model: str = Field(default="new_logo_7", description="Stage model used: 'new_logo_7' or 'expansion_7'")
-    stage_risk_signals: list[str] = Field(default_factory=list, description="Signals suggesting the deal may be regressing or stalling. Max 5 items.")
-    data_quality_notes: list[str] = Field(default_factory=list, description="Notes on transcript quality issues. Max 5 items.")
-    manager_insight: str = Field(
-        default="",
-        description="2-3 sentences for the sales manager: pattern interpretation, "
-        "silence signals, and one specific recommended action.",
-    )
+    stage_risk_signals: list[str] = Field(default_factory=list, description="Signals suggesting the deal may be regressing or stalling. Max 3 items.")
+    data_quality_notes: list[str] = Field(default_factory=list, description="Notes on transcript quality issues. Max 3 items.")
 
 
 # --- Envelope output ---
@@ -62,9 +57,9 @@ class StageClassifierOutput(BaseModel):
 
     agent_id: str = Field(default="agent_1_stage_progress")
     transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
-    narrative: str = Field(description="How the deal has progressed across calls -- trajectory, velocity, regression signals. Max 300 words.")
+    narrative: str = Field(description="How the deal has progressed across calls -- trajectory, velocity, regression signals. Max 150 words.")
     findings: StageClassifierFindings = Field(description="Agent-specific structured findings")
-    evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
+    evidence: list[EvidenceCitation] = Field(description="Up to 3 key evidence citations linking stage inference to transcripts")
     confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
     sparse_data_flag: bool = Field(description="True if fewer than 3 full transcripts were provided")
 
@@ -112,22 +107,36 @@ If the DEAL CONTEXT section indicates an expansion deal, use the Expansion Deal 
 5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew. Analyze in whatever language the content is in.
 6. Use Gong's KEY POINTS section as a reliable signal source.
 7. Note any data quality issues (poor ASR, very short calls, missing speakers) that affect your confidence.
-""" + ENVELOPE_PROMPT_FRAGMENT + """
+
+## Evidence Rules (Agent 1 — keep it brief)
+Provide up to 3 evidence citations for your stage inference:
+- `claim_id`: snake_case, max 30 characters
+- `transcript_index`: which transcript (1-indexed)
+- `speaker`: format as "NAME (Company -- Role)" when known
+- `quote`: verbatim text, 1-2 sentences max
+- `interpretation`: one sentence explaining why this evidence matters
+
+## Confidence Assessment
+- `overall`: float 0-1
+- `rationale`: 1-2 sentences
+- `data_gaps`: list of specific gaps
+
+## CRITICAL: Be concise. Narrative max 150 words. Up to 3 evidence citations. Up to 3 milestones.
 
 ## Output Format
 Respond with a single JSON object using this envelope structure:
 {
   "agent_id": "agent_1_stage_progress",
   "transcript_count_analyzed": <number>,
-  "narrative": "<how the deal has progressed across calls>",
+  "narrative": "<150 words max — deal progression, trajectory, regression signals>",
   "findings": {
     "inferred_stage": <1-7>, "stage_name": "...",
     "stage_model": "new_logo_7",
     "secondary_stage": <1-7 or null>, "secondary_stage_name": "...",
-    "reasoning": "...", "milestones": [...],
-    "stage_risk_signals": [...], "data_quality_notes": [...]
+    "reasoning": "...", "milestones": [max 3],
+    "stage_risk_signals": [max 3], "data_quality_notes": [max 3]
   },
-  "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
+  "evidence": [up to 3 citations],
   "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
@@ -174,6 +183,7 @@ def build_call(
         "user_prompt": "\n".join(parts),
         "output_model": StageClassifierOutput,
         "model": MODEL_AGENT_1,
+        "max_output_tokens": 8_000,
         "transcript_count": num_transcripts,
     }
 

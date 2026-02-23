@@ -43,7 +43,8 @@ class AgentResult(Generic[T]):
     output: T
     input_tokens: int
     output_tokens: int
-    elapsed_seconds: float
+    elapsed_seconds: float  # LLM API call wall-clock time
+    prep_seconds: float     # time before LLM call (prompt enhancement)
     model: str
     attempts: int
 
@@ -232,6 +233,7 @@ def _process_response(
     attempt: int,
     max_output_tokens: int,
     transcript_count: int | None = None,
+    prep_seconds: float = 0.0,
 ) -> AgentResult[T]:
     """Parse and validate an LLM response. Shared between sync/async runners."""
     raw_text = response.content[0].text
@@ -265,6 +267,7 @@ def _process_response(
         input_tokens=tokens_in,
         output_tokens=tokens_out,
         elapsed_seconds=elapsed,
+        prep_seconds=prep_seconds,
         model=model,
         attempts=attempt,
     )
@@ -302,7 +305,9 @@ def run_agent(
     """
     model = model or MODEL_AGENTS_1_8
     client = get_client()
+    prep_start = time.time()
     enhanced_system = _enhance_system_prompt(system_prompt, output_model)
+    prep_elapsed = time.time() - prep_start
 
     last_error = None
     current_user_prompt = user_prompt
@@ -323,7 +328,7 @@ def run_agent(
             elapsed = time.time() - start
             return _process_response(
                 agent_name, response, elapsed, output_model, model, attempt, max_output_tokens,
-                transcript_count=transcript_count,
+                transcript_count=transcript_count, prep_seconds=prep_elapsed,
             )
 
         except anthropic.RateLimitError as e:
@@ -388,7 +393,9 @@ async def run_agent_async(
     """
     model = model or MODEL_AGENTS_1_8
     client = get_async_client()
+    prep_start = time.time()
     enhanced_system = _enhance_system_prompt(system_prompt, output_model)
+    prep_elapsed = time.time() - prep_start
 
     last_error = None
     current_user_prompt = user_prompt
@@ -409,7 +416,7 @@ async def run_agent_async(
             elapsed = time.time() - start
             return _process_response(
                 agent_name, response, elapsed, output_model, model, attempt, max_output_tokens,
-                transcript_count=transcript_count,
+                transcript_count=transcript_count, prep_seconds=prep_elapsed,
             )
 
         except anthropic.RateLimitError as e:

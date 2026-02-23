@@ -25,6 +25,7 @@ interface AgentProgress {
   name: string;
   started_at: string | null;
   elapsed_seconds: number | null;
+  prep_seconds: number | null;
   input_tokens: number | null;
   output_tokens: number | null;
   cost_usd: number | null;
@@ -265,7 +266,14 @@ export function AnalysisProgressDetail({
                 {agent.name}
               </span>
 
-              {/* Elapsed */}
+              {/* Prep time */}
+              <span className="w-12 text-right text-xs text-muted-foreground tabular-nums">
+                {agent.prep_seconds != null
+                  ? formatElapsed(agent.prep_seconds)
+                  : ''}
+              </span>
+
+              {/* LLM time */}
               <span className="w-14 text-right text-xs text-muted-foreground tabular-nums">
                 {agent.elapsed_seconds != null
                   ? formatElapsed(agent.elapsed_seconds)
@@ -290,19 +298,27 @@ export function AnalysisProgressDetail({
         </div>
 
         {/* Totals footer */}
-        {progress && (completedCount > 0) && (
-          <div className="flex items-center gap-3 pt-3 mt-2 border-t border-border text-sm font-medium">
-            <div className="w-5 shrink-0" />
-            <span className="flex-1">Total</span>
-            <span className="w-14 text-right text-xs tabular-nums">
-              {formatElapsed(progress.total_elapsed_seconds)}
-            </span>
-            <span className="w-20 text-right text-xs tabular-nums" />
-            <span className="w-16 text-right text-xs tabular-nums">
-              {formatCost(progress.total_cost_usd)}
-            </span>
-          </div>
-        )}
+        {progress && (completedCount > 0) && (() => {
+          const totalPrep = agentEntries.reduce(
+            (sum, a) => sum + (a.prep_seconds ?? 0), 0
+          );
+          return (
+            <div className="flex items-center gap-3 pt-3 mt-2 border-t border-border text-sm font-medium">
+              <div className="w-5 shrink-0" />
+              <span className="flex-1">Total</span>
+              <span className="w-12 text-right text-xs tabular-nums">
+                {totalPrep > 0 ? formatElapsed(totalPrep) : ''}
+              </span>
+              <span className="w-14 text-right text-xs tabular-nums">
+                {formatElapsed(progress.total_elapsed_seconds)}
+              </span>
+              <span className="w-20 text-right text-xs tabular-nums" />
+              <span className="w-16 text-right text-xs tabular-nums">
+                {formatCost(progress.total_cost_usd)}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Terminal states */}
         {progress?.status === 'completed' && (

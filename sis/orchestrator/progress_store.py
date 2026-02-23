@@ -50,6 +50,7 @@ def init_run(run_id: str) -> None:
             "name": name,
             "started_at": None,
             "elapsed_seconds": None,
+            "prep_seconds": None,
             "input_tokens": None,
             "output_tokens": None,
             "cost_usd": None,
@@ -91,6 +92,7 @@ def mark_agent_completed(
     elapsed_seconds: float,
     model: str,
     attempts: int = 1,
+    prep_seconds: float | None = None,
 ) -> None:
     """Mark an agent as completed with token/cost/time data."""
     cost = calculate_cost(model, input_tokens, output_tokens)
@@ -104,6 +106,7 @@ def mark_agent_completed(
             agent["input_tokens"] = input_tokens
             agent["output_tokens"] = output_tokens
             agent["elapsed_seconds"] = round(elapsed_seconds, 1)
+            agent["prep_seconds"] = round(prep_seconds, 1) if prep_seconds is not None else None
             agent["cost_usd"] = round(cost, 4)
             agent["model"] = model
             agent["attempts"] = attempts

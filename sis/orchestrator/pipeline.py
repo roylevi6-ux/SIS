@@ -163,6 +163,7 @@ class AnalysisPipeline:
             from sis.orchestrator.progress_store import (
                 init_run, mark_agent_running, mark_agent_completed,
                 mark_agent_failed, mark_run_completed, is_cancelled,
+                get_snapshot,
             )
             init_run(self._run_id)
 
@@ -176,11 +177,14 @@ class AnalysisPipeline:
 
             stage_context = None
             try:
+                build_start = time.time()
                 agent1_call = stage_build_call(
                     transcript_texts, timeline_entries, deal_context,
                 )
                 agent1_call.setdefault("transcript_count", num_transcripts)
+                build_elapsed = time.time() - build_start
                 agent1_result = await run_agent_async(**agent1_call)
+                total_prep = build_elapsed + agent1_result.prep_seconds
 
                 agent1_output = agent1_result.output.model_dump()
                 result.agent_outputs["agent_1"] = agent1_output
@@ -188,6 +192,7 @@ class AnalysisPipeline:
                     "input_tokens": agent1_result.input_tokens,
                     "output_tokens": agent1_result.output_tokens,
                     "elapsed_seconds": agent1_result.elapsed_seconds,
+                    "prep_seconds": total_prep,
                     "model": agent1_result.model,
                     "attempts": agent1_result.attempts,
                 }
@@ -201,7 +206,7 @@ class AnalysisPipeline:
                         self._run_id, "agent_1",
                         agent1_result.input_tokens, agent1_result.output_tokens,
                         agent1_result.elapsed_seconds, agent1_result.model,
-                        agent1_result.attempts,
+                        agent1_result.attempts, prep_seconds=total_prep,
                     )
                 warnings = validate_agent_output(agent1_output)
                 result.validation_warnings.extend(
@@ -262,7 +267,9 @@ class AnalysisPipeline:
 
             # Build call kwargs — ALL agents now receive stage_context
             parallel_tasks = []
+            build_times: dict[str, float] = {}
             for agent_id, builder in agent_builders:
+                build_start = time.time()
                 if agent_id == "agent_0e":
                     # Agent 0E: (transcripts, timeline, deal_context, stage_context)
                     call_kwargs = builder(
@@ -271,6 +278,7 @@ class AnalysisPipeline:
                 else:
                     # Agents 2-8: (transcripts, stage_context, timeline)
                     call_kwargs = builder(transcript_texts, stage_context, timeline_entries)
+                build_times[agent_id] = time.time() - build_start
                 call_kwargs.setdefault("transcript_count", num_transcripts)
                 parallel_tasks.append(call_kwargs)
 
@@ -293,11 +301,13 @@ class AnalysisPipeline:
                     continue
 
                 output_dict = agent_result.output.model_dump()
+                total_prep = build_times.get(agent_id, 0.0) + agent_result.prep_seconds
                 result.agent_outputs[agent_id] = output_dict
                 result.agent_metadata[agent_id] = {
                     "input_tokens": agent_result.input_tokens,
                     "output_tokens": agent_result.output_tokens,
                     "elapsed_seconds": agent_result.elapsed_seconds,
+                    "prep_seconds": total_prep,
                     "model": agent_result.model,
                     "attempts": agent_result.attempts,
                 }
@@ -311,7 +321,7 @@ class AnalysisPipeline:
                         self._run_id, agent_id,
                         agent_result.input_tokens, agent_result.output_tokens,
                         agent_result.elapsed_seconds, agent_result.model,
-                        agent_result.attempts,
+                        agent_result.attempts, prep_seconds=total_prep,
                     )
                 warnings = validate_agent_output(output_dict)
                 result.validation_warnings.extend(
@@ -336,32 +346,42 @@ class AnalysisPipeline:
             self._report_progress("Agent 9: Open Discovery", 3)
             if self._run_id:
                 mark_agent_running(self._run_id, "agent_9")
-            agent9_call = discovery_build_call(
-                transcript_texts, stage_context, result.agent_outputs, timeline_entries
-            )
-            agent9_result = await run_agent_async(**agent9_call)
-
-            agent9_output = agent9_result.output.model_dump()
-            result.agent_outputs["agent_9"] = agent9_output
-            result.agent_metadata["agent_9"] = {
-                "input_tokens": agent9_result.input_tokens,
-                "output_tokens": agent9_result.output_tokens,
-                "elapsed_seconds": agent9_result.elapsed_seconds,
-                "model": agent9_result.model,
-                "attempts": agent9_result.attempts,
-            }
-            result.cost_summary.add(
-                "agent_9", agent9_result.model,
-                agent9_result.input_tokens, agent9_result.output_tokens,
-                agent9_result.elapsed_seconds, agent9_result.attempts - 1,
-            )
-            if self._run_id:
-                mark_agent_completed(
-                    self._run_id, "agent_9",
-                    agent9_result.input_tokens, agent9_result.output_tokens,
-                    agent9_result.elapsed_seconds, agent9_result.model,
-                    agent9_result.attempts,
+            try:
+                build_start = time.time()
+                agent9_call = discovery_build_call(
+                    transcript_texts, stage_context, result.agent_outputs, timeline_entries
                 )
+                build_elapsed = time.time() - build_start
+                agent9_result = await run_agent_async(**agent9_call)
+                total_prep = build_elapsed + agent9_result.prep_seconds
+
+                agent9_output = agent9_result.output.model_dump()
+                result.agent_outputs["agent_9"] = agent9_output
+                result.agent_metadata["agent_9"] = {
+                    "input_tokens": agent9_result.input_tokens,
+                    "output_tokens": agent9_result.output_tokens,
+                    "elapsed_seconds": agent9_result.elapsed_seconds,
+                    "prep_seconds": total_prep,
+                    "model": agent9_result.model,
+                    "attempts": agent9_result.attempts,
+                }
+                result.cost_summary.add(
+                    "agent_9", agent9_result.model,
+                    agent9_result.input_tokens, agent9_result.output_tokens,
+                    agent9_result.elapsed_seconds, agent9_result.attempts - 1,
+                )
+                if self._run_id:
+                    mark_agent_completed(
+                        self._run_id, "agent_9",
+                        agent9_result.input_tokens, agent9_result.output_tokens,
+                        agent9_result.elapsed_seconds, agent9_result.model,
+                        agent9_result.attempts, prep_seconds=total_prep,
+                    )
+            except Exception as exc:
+                result.errors.append(f"[agent_9] {exc}")
+                logger.error("Agent 9 (Open Discovery) failed: %s", exc)
+                if self._run_id:
+                    mark_agent_failed(self._run_id, "agent_9", str(exc))
 
             # ── Cancellation check before Step 4 ──
             if self._run_id and is_cancelled(self._run_id):
@@ -381,23 +401,32 @@ class AnalysisPipeline:
             self._report_progress("Agent 10: Synthesis", 4)
             if self._run_id:
                 mark_agent_running(self._run_id, "agent_10")
-            agent10_call = synthesis_build_call(result.agent_outputs, stage_context)
-            agent10_result = await run_agent_async(**agent10_call)
+            try:
+                build_start = time.time()
+                agent10_call = synthesis_build_call(result.agent_outputs, stage_context)
+                build_elapsed = time.time() - build_start
+                agent10_result = await run_agent_async(**agent10_call)
+                total_prep = build_elapsed + agent10_result.prep_seconds
 
-            synthesis_output = agent10_result.output.model_dump()
-            result.synthesis_output = synthesis_output
-            result.cost_summary.add(
-                "agent_10", agent10_result.model,
-                agent10_result.input_tokens, agent10_result.output_tokens,
-                agent10_result.elapsed_seconds, agent10_result.attempts - 1,
-            )
-            if self._run_id:
-                mark_agent_completed(
-                    self._run_id, "agent_10",
+                synthesis_output = agent10_result.output.model_dump()
+                result.synthesis_output = synthesis_output
+                result.cost_summary.add(
+                    "agent_10", agent10_result.model,
                     agent10_result.input_tokens, agent10_result.output_tokens,
-                    agent10_result.elapsed_seconds, agent10_result.model,
-                    agent10_result.attempts,
+                    agent10_result.elapsed_seconds, agent10_result.attempts - 1,
                 )
+                if self._run_id:
+                    mark_agent_completed(
+                        self._run_id, "agent_10",
+                        agent10_result.input_tokens, agent10_result.output_tokens,
+                        agent10_result.elapsed_seconds, agent10_result.model,
+                        agent10_result.attempts, prep_seconds=total_prep,
+                    )
+            except Exception as exc:
+                result.errors.append(f"[agent_10] {exc}")
+                logger.error("Agent 10 (Synthesis) failed: %s", exc)
+                if self._run_id:
+                    mark_agent_failed(self._run_id, "agent_10", str(exc))
 
             # ── Cancellation check before Step 5 ──
             if self._run_id and is_cancelled(self._run_id):
@@ -406,19 +435,20 @@ class AnalysisPipeline:
                 raise _CancelledError()
 
             # ── STEP 5: POST-SYNTHESIS VALIDATION ─────────────────────
-            self._report_progress("Post-synthesis validation", 5)
-            from sis.validation import validate_synthesis_output
-            synthesis_warnings = validate_synthesis_output(
-                synthesis_output, agent_outputs=result.agent_outputs,
-                deal_type=deal_type,
-            )
-            if synthesis_warnings:
-                result.validation_warnings.extend(synthesis_warnings)
-                logger.warning(
-                    "Synthesis validation: %d warnings: %s",
-                    len(synthesis_warnings),
-                    synthesis_warnings,
+            if result.synthesis_output:
+                self._report_progress("Post-synthesis validation", 5)
+                from sis.validation import validate_synthesis_output
+                synthesis_warnings = validate_synthesis_output(
+                    result.synthesis_output, agent_outputs=result.agent_outputs,
+                    deal_type=deal_type,
                 )
+                if synthesis_warnings:
+                    result.validation_warnings.extend(synthesis_warnings)
+                    logger.warning(
+                        "Synthesis validation: %d warnings: %s",
+                        len(synthesis_warnings),
+                        synthesis_warnings,
+                    )
 
             # Determine final status
             failed_agents = [e for e in result.errors]
@@ -435,6 +465,13 @@ class AnalysisPipeline:
             result.status = "failed"
             result.errors.append(str(e))
             logger.exception("Pipeline failed: %s", e)
+            # Safety net: mark any still-running agents as failed
+            if self._run_id:
+                snapshot = get_snapshot(self._run_id)
+                if snapshot:
+                    for agent_id, agent_data in snapshot.get("agents", {}).items():
+                        if agent_data.get("status") == "running":
+                            mark_agent_failed(self._run_id, agent_id, f"Pipeline failed: {e}")
 
         result.completed_at = datetime.now(timezone.utc).isoformat()
         result.wall_clock_seconds = time.time() - pipeline_start

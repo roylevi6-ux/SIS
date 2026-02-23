@@ -13,6 +13,7 @@ Uses Opus model with larger token budget (8,000).
 from __future__ import annotations
 
 import json
+import logging
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -20,6 +21,8 @@ from pydantic import BaseModel, Field
 from .runner import AgentResult, run_agent, strip_for_synthesis
 
 from sis.config import MAX_OUTPUT_TOKENS_SYNTHESIS, MODEL_AGENT_10
+
+logger = logging.getLogger(__name__)
 
 
 # --- Sub-models ---
@@ -257,10 +260,20 @@ def build_call(
     parts.append("## ALL AGENT OUTPUTS (Agents 1-9, findings + confidence only)")
     parts.append("Synthesize these into a coherent deal assessment.\n")
 
+    total_input_chars = 0
     for agent_id in sorted(upstream_outputs.keys()):
         label = agent_labels.get(agent_id, agent_id)
         compressed = strip_for_synthesis(upstream_outputs[agent_id])
+        has_evidence = "evidence" in compressed
+        has_narrative = "narrative" in compressed
         output_json = json.dumps(compressed, ensure_ascii=False)
+        agent_chars = len(output_json)
+        total_input_chars += agent_chars
+        logger.info(
+            "[Agent 10 build_call] %s: %d chars (~%d tokens)%s",
+            agent_id, agent_chars, agent_chars // 4,
+            " ⚠ EVIDENCE/NARRATIVE NOT STRIPPED" if (has_evidence or has_narrative) else "",
+        )
         parts.append(f"### {label}\n```json\n{output_json}\n```\n")
 
     parts.append(
@@ -269,10 +282,19 @@ def build_call(
         "Respond with JSON only."
     )
 
+    user_prompt = "\n".join(parts)
+    logger.info(
+        "[Agent 10 build_call] Total user_prompt: %d chars (~%d tokens), "
+        "system_prompt: %d chars (~%d tokens), max_output_tokens=%d",
+        len(user_prompt), len(user_prompt) // 4,
+        len(SYSTEM_PROMPT), len(SYSTEM_PROMPT) // 4,
+        MAX_OUTPUT_TOKENS_SYNTHESIS,
+    )
+
     return {
         "agent_name": "Agent 10: Synthesis",
         "system_prompt": SYSTEM_PROMPT,
-        "user_prompt": "\n".join(parts),
+        "user_prompt": user_prompt,
         "output_model": SynthesisOutput,
         "model": MODEL_AGENT_10,
         "max_output_tokens": MAX_OUTPUT_TOKENS_SYNTHESIS,
