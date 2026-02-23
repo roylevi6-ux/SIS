@@ -63,6 +63,8 @@ interface AccountDetail {
   team_lead: string | null;
   ae_owner: string | null;
   team_name: string | null;
+  deal_type: string;
+  prior_contract_value: number | null;
   ic_forecast_category: string | null;
   transcripts: Transcript[];
   assessment: Assessment | null;
@@ -510,6 +512,11 @@ export default function DealDetailPage({
 
             {/* Meta info */}
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              {account.deal_type && account.deal_type !== 'new_logo' && (
+                <Badge variant="outline" className="text-xs border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-400">
+                  {account.deal_type.replace('expansion_', 'Expansion: ').replace('_', ' ')}
+                </Badge>
+              )}
               {account.ae_owner && <span>AE: {account.ae_owner}</span>}
               {account.team_lead && <span>TL: {account.team_lead}</span>}
               {account.team_name && <span>Team: {account.team_name}</span>}
@@ -519,6 +526,14 @@ export default function DealDetailPage({
                   {account.mrr_estimate >= 1000
                     ? `${(account.mrr_estimate / 1000).toFixed(1)}K`
                     : account.mrr_estimate.toLocaleString()}
+                </span>
+              )}
+              {account.prior_contract_value != null && (
+                <span>
+                  Prior: $
+                  {account.prior_contract_value >= 1000
+                    ? `${(account.prior_contract_value / 1000).toFixed(1)}K`
+                    : account.prior_contract_value.toLocaleString()}
                 </span>
               )}
             </div>

@@ -7,14 +7,16 @@ import logging
 from datetime import datetime, timezone
 
 from sis.db.session import get_session
-from sis.db.models import AnalysisRun, AgentAnalysis, DealAssessment
+from sis.db.models import Account, AnalysisRun, AgentAnalysis, DealAssessment
 from sis.orchestrator.pipeline import AnalysisPipeline, PipelineResult
 from sis.services.transcript_service import get_active_transcript_texts, get_active_transcript_ids
+from sis.constants import is_expansion_deal
 
 logger = logging.getLogger(__name__)
 
 # Agent ID to human name mapping
 AGENT_NAMES = {
+    "agent_0e": "Account Health & Sentiment",
     "agent_1": "Stage & Progress",
     "agent_2": "Relationship & Power Map",
     "agent_3": "Commercial & Risk",
@@ -53,7 +55,7 @@ def analyze_account(
     progress_callback=None,
     run_id: str | None = None,
 ) -> dict:
-    """Run the full 10-agent pipeline for one account.
+    """Run the agent pipeline for one account.
 
     Args:
         account_id: Account to analyze.
@@ -68,8 +70,21 @@ def analyze_account(
     if not transcript_texts:
         raise ValueError(f"No active transcripts for account {account_id}")
 
+    # Fetch deal context from account
+    with get_session() as session:
+        account = session.query(Account).filter_by(id=account_id).one_or_none()
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
+        deal_type = account.deal_type or "new_logo"
+        prior_contract_value = account.prior_contract_value
+
+    deal_context = {
+        "deal_type": deal_type,
+        "prior_contract_value": prior_contract_value,
+    }
+
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
-    result = pipeline.run(account_id, transcript_texts)
+    result = pipeline.run(account_id, transcript_texts, deal_context=deal_context)
 
     transcript_ids = get_active_transcript_ids(account_id)
     persisted_run_id = _persist_pipeline_result(
@@ -77,13 +92,14 @@ def analyze_account(
     )
     result.run_id = persisted_run_id
 
+    expected_agents = 11 if is_expansion_deal(deal_type) else 10
     return {
         "run_id": persisted_run_id,
         "status": result.status,
         "wall_clock_seconds": round(result.wall_clock_seconds, 1),
         "total_cost_usd": round(result.cost_summary.total_cost_usd, 4),
         "agents_completed": len(result.agent_outputs),
-        "agents_total": 10,
+        "agents_total": expected_agents,
         "errors": result.errors,
         "validation_warnings": result.validation_warnings,
     }
@@ -99,8 +115,21 @@ async def analyze_account_async(
     if not transcript_texts:
         raise ValueError(f"No active transcripts for account {account_id}")
 
+    # Fetch deal context from account
+    with get_session() as session:
+        account = session.query(Account).filter_by(id=account_id).one_or_none()
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
+        deal_type = account.deal_type or "new_logo"
+        prior_contract_value = account.prior_contract_value
+
+    deal_context = {
+        "deal_type": deal_type,
+        "prior_contract_value": prior_contract_value,
+    }
+
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
-    result = await pipeline.run_async(account_id, transcript_texts)
+    result = await pipeline.run_async(account_id, transcript_texts, deal_context=deal_context)
 
     transcript_ids = get_active_transcript_ids(account_id)
     persisted_run_id = _persist_pipeline_result(
@@ -108,13 +137,14 @@ async def analyze_account_async(
     )
     result.run_id = persisted_run_id
 
+    expected_agents = 11 if is_expansion_deal(deal_type) else 10
     return {
         "run_id": persisted_run_id,
         "status": result.status,
         "wall_clock_seconds": round(result.wall_clock_seconds, 1),
         "total_cost_usd": round(result.cost_summary.total_cost_usd, 4),
         "agents_completed": len(result.agent_outputs),
-        "agents_total": 10,
+        "agents_total": expected_agents,
         "errors": result.errors,
         "validation_warnings": result.validation_warnings,
     }
@@ -148,6 +178,7 @@ def _persist_pipeline_result(
                     for agent_id, meta in result.agent_metadata.items()
                 })
                 run.error_log = json.dumps(result.errors) if result.errors else None
+                run.deal_type_at_run = result.deal_type
             else:
                 # Fallback: create new if somehow the pre-created row is gone
                 existing_run_id = None
@@ -167,6 +198,7 @@ def _persist_pipeline_result(
                     for agent_id, meta in result.agent_metadata.items()
                 }),
                 error_log=json.dumps(result.errors) if result.errors else None,
+                deal_type_at_run=result.deal_type,
             )
             session.add(run)
         session.flush()
@@ -201,6 +233,8 @@ def _persist_pipeline_result(
             assessment = DealAssessment(
                 analysis_run_id=run.id,
                 account_id=account_id,
+                deal_type=result.deal_type,
+                stage_model="expansion_7stage" if result.deal_type.startswith("expansion") else "new_logo_7stage",
                 deal_memo=syn.get("deal_memo", ""),
                 contradiction_map=json.dumps(syn.get("contradiction_map", [])),
                 inferred_stage=syn.get("inferred_stage", 0),
@@ -446,6 +480,7 @@ def rerun_agent(run_id: str, agent_id: str) -> dict:
 
     # Agent ID to builder mapping (lazy imports)
     AGENT_BUILDERS = {
+        "agent_0e": ("sis.agents.account_health", "build_call"),
         "agent_1": ("sis.agents.stage_classifier", "build_call"),
         "agent_2": ("sis.agents.relationship", "build_call"),
         "agent_3": ("sis.agents.commercial", "build_call"),
@@ -457,7 +492,7 @@ def rerun_agent(run_id: str, agent_id: str) -> dict:
     }
 
     if agent_id not in AGENT_BUILDERS:
-        raise ValueError(f"Cannot rerun {agent_id}. Only agents 1-8 can be individually rerun.")
+        raise ValueError(f"Cannot rerun {agent_id}. Only agents 0E and 1-8 can be individually rerun.")
 
     # Load the original run context
     with get_session() as session:
@@ -494,7 +529,17 @@ def rerun_agent(run_id: str, agent_id: str) -> dict:
     mod = importlib.import_module(module_path)
     builder = getattr(mod, func_name)
 
-    if agent_id == "agent_1":
+    if agent_id == "agent_0e":
+        # Agent 0E takes (transcript_texts, timeline_entries, deal_context)
+        with get_session() as session:
+            acct = session.query(Account).filter_by(id=account_id).one_or_none()
+        deal_context = {
+            "deal_type": acct.deal_type if acct else "new_logo",
+            "prior_contract_value": acct.prior_contract_value if acct else None,
+        }
+        call_kwargs = builder(transcript_texts, None, deal_context)
+        call_kwargs.setdefault("transcript_count", len(transcript_texts))
+    elif agent_id == "agent_1":
         call_kwargs = builder(transcript_texts, None)
     else:
         call_kwargs = builder(transcript_texts, stage_context, None)

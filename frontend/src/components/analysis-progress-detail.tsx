@@ -70,7 +70,9 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+/** Canonical ordering — agent_0e only appears for expansion deals. */
 const AGENT_ORDER = [
+  'agent_0e',
   'agent_1', 'agent_2', 'agent_3', 'agent_4', 'agent_5',
   'agent_6', 'agent_7', 'agent_8', 'agent_9', 'agent_10',
 ];
@@ -146,13 +148,18 @@ export function AnalysisProgressDetail({
 
   // -- Derived data ---------------------------------------------------------
   const agents = progress?.agents ?? {};
-  const agentEntries = AGENT_ORDER
-    .map((id) => ({ id, ...(agents[id] || { status: 'pending', name: id }) }))
+  // Only show agents that the backend reports (agent_0e appears only for expansion deals)
+  const activeOrder = AGENT_ORDER.filter((id) => id in agents);
+  // Fall back to standard 10-agent list when no SSE data yet
+  const displayOrder = activeOrder.length > 0 ? activeOrder : AGENT_ORDER.filter((id) => id !== 'agent_0e');
+  const agentEntries = displayOrder
+    .map((id) => ({ id, ...(agents[id] || { status: 'pending' as const, name: id }) }))
     .filter((a) => a.name);
+  const totalAgents = agentEntries.length;
   const completedCount = agentEntries.filter(
     (a) => a.status === 'completed' || a.status === 'failed'
   ).length;
-  const progressPct = (completedCount / 10) * 100;
+  const progressPct = totalAgents > 0 ? (completedCount / totalAgents) * 100 : 0;
 
   // -- Connection error -----------------------------------------------------
   if (connectionError && !progress) {
@@ -187,7 +194,7 @@ export function AnalysisProgressDetail({
         </div>
         <Progress value={progressPct} className="h-2 mt-2" />
         <p className="text-xs text-muted-foreground mt-1">
-          {completedCount}/10 agents {isTerminal ? 'finished' : 'complete'}
+          {completedCount}/{totalAgents} agents {isTerminal ? 'finished' : 'complete'}
         </p>
       </CardHeader>
 

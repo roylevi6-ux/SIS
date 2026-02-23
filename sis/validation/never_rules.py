@@ -214,7 +214,91 @@ def check_adversarial_challenges_exist(
     return None
 
 
-# All rule checkers in execution order
+# --- Expansion-specific rules ---
+
+
+def check_expansion_account_health_cap(
+    agent_outputs: dict, synthesis_output: dict
+) -> NeverRuleViolation | None:
+    """Expansion Rule 1: Strained/Critical relationship caps health at 60."""
+    health_score = synthesis_output.get("health_score", 0)
+    if health_score <= 60:
+        return None
+
+    agent_0e = agent_outputs.get("agent_0e", {})
+    findings = agent_0e.get("findings", {})
+    relationship = findings.get("account_relationship_health", "Not Assessed")
+
+    if relationship in ("Strained", "Critical"):
+        return NeverRuleViolation(
+            rule_id="NEVER_EXPANSION_HEALTH_CAP",
+            agent_id="agent_10",
+            severity="error",
+            description=(
+                f"Health score {health_score} exceeds 60 but Agent 0E reports "
+                f"account relationship as '{relationship}'. Expansion deals with "
+                f"strained/critical relationships must not exceed 60."
+            ),
+            context={
+                "health_score": health_score,
+                "relationship_health": relationship,
+            },
+        )
+    return None
+
+
+def check_expansion_commit_relationship(
+    agent_outputs: dict, synthesis_output: dict
+) -> NeverRuleViolation | None:
+    """Expansion Rule 2: Commit requires Strong or Adequate relationship."""
+    forecast = synthesis_output.get("forecast_category", "")
+    if forecast != "Commit":
+        return None
+
+    agent_0e = agent_outputs.get("agent_0e", {})
+    findings = agent_0e.get("findings", {})
+    relationship = findings.get("account_relationship_health", "Not Assessed")
+
+    if relationship not in ("Strong", "Adequate"):
+        return NeverRuleViolation(
+            rule_id="NEVER_EXPANSION_COMMIT_WITHOUT_RELATIONSHIP",
+            agent_id="agent_10",
+            severity="error",
+            description=(
+                f"Forecast is 'Commit' but Agent 0E reports relationship as "
+                f"'{relationship}'. Commit requires Strong or Adequate relationship."
+            ),
+            context={
+                "forecast": forecast,
+                "relationship_health": relationship,
+            },
+        )
+    return None
+
+
+# --- Rule groupings ---
+
+# Common rules (run for all deal types)
+_COMMON_RULE_CHECKERS = [
+    check_unresolved_contradictions,
+    check_inferred_pricing,
+    check_adversarial_challenges_exist,
+]
+
+# Deal-type-specific rules
+_NEW_LOGO_RULE_CHECKERS = [
+    check_health_score_without_eb,
+    check_commit_without_commitments,
+]
+
+_EXPANSION_RULE_CHECKERS = [
+    check_health_score_without_eb,
+    check_commit_without_commitments,
+    check_expansion_account_health_cap,
+    check_expansion_commit_relationship,
+]
+
+# Legacy flat list (backward compat with existing tests)
 _RULE_CHECKERS = [
     check_health_score_without_eb,
     check_commit_without_commitments,
@@ -225,19 +309,28 @@ _RULE_CHECKERS = [
 
 
 def check_all_never_rules(
-    agent_outputs: dict, synthesis_output: dict
+    agent_outputs: dict,
+    synthesis_output: dict,
+    deal_type: str = "new_logo",
 ) -> list[NeverRuleViolation]:
-    """Run all 5 NEVER rules and return any violations.
+    """Run NEVER rules appropriate for the deal type.
 
     Args:
-        agent_outputs: dict of agent_id -> output dict (agents 1-9)
+        agent_outputs: dict of agent_id -> output dict
         synthesis_output: Agent 10 synthesis output dict
+        deal_type: "new_logo" or "expansion_*"
 
     Returns:
         List of NeverRuleViolation. Empty list = all rules pass.
     """
+    checkers = list(_COMMON_RULE_CHECKERS)
+    if deal_type.startswith("expansion"):
+        checkers.extend(_EXPANSION_RULE_CHECKERS)
+    else:
+        checkers.extend(_NEW_LOGO_RULE_CHECKERS)
+
     violations = []
-    for checker in _RULE_CHECKERS:
+    for checker in checkers:
         result = checker(agent_outputs, synthesis_output)
         if result is not None:
             violations.append(result)

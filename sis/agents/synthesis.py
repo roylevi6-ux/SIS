@@ -160,6 +160,10 @@ Produce health score, forecast category, signals, risks, and actions.
 ### Step 4: CONFIDENCE INTERVAL
 Rate your overall synthesis confidence with key unknowns.
 
+## Pipeline Note
+Agents 2-8 ran in parallel with Agent 1 and did NOT have stage context at analysis time.
+Their findings are stage-independent. Use Agent 1's output as the authoritative stage classification.
+
 ## Weighting Rules
 - Weight each agent's findings by: agent_confidence x evidence_density
 - Agents with sparse_data_flag=true are weighted at 0.8x

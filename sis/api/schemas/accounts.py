@@ -29,7 +29,8 @@ class AccountCreate(BaseModel):
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
-    deal_type: Optional[str] = None
+    deal_type: str = "new_logo"
+    prior_contract_value: Optional[float] = None
 
 
 class AccountUpdate(BaseModel):
@@ -39,6 +40,7 @@ class AccountUpdate(BaseModel):
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
     deal_type: Optional[str] = None
+    prior_contract_value: Optional[float] = None
 
 
 class ICForecastUpdate(BaseModel):
@@ -63,6 +65,8 @@ class AssessmentDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    deal_type: Optional[str] = None
+    stage_model: Optional[str] = None
     deal_memo: Optional[str] = None
     health_score: Optional[int] = None
     health_breakdown: Any = None
@@ -95,6 +99,7 @@ class AccountSummary(BaseModel):
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
+    deal_type: str = "new_logo"
     ic_forecast_category: Optional[str] = None
     health_score: Optional[int] = None
     momentum_direction: Optional[str] = None
@@ -117,6 +122,8 @@ class AccountDetail(BaseModel):
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
+    deal_type: str = "new_logo"
+    prior_contract_value: Optional[float] = None
     ic_forecast_category: Optional[str] = None
     transcripts: List[TranscriptItem] = []
     assessment: Optional[AssessmentDetail] = None
