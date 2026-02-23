@@ -50,8 +50,7 @@ ANALYTICS_PAGES = [
 
 ACTIONS_PAGES = [
     ("Meeting Prep", "meeting_prep"),
-    ("Upload Transcript", "upload_transcript"),
-    ("Run Analysis", "run_analysis"),
+    ("Import & Analyze", "upload_transcript"),
     ("Chat", "chat"),
 ]
 

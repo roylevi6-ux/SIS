@@ -24,6 +24,7 @@ def create_account(
     team_lead: Optional[str] = None,
     ae_owner: Optional[str] = None,
     team: Optional[str] = None,
+    deal_type: Optional[str] = None,
 ) -> Account:
     """Create a new account."""
     with get_session() as session:
@@ -33,6 +34,7 @@ def create_account(
             team_lead=team_lead,
             ae_owner=ae_owner,
             team_name=team,
+            deal_type=deal_type,
         )
         session.add(account)
         session.flush()

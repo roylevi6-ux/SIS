@@ -18,8 +18,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Regex to extract date from Gong filenames: gong_call_YYYY-MM-DD_...
-_DATE_RE = re.compile(r"gong_call_(\d{4}-\d{2}-\d{2})_")
+# Regex to extract date from Gong filenames.
+# Supports both formats:
+#   gong_call_YYYY-MM-DD_...           (underscore-separated)
+#   gong_call-Account-YYYY-MM-DD-...   (hyphen-separated)
+_DATE_RE = re.compile(r"gong_call[_-](?:.*?[_-])?(\d{4}-\d{2}-\d{2})[_-]")
 
 
 def validate_drive_path(path: str) -> tuple[bool, str]:
@@ -75,7 +78,7 @@ def list_account_folders(drive_path: str) -> list[dict]:
 
         # Count metadata JSON files (non-transcript)
         json_files = list(d.glob("*.json"))
-        meta_count = sum(1 for f in json_files if "_transcript" not in f.name)
+        meta_count = sum(1 for f in json_files if not f.name.endswith(("-transcript.json", "_transcript.json")))
 
         accounts.append({
             "name": d.name,
@@ -99,29 +102,39 @@ def get_recent_calls_info(
         return []
 
     all_json = list(account_dir.glob("*.json"))
-    meta_files = [f for f in all_json if "_transcript" not in f.name]
-    transcript_files = {f.name: f for f in all_json if "_transcript" in f.name}
+    meta_files = [f for f in all_json if not f.name.endswith(("-transcript.json", "_transcript.json"))]
+    transcript_names = {f.name for f in all_json if f.name.endswith(("-transcript.json", "_transcript.json"))}
 
     calls = []
     for mf in meta_files:
         date_match = _DATE_RE.search(mf.name)
         call_date = date_match.group(1) if date_match else "0000-00-00"
 
-        # Find companion transcript file
+        # Find companion transcript file (try both hyphen and underscore conventions)
         stem = mf.stem
-        transcript_name = f"{stem}_transcript.json"
-        tf = transcript_files.get(transcript_name)
+        has_transcript = (
+            f"{stem}-transcript.json" in transcript_names
+            or f"{stem}_transcript.json" in transcript_names
+        )
 
-        # Clean up title from filename
+        # Clean up title from filename — handle both formats
         title = mf.name
-        title_match = re.match(r"gong_call_\d{4}-\d{2}-\d{2}_\d+_(.*?)\.json$", title)
+        # Format: gong_call-Account-YYYY-MM-DD-Title.json  (hyphen-separated)
+        title_match = re.match(
+            r"gong_call-[^-]+-\d{4}-\d{2}-\d{2}-(.*?)\.json$", title
+        )
+        if not title_match:
+            # Format: gong_call_YYYY-MM-DD_NNN_Title.json  (underscore-separated)
+            title_match = re.match(
+                r"gong_call_\d{4}-\d{2}-\d{2}_\d+_(.*?)\.json$", title
+            )
         if title_match:
             title = title_match.group(1).replace("_", " ")
 
         calls.append({
             "date": call_date,
             "title": title,
-            "has_transcript": tf is not None,
+            "has_transcript": has_transcript,
             "meta_path": str(mf),
         })
 

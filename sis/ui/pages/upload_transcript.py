@@ -1,4 +1,4 @@
-"""Upload Transcript — Google Drive import + manual upload per PRD P0-4, P0-1."""
+"""Import & Analyze — scan folder, pick account, choose deal type, run pipeline."""
 
 from __future__ import annotations
 
@@ -13,53 +13,45 @@ from sis.services.gdrive_service import (
     download_and_parse_calls,
     upload_calls_to_db,
 )
-from sis.services.user_action_log_service import log_action, ACTION_TRANSCRIPT_UPLOAD
+from sis.services.user_action_log_service import (
+    log_action,
+    ACTION_TRANSCRIPT_UPLOAD,
+    ACTION_ANALYSIS_RUN,
+)
 from sis.ui.components.layout import page_header, empty_state
 from sis.config import GOOGLE_DRIVE_TRANSCRIPTS_PATH
 
+# ── Constants ──────────────────────────────────────────────────────────
+
+DEAL_TYPES = [
+    "New Logo",
+    "Expansion - Upsell",
+    "Expansion - Cross Sell",
+    "Expansion - Both",
+    "Renewal",
+]
+
 
 def render():
-    page_header("Upload Transcript")
+    page_header("Import & Analyze")
 
-    tab1, tab2, tab3 = st.tabs([
-        "📁 Import from Google Drive",
-        "📝 Upload Text (Manual)",
-        "➕ Create New Account",
-    ])
-
-    with tab1:
-        _render_drive_import()
-
-    with tab2:
-        _render_manual_upload()
-
-    with tab3:
-        _render_create_account()
-
-
-# ── Tab 1: Google Drive Import ─────────────────────────────────────────────
-
-
-def _render_drive_import():
-    st.subheader("Import from Google Drive")
-
-    # Step 1: Configure drive path
+    # ── Step 1: Folder path ────────────────────────────────────────────
     default_path = GOOGLE_DRIVE_TRANSCRIPTS_PATH or ""
     drive_path = st.text_input(
-        "Google Drive Folder Path",
+        "📁 Transcripts Folder Path",
         value=st.session_state.get("gdrive_path", default_path),
         placeholder="~/Library/CloudStorage/GoogleDrive-you@company.com/My Drive/Transcripts",
-        help="Local path to the Google Drive folder containing account sub-folders with Gong exports",
+        help="Local path to the folder containing account sub-folders with Gong JSON exports",
     )
 
     if not drive_path:
         st.info(
-            "Enter the local path to your Google Drive folder that contains "
-            "account sub-folders with Gong JSON transcripts."
+            "Enter the local path to your transcripts folder. "
+            "Each sub-folder should represent an account with paired Gong JSON files "
+            "(metadata + transcript)."
         )
         return
 
-    # Validate path
     is_valid, message = validate_drive_path(drive_path)
     if not is_valid:
         st.error(message)
@@ -68,7 +60,7 @@ def _render_drive_import():
     st.session_state["gdrive_path"] = drive_path
     st.caption(f"✅ {message}")
 
-    # Step 2: List account folders
+    # ── Step 2: Account picker ─────────────────────────────────────────
     with st.spinner("Scanning account folders..."):
         accounts = list_account_folders(drive_path)
 
@@ -76,18 +68,16 @@ def _render_drive_import():
         empty_state("No account folders found", "📂", "Check that the folder contains sub-folders.")
         return
 
-    # Account selector
     account_options = [f"{a['name']} ({a['call_count']} calls)" for a in accounts]
     selected_idx = st.selectbox(
         "Select Account",
         range(len(account_options)),
         format_func=lambda i: account_options[i],
-        key="gdrive_account_select",
+        key="import_account_select",
     )
-
     selected_account = accounts[selected_idx]
 
-    # Step 3: Show recent calls
+    # ── Step 3: Recent calls preview ───────────────────────────────────
     st.markdown(f"**Account: {selected_account['name']}** — {selected_account['call_count']} total calls")
 
     with st.spinner("Loading most recent calls..."):
@@ -98,32 +88,87 @@ def _render_drive_import():
         return
 
     st.markdown(f"**{len(recent_calls)} most recent calls to import:**")
-
-    # Display calls table
     call_data = []
     for call in recent_calls:
         call_data.append({
             "Date": call["date"],
             "Title": call["title"],
-            "Has Transcript": "✅" if call["has_transcript"] else "❌",
+            "Transcript": "✅" if call["has_transcript"] else "❌",
         })
     st.table(call_data)
 
-    # Step 4: Import button
-    if st.button("🚀 Import Selected Account", type="primary", use_container_width=True):
-        _execute_import(
+    # ── Step 4: Deal configuration ─────────────────────────────────────
+    st.markdown("---")
+    st.subheader("Deal Configuration")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        deal_type = st.selectbox(
+            "Deal Type *",
+            DEAL_TYPES,
+            key="import_deal_type",
+            help="Type of deal for this account",
+        )
+
+    with col2:
+        mrr = st.number_input(
+            "MRR Estimate ($)",
+            min_value=0.0,
+            value=0.0,
+            step=1000.0,
+            key="import_mrr",
+            help="Monthly recurring revenue estimate (optional)",
+        )
+
+    # Optional fields in an expander
+    with st.expander("Additional Details (Optional)"):
+        ecol1, ecol2, ecol3 = st.columns(3)
+        with ecol1:
+            ae_owner = st.text_input("AE Owner", key="import_ae_owner")
+        with ecol2:
+            team_lead = st.text_input("Team Lead", key="import_team_lead")
+        with ecol3:
+            team_name = st.text_input("Team Name", key="import_team_name")
+
+    # ── Step 5: Run Analysis button ────────────────────────────────────
+    st.markdown("---")
+
+    if st.button("🚀 Import & Run Analysis", type="primary", use_container_width=True):
+        _execute_import_and_analyze(
             account_name=selected_account["name"],
             account_path=selected_account["path"],
+            deal_type=deal_type,
+            mrr=mrr if mrr > 0 else None,
+            ae_owner=ae_owner or None,
+            team_lead=team_lead or None,
+            team_name=team_name or None,
             max_calls=5,
         )
 
+    # ── Fallback: manual text-paste ────────────────────────────────────
+    with st.expander("📝 Manual Text Upload (Advanced)"):
+        _render_manual_upload()
 
-def _execute_import(account_name: str, account_path: str, max_calls: int):
-    """Run the full import pipeline: parse, create account if needed, upload."""
+
+# ── Core pipeline: import transcripts + run analysis ───────────────────
+
+
+def _execute_import_and_analyze(
+    account_name: str,
+    account_path: str,
+    deal_type: str,
+    mrr: float | None,
+    ae_owner: str | None,
+    team_lead: str | None,
+    team_name: str | None,
+    max_calls: int,
+):
+    """Import transcripts from folder, then run the full 10-agent analysis pipeline."""
 
     progress = st.progress(0, text="Parsing Gong transcripts...")
 
-    # Parse calls
+    # ── Phase 1: Parse calls ───────────────────────────────────────────
     try:
         parsed_calls = download_and_parse_calls(account_path, max_calls)
     except Exception as e:
@@ -134,9 +179,9 @@ def _execute_import(account_name: str, account_path: str, max_calls: int):
         st.warning("No valid calls found to import.")
         return
 
-    progress.progress(30, text=f"Parsed {len(parsed_calls)} calls")
+    progress.progress(15, text=f"Parsed {len(parsed_calls)} calls")
 
-    # Find or create account
+    # ── Phase 2: Find or create account ────────────────────────────────
     existing_accounts = list_accounts()
     account_id = None
     for acct in existing_accounts:
@@ -145,55 +190,109 @@ def _execute_import(account_name: str, account_path: str, max_calls: int):
             break
 
     if not account_id:
-        progress.progress(40, text=f"Creating account: {account_name}")
-        acct = create_account(name=account_name)
+        progress.progress(20, text=f"Creating account: {account_name}")
+        acct = create_account(
+            name=account_name,
+            mrr=mrr,
+            deal_type=deal_type,
+            ae_owner=ae_owner,
+            team_lead=team_lead,
+            team=team_name,
+        )
         account_id = acct.id
-        st.info(f"Created new account: **{account_name}**")
+        st.info(f"Created new account: **{account_name}** ({deal_type})")
+    else:
+        progress.progress(20, text=f"Found existing account: {account_name}")
 
-    progress.progress(50, text="Uploading transcripts to database...")
+    # ── Phase 3: Upload transcripts to DB ──────────────────────────────
+    progress.progress(25, text="Uploading transcripts to database...")
 
-    # Upload each call
     try:
         results = upload_calls_to_db(parsed_calls, account_id)
     except Exception as e:
         st.error(f"Failed to upload transcripts: {e}")
         return
 
-    progress.progress(100, text="Import complete!")
+    progress.progress(40, text=f"Uploaded {len(results)} transcripts")
 
-    # Log action
     log_action(
         ACTION_TRANSCRIPT_UPLOAD,
-        action_detail=f"Imported {len(results)} calls from Google Drive for {account_name}",
+        action_detail=f"Imported {len(results)} calls from folder for {account_name}",
         account_id=account_id,
         account_name=account_name,
-        page_name="Upload Transcript",
+        page_name="Import & Analyze",
     )
 
-    # Success summary
-    st.success(
-        f"✅ Imported **{len(results)}** calls for **{account_name}**\n\n"
-        + "\n".join(
-            f"- {call.metadata.date}: {call.metadata.title[:50]} ({r.token_count} tokens)"
-            for call, r in zip(parsed_calls, results)
+    # ── Phase 4: Run 10-agent analysis pipeline ────────────────────────
+    progress.progress(45, text="Starting analysis pipeline...")
+    status_text = st.empty()
+
+    def progress_callback(step_name: str, current: int, total: int):
+        pct = 45 + int(50 * current / total)
+        progress.progress(pct / 100, text=f"Step {current}/{total}: {step_name}")
+        status_text.markdown(f"**Running:** {step_name}")
+
+    try:
+        from sis.services.analysis_service import analyze_account
+
+        log_action(
+            ACTION_ANALYSIS_RUN,
+            action_detail=f"Running 10-agent pipeline for {account_name} ({deal_type})",
+            account_id=account_id,
+            account_name=account_name,
+            page_name="Import & Analyze",
         )
-    )
-    st.balloons()
+
+        result = analyze_account(
+            account_id=account_id,
+            progress_callback=progress_callback,
+        )
+
+        progress.progress(100, text="Complete!")
+        status_text.empty()
+
+        # ── Results summary ────────────────────────────────────────────
+        if result["status"] == "completed":
+            st.success(
+                f"✅ **Import & Analysis complete for {account_name}**\n\n"
+                f"- **Transcripts imported:** {len(results)}\n"
+                f"- **Agents completed:** {result['agents_completed']}/{result['agents_total']}\n"
+                f"- **Cost:** ${result['total_cost_usd']:.4f}\n"
+                f"- **Time:** {result['wall_clock_seconds']}s"
+            )
+        elif result["status"] == "partial":
+            st.warning(
+                f"Partial completion: {result['agents_completed']}/{result['agents_total']} agents. "
+                f"Errors: {len(result['errors'])}"
+            )
+            for err in result["errors"]:
+                st.error(err)
+        else:
+            st.error(f"Pipeline failed: {result['errors']}")
+
+        if result.get("validation_warnings"):
+            with st.expander(f"Validation Warnings ({len(result['validation_warnings'])})"):
+                for w in result["validation_warnings"]:
+                    st.warning(w)
+
+        st.session_state["selected_account_id"] = account_id
+        if st.button("View Deal Detail →"):
+            st.rerun()
+
+        st.balloons()
+
+    except Exception as e:
+        progress.progress(0, text="Failed")
+        st.error(f"Pipeline error: {e}")
 
 
-# ── Tab 2: Manual Text Upload ──────────────────────────────────────────────
+# ── Manual text upload (fallback) ──────────────────────────────────────
 
 
 def _render_manual_upload():
-    st.subheader("Upload Transcript (Text Paste)")
-
     accounts = list_accounts()
     if not accounts:
-        empty_state(
-            "No accounts yet",
-            "📁",
-            "Create one first using the Create New Account tab.",
-        )
+        st.caption("No accounts yet — use the main flow above to create one automatically.")
         return
 
     account_names = [a["account_name"] for a in accounts]
@@ -222,10 +321,10 @@ def _render_manual_upload():
             else:
                 log_action(
                     ACTION_TRANSCRIPT_UPLOAD,
-                    action_detail=f"Uploading transcript for {selected_name}",
+                    action_detail=f"Manual upload for {selected_name}",
                     account_id=account_id,
                     account_name=selected_name,
-                    page_name="Upload Transcript",
+                    page_name="Import & Analyze",
                 )
                 transcript = upload_transcript(
                     account_id=account_id,
@@ -237,31 +336,4 @@ def _render_manual_upload():
                     f"Transcript uploaded ({transcript.token_count} estimated tokens). "
                     f"ID: {transcript.id[:8]}..."
                 )
-                st.rerun()
-
-
-# ── Tab 3: Create Account ─────────────────────────────────────────────────
-
-
-def _render_create_account():
-    st.subheader("Create New Account")
-    with st.form("create_account"):
-        name = st.text_input("Account Name *")
-        mrr = st.number_input("MRR Estimate ($)", min_value=0.0, value=0.0, step=1000.0)
-        team_lead = st.text_input("Team Lead")
-        ae_owner = st.text_input("AE Owner")
-        team_name = st.text_input("Team Name")
-
-        if st.form_submit_button("Create Account"):
-            if not name:
-                st.error("Account name is required.")
-            else:
-                acct = create_account(
-                    name=name,
-                    mrr=mrr if mrr > 0 else None,
-                    team_lead=team_lead or None,
-                    ae_owner=ae_owner or None,
-                    team=team_name or None,
-                )
-                st.success(f"Account created: {acct.account_name} (ID: {acct.id[:8]}...)")
                 st.rerun()
