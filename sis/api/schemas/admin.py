@@ -58,6 +58,36 @@ class ActionSummary(BaseModel):
     by_day: Dict[str, int]
 
 
+# ── Usage Tracking (request bodies) ──────────────────────────────────
+
+
+class TrackEventBody(BaseModel):
+    event_type: str
+    user_name: Optional[str] = None
+    account_id: Optional[str] = None
+    page_name: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class LogActionBody(BaseModel):
+    action_type: str
+    action_detail: Optional[str] = None
+    user_name: Optional[str] = None
+    account_id: Optional[str] = None
+    account_name: Optional[str] = None
+    page_name: Optional[str] = None
+    session_id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+# ── Prompt Rollback (request body) ──────────────────────────────────
+
+
+class RollbackVersionBody(BaseModel):
+    agent_id: str
+    version_id: str
+
+
 # ── Coaching ─────────────────────────────────────────────────────────
 
 

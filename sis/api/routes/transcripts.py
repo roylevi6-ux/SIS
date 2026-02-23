@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from sis.api.deps import get_optional_user
 from sis.services import transcript_service
 from sis.api.schemas.transcripts import TranscriptUpload
 
@@ -17,7 +18,7 @@ def list_transcripts(account_id: str, active_only: bool = True):
 
 
 @router.post("/")
-def upload_transcript(body: TranscriptUpload):
+def upload_transcript(body: TranscriptUpload, user: Optional[dict] = Depends(get_optional_user)):
     """Upload and preprocess a new transcript."""
     transcript = transcript_service.upload_transcript(
         account_id=body.account_id,

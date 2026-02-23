@@ -1,9 +1,12 @@
 """Account API routes — CRUD + IC forecast."""
 
+from __future__ import annotations
+
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from sis.api.deps import get_optional_user
 from sis.services import account_service
 from sis.api.schemas.accounts import (
     AccountCreate,
@@ -30,7 +33,7 @@ def get_account(account_id: str):
 
 
 @router.post("/")
-def create_account(body: AccountCreate):
+def create_account(body: AccountCreate, user: Optional[dict] = Depends(get_optional_user)):
     """Create a new account."""
     account = account_service.create_account(
         name=body.name,
@@ -43,7 +46,7 @@ def create_account(body: AccountCreate):
 
 
 @router.put("/{account_id}")
-def update_account(account_id: str, body: AccountUpdate):
+def update_account(account_id: str, body: AccountUpdate, user: Optional[dict] = Depends(get_optional_user)):
     """Update an existing account's fields."""
     fields = body.model_dump(exclude_none=True)
     # Map schema field 'name' to service field 'account_name'
@@ -57,7 +60,7 @@ def update_account(account_id: str, body: AccountUpdate):
 
 
 @router.post("/{account_id}/ic-forecast")
-def set_ic_forecast(account_id: str, body: ICForecastUpdate):
+def set_ic_forecast(account_id: str, body: ICForecastUpdate, user: Optional[dict] = Depends(get_optional_user)):
     """Set the IC forecast category and compute divergence."""
     try:
         return account_service.set_ic_forecast(account_id, body.category)
