@@ -42,6 +42,7 @@ def health_check() -> dict:
 from sis.api.routes import (  # noqa: E402
     accounts,
     analyses,
+    auth,
     dashboard,
     transcripts,
     feedback,
@@ -52,6 +53,7 @@ from sis.api.routes import (  # noqa: E402
     sse,
 )
 
+app.include_router(auth.router)
 app.include_router(accounts.router)
 app.include_router(analyses.router)
 app.include_router(dashboard.router)
