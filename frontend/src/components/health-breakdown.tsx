@@ -1,23 +1,24 @@
 'use client';
 
-import type { TooltipContentProps } from 'recharts';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Agent 10 returns an array of objects OR a flat dict — accept both
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 interface HealthBreakdownProps {
   breakdown: unknown;
 }
 
-// Array-of-objects format from Agent 10
 interface BreakdownEntry {
   component: string;
   score: number;
@@ -25,83 +26,83 @@ interface BreakdownEntry {
   rationale?: string;
 }
 
-// Canonical display names for health components
+interface RadarDataItem {
+  dimension: string;
+  score: number;
+  fullMark: number;
+  rawScore?: string;
+  rationale?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Label mapping
+// ---------------------------------------------------------------------------
+
 const COMPONENT_LABELS: Record<string, string> = {
-  economic_buyer: 'Economic Buyer',
-  economic_buyer_engagement: 'Economic Buyer',
+  economic_buyer: 'Econ. Buyer',
+  economic_buyer_engagement: 'Econ. Buyer',
   stage: 'Stage',
   stage_appropriateness: 'Stage',
   momentum: 'Momentum',
   momentum_quality: 'Momentum',
-  technical_path: 'Technical Path',
-  technical_path_clarity: 'Technical Path',
-  competitive_position: 'Competitive Position',
-  stakeholder_completeness: 'Stakeholder Completeness',
-  commitment_quality: 'Commitment Quality',
-  commercial_clarity: 'Commercial Clarity',
+  technical_path: 'Tech. Path',
+  technical_path_clarity: 'Tech. Path',
+  competitive_position: 'Competitive',
+  stakeholder_completeness: 'Stakeholders',
+  commitment_quality: 'Commitment',
+  commercial_clarity: 'Commercial',
 };
-
-function getBarColor(score: number): string {
-  if (score >= 70) return '#10b981'; // emerald-500
-  if (score >= 45) return '#f59e0b'; // amber-500
-  return '#ef4444'; // red-500
-}
 
 function normalizeKey(key: string): string {
   return key.toLowerCase().replace(/[\s-]+/g, '_');
 }
 
-interface ChartDataItem {
-  label: string;
-  score: number;
-  rawScore?: string;
-  rationale?: string;
-  fill: string;
-}
+// ---------------------------------------------------------------------------
+// Data normalization
+// ---------------------------------------------------------------------------
 
-/**
- * Normalize breakdown data into chart-ready items.
- * Handles two formats:
- *   1. Array of {component, score, max_score, rationale} (Agent 10 output)
- *   2. Flat dict {key: score} (legacy/alternative format)
- */
-function toChartData(breakdown: unknown): ChartDataItem[] {
+function toRadarData(breakdown: unknown): RadarDataItem[] {
   if (!breakdown) return [];
 
-  // Format 1: Array of objects
   if (Array.isArray(breakdown)) {
     return (breakdown as BreakdownEntry[])
       .filter((e) => e.component && typeof e.score === 'number')
       .map((entry) => {
         const key = normalizeKey(entry.component);
-        const label = COMPONENT_LABELS[key]
-          ?? entry.component.replace(/\b\w/g, (c) => c.toUpperCase());
-        const pct = entry.max_score > 0
-          ? Math.round((entry.score / entry.max_score) * 100)
-          : Math.round(entry.score);
+        const label =
+          COMPONENT_LABELS[key] ??
+          entry.component
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+            .replace(/^(.{12}).+$/, '$1\u2026');
+        const pct =
+          entry.max_score > 0
+            ? Math.round((entry.score / entry.max_score) * 100)
+            : Math.round(entry.score);
         return {
-          label,
+          dimension: label,
           score: pct,
+          fullMark: 100,
           rawScore: `${entry.score}/${entry.max_score}`,
           rationale: entry.rationale,
-          fill: getBarColor(pct),
         };
       });
   }
 
-  // Format 2: Flat dict
   if (typeof breakdown === 'object' && breakdown !== null) {
     return Object.entries(breakdown as Record<string, number>)
       .filter(([, v]) => typeof v === 'number')
       .map(([apiKey, score]) => {
         const key = normalizeKey(apiKey);
-        const label = COMPONENT_LABELS[key]
-          ?? apiKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-        const rounded = Math.round(score);
+        const label =
+          COMPONENT_LABELS[key] ??
+          apiKey
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+            .replace(/^(.{12}).+$/, '$1\u2026');
         return {
-          label,
-          score: rounded,
-          fill: getBarColor(rounded),
+          dimension: label,
+          score: Math.round(score),
+          fullMark: 100,
         };
       });
   }
@@ -109,74 +110,76 @@ function toChartData(breakdown: unknown): ChartDataItem[] {
   return [];
 }
 
+// ---------------------------------------------------------------------------
+// Custom tooltip
+// ---------------------------------------------------------------------------
+
+function RadarTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+  if (!active || !payload?.[0]) return null;
+  const data = payload[0].payload as RadarDataItem;
+  return (
+    <div className="rounded-lg border bg-background/95 backdrop-blur px-3 py-2 text-xs shadow-md max-w-[220px]">
+      <p className="font-semibold text-sm">{data.dimension}</p>
+      <p className="mt-0.5 tabular-nums">
+        {data.score}%
+        {data.rawScore && (
+          <span className="text-muted-foreground ml-1">({data.rawScore})</span>
+        )}
+      </p>
+      {data.rationale && (
+        <p className="mt-1.5 text-muted-foreground leading-snug">{data.rationale}</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
-  const chartData = toChartData(breakdown);
+  const data = toRadarData(breakdown);
 
-  if (chartData.length === 0) {
-    return null;
-  }
-
-  // Sort by score ascending so the lowest are at the top (most actionable)
-  chartData.sort((a, b) => a.score - b.score);
+  if (data.length === 0) return null;
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-2">
         <CardTitle className="text-base">Health Breakdown</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={chartData.length * 40 + 20}>
-          <BarChart
-            data={chartData}
-            layout="vertical"
-            margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
-          >
-            <XAxis type="number" domain={[0, 100]} hide />
-            <YAxis
-              type="category"
-              dataKey="label"
-              width={170}
-              tick={{ fontSize: 13 }}
+      <CardContent className="flex justify-center">
+        <ResponsiveContainer width="100%" height={340}>
+          <RadarChart cx="50%" cy="50%" outerRadius="72%" data={data}>
+            <PolarGrid
+              stroke="hsl(var(--border))"
+              strokeOpacity={0.5}
             />
-            <Tooltip
-              content={({ active, payload }: TooltipContentProps<number, string>) => {
-                if (!active || !payload?.[0]) return null;
-                const data = payload[0].payload as ChartDataItem;
-                return (
-                  <div className="rounded-md border bg-background px-3 py-2 text-xs shadow-sm max-w-xs">
-                    <p className="font-medium">{data.label}</p>
-                    <p>
-                      Score: {data.score}%
-                      {data.rawScore && ` (${data.rawScore})`}
-                    </p>
-                    {data.rationale && (
-                      <p className="mt-1 text-muted-foreground">{data.rationale}</p>
-                    )}
-                  </div>
-                );
+            <PolarAngleAxis
+              dataKey="dimension"
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            />
+            <PolarRadiusAxis
+              angle={90}
+              domain={[0, 100]}
+              tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+              tickCount={5}
+              axisLine={false}
+            />
+            <Radar
+              dataKey="score"
+              stroke="hsl(var(--primary))"
+              fill="hsl(var(--primary))"
+              fillOpacity={0.15}
+              strokeWidth={2}
+              dot={{
+                r: 3.5,
+                fill: 'hsl(var(--primary))',
+                strokeWidth: 0,
               }}
-              cursor={{ fill: 'transparent' }}
             />
-            <Bar dataKey="score" radius={[0, 4, 4, 0]} barSize={20}>
-              {chartData.map((entry, index) => (
-                <Cell key={index} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
+            <Tooltip content={<RadarTooltip />} />
+          </RadarChart>
         </ResponsiveContainer>
-
-        {/* Legend */}
-        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <span className="size-2.5 rounded-full bg-emerald-500" /> Healthy (70+)
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="size-2.5 rounded-full bg-amber-500" /> At Risk (45-69)
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="size-2.5 rounded-full bg-red-500" /> Critical (&lt;45)
-          </span>
-        </div>
       </CardContent>
     </Card>
   );
