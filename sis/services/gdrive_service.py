@@ -335,6 +335,7 @@ def upload_calls_to_db(
             ],
             duration_minutes=call.metadata.duration_minutes or None,
             gong_call_id=gong_call_id,
+            call_title=call.metadata.title or None,
         )
         imported.append(transcript)
         logger.info(
