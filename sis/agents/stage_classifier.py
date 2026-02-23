@@ -174,7 +174,6 @@ def build_call(
         "user_prompt": "\n".join(parts),
         "output_model": StageClassifierOutput,
         "model": MODEL_AGENT_1,
-        "max_output_tokens": 3_500,
         "transcript_count": num_transcripts,
     }
 
