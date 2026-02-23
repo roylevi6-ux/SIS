@@ -7,7 +7,7 @@ import logging
 from typing import Optional
 
 from sis.db.session import get_session
-from sis.db.models import Account, DealAssessment
+from sis.db.models import Account, AnalysisRun, DealAssessment
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +185,17 @@ def get_account_detail(account_id: str) -> dict:
             .first()
         )
 
+        # Determine which transcripts were used in the latest analysis
+        latest_run = (
+            session.query(AnalysisRun)
+            .filter_by(account_id=account_id)
+            .order_by(AnalysisRun.started_at.desc())
+            .first()
+        )
+        analyzed_ids: set[str] = set()
+        if latest_run and latest_run.transcript_ids:
+            analyzed_ids = set(json.loads(latest_run.transcript_ids))
+
         transcripts = [
             {
                 "id": t.id,
@@ -193,6 +204,8 @@ def get_account_detail(account_id: str) -> dict:
                 "token_count": t.token_count,
                 "is_active": bool(t.is_active),
                 "created_at": t.created_at,
+                "participants": json.loads(t.participants) if t.participants else None,
+                "analyzed": t.id in analyzed_ids,
             }
             for t in account.transcripts
         ]
