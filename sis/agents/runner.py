@@ -303,6 +303,17 @@ def run_agent(
             logger.warning("[%s] Rate limited, waiting %ds", agent_name, wait)
             time.sleep(wait)
 
+        except anthropic.APIStatusError as e:
+            last_error = e
+            if e.status_code == 529:  # overloaded
+                wait = 2 ** attempt
+                logger.warning("[%s] API overloaded (529), waiting %ds", agent_name, wait)
+                time.sleep(wait)
+            else:
+                logger.warning("[%s] API status error %d: %s", agent_name, e.status_code, e)
+                if attempt < max_retries:
+                    time.sleep(1)
+
         except (anthropic.APITimeoutError, anthropic.APIConnectionError) as e:
             last_error = e
             wait = 2 ** attempt
@@ -377,6 +388,17 @@ async def run_agent_async(
             wait = 2 ** attempt
             logger.warning("[%s] Rate limited, waiting %ds", agent_name, wait)
             await asyncio.sleep(wait)
+
+        except anthropic.APIStatusError as e:
+            last_error = e
+            if e.status_code == 529:  # overloaded
+                wait = 2 ** attempt
+                logger.warning("[%s] API overloaded (529), waiting %ds", agent_name, wait)
+                await asyncio.sleep(wait)
+            else:
+                logger.warning("[%s] API status error %d: %s", agent_name, e.status_code, e)
+                if attempt < max_retries:
+                    await asyncio.sleep(1)
 
         except (anthropic.APITimeoutError, anthropic.APIConnectionError) as e:
             last_error = e

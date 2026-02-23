@@ -32,10 +32,11 @@ AGENT_DISPLAY_NAMES = {
 }
 
 AgentStatus = Literal["pending", "running", "completed", "failed"]
-RunStatus = Literal["running", "completed", "failed", "partial"]
+RunStatus = Literal["running", "completed", "failed", "partial", "cancelled"]
 
 _lock = threading.Lock()
 _store: dict[str, dict] = {}
+_cancelled: set[str] = set()
 _CLEANUP_DELAY = 300  # 5 minutes
 
 
@@ -122,6 +123,21 @@ def mark_agent_failed(run_id: str, agent_id: str, error: str) -> None:
         entry["errors"].append(f"[{agent_id}] {error}")
 
 
+def cancel_run(run_id: str) -> None:
+    """Flag a run for cancellation. Pipeline checks this at step boundaries."""
+    with _lock:
+        _cancelled.add(run_id)
+        entry = _store.get(run_id)
+        if entry:
+            entry["status"] = "cancelled"
+
+
+def is_cancelled(run_id: str) -> bool:
+    """Check if a run has been flagged for cancellation."""
+    with _lock:
+        return run_id in _cancelled
+
+
 def mark_run_completed(run_id: str, status: RunStatus = "completed") -> None:
     """Mark the overall run as completed/failed/partial."""
     with _lock:
@@ -177,3 +193,4 @@ def _cleanup_run(run_id: str) -> None:
     """Remove a run from the store after the cleanup delay."""
     with _lock:
         _store.pop(run_id, None)
+        _cancelled.discard(run_id)

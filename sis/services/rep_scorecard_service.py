@@ -14,6 +14,7 @@ from typing import Optional
 
 from sis.db.session import get_session
 from sis.db.models import Account, AgentAnalysis, DealAssessment
+from sis.services.utils import safe_json as _safe_json
 
 
 DIMENSIONS = [
@@ -30,17 +31,6 @@ AGENT_DIMENSION_MAP = {
     "agent_4": "Commercial Progression",
     "agent_7": "Next-Step Setting",
 }
-
-
-def _safe_json(val, default=None):
-    if default is None:
-        default = []
-    if not val:
-        return default
-    try:
-        return json.loads(val)
-    except (json.JSONDecodeError, TypeError):
-        return default
 
 
 def score_from_confidence(confidence: float | None) -> int:

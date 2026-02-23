@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Upload, CheckCircle2, FolderOpen, FileText, Loader2, HardDrive, Play } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { Upload, CheckCircle2, FolderOpen, FileText, Loader2, HardDrive, Play, Trash2, Eye } from 'lucide-react';
 import { useAccounts, useUploadTranscript } from '@/lib/hooks';
 import { api } from '@/lib/api';
 import { AnalysisProgressDetail } from '@/components/analysis-progress-detail';
@@ -76,6 +77,9 @@ interface ImportResult {
 // ---------------------------------------------------------------------------
 
 export default function UploadPage() {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refreshAccounts = useCallback(() => setRefreshKey((k) => k + 1), []);
+
   return (
     <div className="p-6 max-w-3xl">
       <h1 className="text-2xl font-bold tracking-tight mb-1">
@@ -102,17 +106,19 @@ export default function UploadPage() {
         </TabsList>
 
         <TabsContent value="drive" className="mt-4">
-          <DriveImportTab />
+          <DriveImportTab onImportComplete={refreshAccounts} />
         </TabsContent>
 
         <TabsContent value="local" className="mt-4">
-          <LocalFolderTab />
+          <LocalFolderTab onImportComplete={refreshAccounts} />
         </TabsContent>
 
         <TabsContent value="manual" className="mt-4">
           <ManualUploadTab />
         </TabsContent>
       </Tabs>
+
+      <PastUploadsTable refreshKey={refreshKey} />
     </div>
   );
 }
@@ -121,7 +127,7 @@ export default function UploadPage() {
 // Tab 1: Google Drive Import
 // ---------------------------------------------------------------------------
 
-function DriveImportTab() {
+function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void }) {
   const [drivePath, setDrivePath] = useState('');
   const [pathValidated, setPathValidated] = useState(false);
   const [pathMessage, setPathMessage] = useState('');
@@ -246,6 +252,7 @@ function DriveImportTab() {
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result);
+      onImportComplete?.();
 
       // Trigger analysis pipeline — returns real run_id immediately
       const analysisResult = await api.analyses.run(result.account_id);
@@ -519,7 +526,7 @@ function DriveImportTab() {
 // Tab 2: Local Folder Import
 // ---------------------------------------------------------------------------
 
-function LocalFolderTab() {
+function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void }) {
   const [folderPath, setFolderPath] = useState('');
   const [pathValidated, setPathValidated] = useState(false);
   const [pathMessage, setPathMessage] = useState('');
@@ -634,6 +641,7 @@ function LocalFolderTab() {
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result);
+      onImportComplete?.();
 
       // Trigger analysis pipeline — returns real run_id immediately
       const analysisResult = await api.analyses.run(result.account_id);
@@ -1055,6 +1063,133 @@ function ManualUploadTab() {
             </div>
           )}
         </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Past Uploads Table
+// ---------------------------------------------------------------------------
+
+interface PastUploadAccount {
+  id: string;
+  account_name: string;
+  health_score: number | null;
+  inferred_stage: number | null;
+  stage_name: string | null;
+  ai_forecast_category: string | null;
+  last_assessed: string | null;
+}
+
+function PastUploadsTable({ refreshKey }: { refreshKey: number }) {
+  const [accounts, setAccounts] = useState<PastUploadAccount[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadAccounts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.accounts.list();
+      setAccounts(data);
+    } catch {
+      // Silently fail — list is supplementary
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAccounts();
+  }, [loadAccounts, refreshKey]);
+
+  async function handleDelete(account: PastUploadAccount) {
+    if (!window.confirm(`Delete "${account.account_name}" and all analysis data?`)) return;
+    setDeletingId(account.id);
+    try {
+      await api.accounts.delete(account.id);
+      setAccounts((prev) => prev.filter((a) => a.id !== account.id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function healthBadge(score: number | null) {
+    if (score == null) return <Badge variant="secondary">--</Badge>;
+    if (score >= 70) return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">{score}</Badge>;
+    if (score >= 40) return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{score}</Badge>;
+    return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">{score}</Badge>;
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Past Uploads</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <Loader2 className="size-4 animate-spin" /> Loading accounts...
+          </div>
+        ) : accounts.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No accounts imported yet.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Account Name</TableHead>
+                <TableHead className="text-center">Health</TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead>Forecast</TableHead>
+                <TableHead>Last Analyzed</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {accounts.map((acct) => (
+                <TableRow key={acct.id}>
+                  <TableCell className="font-medium">{acct.account_name}</TableCell>
+                  <TableCell className="text-center">{healthBadge(acct.health_score)}</TableCell>
+                  <TableCell className="text-sm">
+                    {acct.stage_name ?? '--'}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {acct.ai_forecast_category ?? '--'}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {acct.last_assessed
+                      ? new Date(acct.last_assessed).toLocaleDateString()
+                      : 'Not analyzed'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={`/deals/${acct.id}`}>
+                          <Eye className="size-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(acct)}
+                        disabled={deletingId === acct.id}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        {deletingId === acct.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );

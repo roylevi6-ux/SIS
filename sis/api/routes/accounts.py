@@ -63,6 +63,15 @@ def update_account(account_id: str, body: AccountUpdate, user: dict = Depends(ge
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@router.delete("/{account_id}")
+def delete_account(account_id: str, user: dict = Depends(get_current_user)):
+    """Delete an account and all associated data (cascade)."""
+    try:
+        return account_service.delete_account(account_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.post("/{account_id}/ic-forecast")
 def set_ic_forecast(account_id: str, body: ICForecastUpdate, user: dict = Depends(get_current_user)):
     """Set the IC forecast category and compute divergence."""
