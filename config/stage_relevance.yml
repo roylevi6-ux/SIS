@@ -67,3 +67,87 @@ stage_relevance:
     stage_3: 0.8
     stage_4: 0.8
     stage_5: 0.8
+
+# Expansion stage relevance (per design doc Section 9)
+# Stages for expansion: 1-7 (expanded model)
+expansion_stage_relevance:
+  agent_0e_account_health:
+    stage_1: 1.0    # Critical — relationship health drives everything
+    stage_2: 0.9
+    stage_3: 1.0    # Critical — renewal bundling affects commercial
+    stage_4: 0.8
+    stage_5: 0.6
+    stage_6: 0.6
+    stage_7: 0.6
+
+  agent_2_relationship:
+    stage_1: 0.6
+    stage_2: 0.6
+    stage_3: 0.9
+    stage_4: 0.9
+    stage_5: 0.6
+    stage_6: 0.6
+    stage_7: 0.4
+
+  agent_3_commercial:
+    stage_1: 0.3
+    stage_2: 0.3
+    stage_3: 1.0
+    stage_4: 0.9
+    stage_5: 0.4
+    stage_6: 0.3
+    stage_7: 0.3
+
+  agent_4_momentum:
+    stage_1: 0.6
+    stage_2: 0.9
+    stage_3: 0.9
+    stage_4: 0.9
+    stage_5: 0.6
+    stage_6: 0.9
+    stage_7: 0.9
+
+  agent_5_technical:
+    stage_1: 0.3
+    stage_2: 0.8    # High for cross-sell technical discovery
+    stage_3: 0.3
+    stage_4: 0.3
+    stage_5: 0.3
+    stage_6: 1.0    # Critical for cross-sell integration
+    stage_7: 0.8
+
+  agent_6_economic_buyer:
+    stage_1: 0.0
+    stage_2: 0.3
+    stage_3: 0.6
+    stage_4: 0.9
+    stage_5: 0.3
+    stage_6: 0.0
+    stage_7: 0.0
+
+  agent_7_msp_next_steps:
+    stage_1: 0.4
+    stage_2: 0.6
+    stage_3: 0.9
+    stage_4: 0.9
+    stage_5: 0.6
+    stage_6: 0.9
+    stage_7: 0.9
+
+  agent_8_competitive:
+    stage_1: 0.3
+    stage_2: 0.3
+    stage_3: 0.3
+    stage_4: 0.3
+    stage_5: 0.0
+    stage_6: 0.0
+    stage_7: 0.0
+
+  agent_9_open_discovery:
+    stage_1: 0.6
+    stage_2: 0.6
+    stage_3: 0.6
+    stage_4: 0.6
+    stage_5: 0.6
+    stage_6: 0.6
+    stage_7: 0.6

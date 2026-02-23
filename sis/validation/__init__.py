@@ -84,6 +84,7 @@ _SYNTHESIS_REQUIRED_FIELDS = [
 def validate_synthesis_output(
     synthesis_output: dict,
     agent_outputs: dict | None = None,
+    deal_type: str = "new_logo",
 ) -> list[str]:
     """Validate Agent 10 synthesis output before persistence.
 
@@ -145,7 +146,7 @@ def validate_synthesis_output(
     if agent_outputs:
         try:
             from sis.validation.never_rules import check_all_never_rules
-            violations = check_all_never_rules(agent_outputs, synthesis_output)
+            violations = check_all_never_rules(agent_outputs, synthesis_output, deal_type=deal_type)
             for v in violations:
                 warnings.append(f"NEVER_RULE_{v.rule_id}: {v.description}")
         except Exception as e:

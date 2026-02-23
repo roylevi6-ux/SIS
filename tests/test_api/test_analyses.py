@@ -12,16 +12,19 @@ import pytest
 
 class TestRunAnalysis:
 
+    @patch("sis.api.routes.analyses.analysis_service")
     @patch("sis.api.routes.analyses.asyncio")
     @patch("sis.services.transcript_service.get_active_transcript_texts")
-    def test_run_analysis_returns_started(self, mock_texts, mock_asyncio, client):
+    def test_run_analysis_returns_started(self, mock_texts, mock_asyncio, mock_svc, client):
         mock_texts.return_value = ["transcript one", "transcript two"]
+        mock_svc.create_analysis_run.return_value = "run-123"
         mock_loop = mock_asyncio.get_event_loop.return_value
         resp = client.post("/api/analyses/", json={"account_id": "acct-1"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "started"
         assert data["account_id"] == "acct-1"
+        assert data["run_id"] == "run-123"
         mock_loop.run_in_executor.assert_called_once()
 
     @patch("sis.services.transcript_service.get_active_transcript_texts")

@@ -115,30 +115,59 @@ def load_calibration_config() -> dict:
 
 
 def _default_calibration_config() -> dict:
-    """Hardcoded fallback calibration values from PRD Section 7.9."""
+    """Hardcoded fallback calibration values from PRD Section 7.9.
+
+    Nested by deal type: global, new_logo, expansion, alerts.
+    """
     return {
         "global": {
             "confidence_ceiling_sparse_data": 0.60,
             "sparse_data_threshold": 3,
             "stale_signal_days": 30,
         },
-        "agent_6_economic_buyer": {
-            "eb_absence_health_ceiling": 70,
-            "secondhand_mention_counts_as_engaged": False,
-        },
-        "synthesis_agent_10": {
-            "health_score_weights": {
-                "economic_buyer_engagement": 20,
-                "stage_appropriateness": 15,
-                "momentum_quality": 15,
-                "technical_path_clarity": 10,
-                "competitive_position": 10,
-                "stakeholder_completeness": 10,
-                "commitment_quality": 10,
-                "commercial_clarity": 10,
+        "new_logo": {
+            "agent_6_economic_buyer": {
+                "eb_absence_health_ceiling": 70,
+                "secondhand_mention_counts_as_engaged": False,
             },
-            "forecast_commit_minimum_health": 75,
-            "forecast_at_risk_maximum_health": 45,
+            "synthesis_agent_10": {
+                "health_score_weights": {
+                    "economic_buyer_engagement": 20,
+                    "stage_appropriateness": 15,
+                    "momentum_quality": 15,
+                    "technical_path_clarity": 10,
+                    "competitive_position": 10,
+                    "stakeholder_completeness": 10,
+                    "commitment_quality": 10,
+                    "commercial_clarity": 10,
+                },
+                "forecast_commit_minimum_health": 75,
+                "forecast_at_risk_maximum_health": 45,
+            },
+        },
+        "expansion": {
+            "agent_0e_account_health": {
+                "relationship_health_weight_in_score": 15,
+            },
+            "agent_6_economic_buyer": {
+                "eb_absence_health_ceiling": 85,
+                "secondhand_mention_counts_as_engaged": False,
+            },
+            "synthesis_agent_10": {
+                "health_score_weights": {
+                    "account_relationship_health": 15,
+                    "economic_buyer_engagement": 15,
+                    "stage_appropriateness": 10,
+                    "momentum_quality": 15,
+                    "technical_path_clarity": 10,
+                    "competitive_position": 5,
+                    "stakeholder_completeness": 10,
+                    "commitment_quality": 10,
+                    "commercial_clarity": 10,
+                },
+                "forecast_commit_minimum_health": 65,
+                "forecast_at_risk_maximum_health": 40,
+            },
         },
         "alerts": {
             "score_drop_threshold": 15,

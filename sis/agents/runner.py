@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 # Semaphore to limit concurrent proxy requests (adjust if DevOps confirms higher limit)
-DEFAULT_MAX_CONCURRENT = 7
+DEFAULT_MAX_CONCURRENT = 8
 
 
 @dataclass
@@ -53,6 +53,7 @@ def build_analysis_prompt(
     stage_context: dict | None,
     timeline_entries: list[str] | None,
     instruction: str,
+    deal_context: dict | None = None,
 ) -> str:
     """Build the shared user prompt used by Agents 2-8.
 
@@ -62,6 +63,9 @@ def build_analysis_prompt(
 
     stage_context is optional — when Agent 1 runs in parallel with Agents 2-8,
     stage context is not yet available. Agents analyze transcripts independently.
+
+    deal_context is optional — for expansion deals, injects deal type and prior
+    contract value into the prompt so agents can adjust their analysis.
     """
     parts = []
 
@@ -75,6 +79,20 @@ def build_analysis_prompt(
         parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
         parts.append(f"Confidence: {stage_context.get('confidence')}")
         parts.append(f"Reasoning: {stage_context.get('reasoning')}")
+        parts.append("")
+
+    # Expansion deal context injection
+    if deal_context and deal_context.get("deal_type", "new_logo").startswith("expansion"):
+        parts.append("## DEAL CONTEXT")
+        parts.append("This is an EXPANSION deal with an existing Riskified customer.")
+        parts.append(f"Deal type: {deal_context['deal_type']}")
+        if deal_context.get("prior_contract_value"):
+            parts.append(f"Prior contract value: ${deal_context['prior_contract_value']:,.0f}")
+        parts.append(
+            "Adjust your analysis for expansion dynamics: existing relationship, "
+            "known integration, potentially fewer stakeholders needed, and "
+            "different competitive landscape (customer already chose Riskified)."
+        )
         parts.append("")
 
     num_transcripts = len(transcript_texts)

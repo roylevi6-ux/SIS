@@ -20,6 +20,7 @@ export interface AgentAnalysis {
   confidence_overall?: number | null;
   sparse_data_flag?: boolean;
   narrative?: string | null;
+  findings?: Record<string, unknown> | null;
   evidence?: Array<{ quote?: string; source?: string; [key: string]: unknown }> | null;
   data_gaps?: string[] | null;
   findings_summary?: string | null;
@@ -86,15 +87,34 @@ export function AgentCard({ analysis }: AgentCardProps) {
               </div>
             )}
 
-            {/* Findings summary */}
-            {analysis.findings_summary && (
+            {/* Findings summary (string) or structured findings (dict) */}
+            {analysis.findings_summary ? (
               <div>
                 <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">
                   Findings
                 </h4>
                 <p className="text-sm leading-relaxed">{analysis.findings_summary}</p>
               </div>
-            )}
+            ) : analysis.findings && typeof analysis.findings === 'object' && Object.keys(analysis.findings).length > 0 ? (
+              <div>
+                <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+                  Key Findings
+                </h4>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                  {Object.entries(analysis.findings as Record<string, unknown>).map(([key, value]) => {
+                    if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) return null;
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+                    const display = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                    return (
+                      <div key={key} className="contents">
+                        <dt className="text-muted-foreground text-xs font-medium whitespace-nowrap">{label}</dt>
+                        <dd className="text-sm">{display}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              </div>
+            ) : null}
 
             {/* Evidence */}
             {analysis.evidence && analysis.evidence.length > 0 && (

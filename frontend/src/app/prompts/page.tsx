@@ -31,7 +31,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 // ---------------------------------------------------------------------------
 
 const AGENT_IDS = [
-  'agent_1', 'agent_2', 'agent_3', 'agent_4', 'agent_5',
+  'agent_0e', 'agent_1', 'agent_2', 'agent_3', 'agent_4', 'agent_5',
   'agent_6', 'agent_7', 'agent_8', 'agent_9', 'agent_10',
   'chat',
 ];

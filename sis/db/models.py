@@ -42,7 +42,8 @@ class Account(Base):
     team_lead = Column(Text, nullable=True)
     ae_owner = Column(Text, nullable=True)
     team_name = Column(Text, nullable=True)
-    deal_type = Column(Text, nullable=True)  # New Logo / Expansion - Upsell / Expansion - Cross Sell / Expansion - Both / Renewal
+    deal_type = Column(Text, nullable=False, default="new_logo")  # new_logo | expansion_upsell | expansion_cross_sell | expansion_both
+    prior_contract_value = Column(Float, nullable=True)  # Existing MRR if applicable
     created_at = Column(Text, nullable=False, default=_now)
     updated_at = Column(Text, nullable=False, default=_now, onupdate=_now)
 
@@ -101,6 +102,7 @@ class AnalysisRun(Base):
     model_versions = Column(Text, nullable=True)  # JSON: {agent_1: "haiku", ...}
     prompt_config_version = Column(Text, nullable=True)
     error_log = Column(Text, nullable=True)  # JSON array of errors
+    deal_type_at_run = Column(Text, nullable=True)  # Snapshots which pipeline mode was used
 
     # Relationships
     account = relationship("Account", back_populates="analysis_runs")
@@ -157,6 +159,8 @@ class DealAssessment(Base):
     id = Column(Text, primary_key=True, default=_uuid)
     analysis_run_id = Column(Text, ForeignKey("analysis_runs.id"), nullable=False)
     account_id = Column(Text, ForeignKey("accounts.id"), nullable=False)
+    deal_type = Column(Text, nullable=True)  # new_logo | expansion_upsell | expansion_cross_sell | expansion_both
+    stage_model = Column(Text, nullable=True)  # "new_logo_7stage" | "expansion_7stage"
 
     # Synthesis narrative
     deal_memo = Column(Text, nullable=False)

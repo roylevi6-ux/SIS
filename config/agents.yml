@@ -2,6 +2,11 @@
 ## Maps agent IDs to metadata. Model assignments live in models.yml.
 
 agents:
+  agent_0e:
+    name: "Account Health & Sentiment"
+    description: "Existing customer relationship health, product sentiment, renewal dynamics"
+    prompt_file: "agent_0e_account_health.yml"
+
   agent_1:
     name: "Stage & Progress Classifier"
     description: "Blind stage inference from transcript alone (no CRM data)"
