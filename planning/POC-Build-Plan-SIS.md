@@ -57,7 +57,7 @@
 |---|---|---|
 | **Data model (SQLite + SQLAlchemy)** | Sec 8 | All 10 tables from PRD data model. Accounts, Transcripts, AgentAnalyses, DealAssessments, ScoreFeedback, CalibrationLog, etc. Migration-ready schema. |
 | **Transcript preprocessor** | P0-1 | Speaker normalization, filler removal, 8K token cap per transcript. Handles Gong export format (format TBD pending OQ1 resolution). |
-| **Agent execution framework** | P0-2, Sec 7.2 | Orchestrator: sequential-parallel flow (Agent 1 -> 2-8 parallel -> 9 -> 10). asyncio-based. LiteLLM abstraction for Anthropic Claude. Output passes standardized JSON schema validation (Sec 7.4). |
+| **Agent execution framework** | P0-2, Sec 7.2 | Orchestrator: parallel-then-sequential flow (Agents 1-8 parallel -> 9 -> 10; expansion adds 0E to parallel batch). asyncio.as_completed with per-agent SSE progress. LiteLLM abstraction for Anthropic Claude. Output passes standardized JSON schema validation (Sec 7.4). |
 | **Agent 1: Stage Classifier** | P0-8a, Sec 7.3 | First agent deployed and tested. Blind stage inference from transcript alone (no CRM data). Output: inferred stage + evidence + confidence. |
 | **Prompt template system** | Sec 7.9, 7.10 | Jinja2 templates with `[AGENT-SPECIFIC]` extension points. Calibration config (YAML) separated from prompt logic. Git-versioned. |
 

@@ -46,7 +46,7 @@ Auto-cleanup: entries removed 5 minutes after reaching terminal status.
 - Accept optional `run_id` to publish progress against.
 - On each agent start: mark `running` in progress store.
 - On each agent complete: mark `completed` with tokens/cost/time.
-- For agents 2-8: replace `asyncio.gather` with `asyncio.as_completed` wrapper so each agent's completion is reported individually.
+- Agents 1-8 (and 0E for expansion) all run in parallel via `asyncio.as_completed` so each agent's completion is reported individually.
 - On pipeline end: mark overall status.
 
 ### Backend: SSE Endpoint Enhancement

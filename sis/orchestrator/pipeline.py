@@ -1,15 +1,15 @@
-"""AnalysisPipeline — 4-step agent execution flow per Technical Architecture Section 3.2.
+"""AnalysisPipeline — 3-step agent execution flow per Technical Architecture Section 3.2.
 
-Manages the full 10-agent pipeline for one account:
-  Step 1: Agent 1 (Stage & Progress) — sequential
-  Step 2: Agents 2-8 (7 specialized agents) — parallel via asyncio.gather
-  Step 3: Agent 9 (Open Discovery / Adversarial) — sequential
-  Step 4: Agent 10 (Synthesis) — sequential
+Manages the full pipeline for one account:
+  Step 1: Agents 1-8 (all parallel via asyncio.as_completed)
+          For expansion deals: Agent 0E also runs in parallel with 1-8
+  Step 2: Agent 9 (Open Discovery / Adversarial) — reads all outputs
+  Step 3: Agent 10 (Synthesis) — reads all outputs including Agent 9
 
 Design principles:
 - No agent-to-agent communication except through the orchestrator
 - Agents are pure functions: (transcripts, context) -> AgentOutput
-- asyncio.gather for parallel execution with return_exceptions=True
+- asyncio.as_completed for parallel execution with per-agent progress reporting
 - Failed agents get retried independently; partial results are acceptable
 - All results persisted to DB via the service layer
 """
