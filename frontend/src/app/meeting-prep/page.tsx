@@ -56,9 +56,43 @@ interface AccountDetail {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getItemText(item: string | { text?: string; [key: string]: unknown }): string {
+function getItemText(item: string | Record<string, unknown>): string {
   if (typeof item === 'string') return item;
-  return item.text || JSON.stringify(item);
+
+  // RiskEntry
+  if (item.risk) {
+    const parts = [item.risk as string];
+    if (item.severity) parts.push(`[${item.severity}]`);
+    if (item.evidence_summary) parts.push(`— ${item.evidence_summary}`);
+    if (item.mitigation) parts.push(`Mitigation: ${item.mitigation}`);
+    return parts.join(' ');
+  }
+
+  // SignalEntry
+  if (item.signal) {
+    const parts = [item.signal as string];
+    if (item.evidence_summary) parts.push(`— ${item.evidence_summary}`);
+    return parts.join(' ');
+  }
+
+  // RecommendedAction
+  if (item.action) {
+    const parts = [item.action as string];
+    if (item.owner) parts.push(`(${item.owner})`);
+    if (item.priority) parts.push(`[${item.priority}]`);
+    return parts.join(' ');
+  }
+
+  // ContradictionEntry
+  if (item.contradiction_detail) {
+    const parts: string[] = [];
+    if (item.dimension) parts.push(`${item.dimension}:`);
+    parts.push(item.contradiction_detail as string);
+    if (item.resolution) parts.push(`Resolution: ${item.resolution}`);
+    return parts.join(' ');
+  }
+
+  return (item.text || item.description || item.name || JSON.stringify(item)) as string;
 }
 
 function derivedQuestions(unknowns: string[]): string[] {
