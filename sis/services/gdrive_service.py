@@ -307,7 +307,7 @@ def upload_calls_to_db(
     Returns:
         Dict with 'imported' (list of Transcript objects) and 'skipped' (list of call_ids).
     """
-    from sis.services.transcript_service import upload_transcript, transcript_exists
+    from sis.services.transcript_service import upload_transcript, transcript_exists, normalize_active_transcripts
 
     imported = []
     skipped = []
@@ -345,5 +345,9 @@ def upload_calls_to_db(
             transcript.id[:8],
             transcript.token_count,
         )
+
+    # After bulk import, normalize so the N most recent by date are active
+    if imported:
+        normalize_active_transcripts(account_id)
 
     return {"imported": imported, "skipped": skipped}

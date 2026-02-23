@@ -94,6 +94,44 @@ def transcript_exists(account_id: str, gong_call_id: str) -> bool:
         ) is not None
 
 
+def _enforce_active_limit(session, account_id: str) -> None:
+    """Keep only the N most recent transcripts active (by call_date).
+
+    Called after each insert so that regardless of import order,
+    the newest calls are always the active ones.
+    """
+    all_active = (
+        session.query(Transcript)
+        .filter_by(account_id=account_id, is_active=1)
+        .order_by(Transcript.call_date.desc())
+        .all()
+    )
+    for t in all_active[MAX_TRANSCRIPTS_PER_ACCOUNT:]:
+        t.is_active = 0
+
+
+def normalize_active_transcripts(account_id: str) -> int:
+    """Fix active flags so the N most recent by call_date are active.
+
+    Returns the number of transcripts whose active state changed.
+    """
+    with get_session() as session:
+        all_transcripts = (
+            session.query(Transcript)
+            .filter_by(account_id=account_id)
+            .order_by(Transcript.call_date.desc())
+            .all()
+        )
+        changed = 0
+        for i, t in enumerate(all_transcripts):
+            should_be_active = i < MAX_TRANSCRIPTS_PER_ACCOUNT
+            if bool(t.is_active) != should_be_active:
+                t.is_active = 1 if should_be_active else 0
+                changed += 1
+        session.flush()
+        return changed
+
+
 def list_transcripts(account_id: str, active_only: bool = True) -> list[dict]:
     """Transcripts for account, ordered by call_date DESC."""
     with get_session() as session:
