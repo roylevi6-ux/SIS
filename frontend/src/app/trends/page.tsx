@@ -240,7 +240,7 @@ function TeamsTab({ weeks }: { weeks: number }) {
   const { data: rawTeams, isLoading, isError, error } = useTeamTrends(weeks);
   const teams = useMemo<TeamTrend[]>(() => {
     if (!rawTeams) return [];
-    return rawTeams as TeamTrend[];
+    return rawTeams as unknown as TeamTrend[];
   }, [rawTeams]);
 
   if (isError) {
@@ -342,7 +342,7 @@ function DealsTab({ weeks }: { weeks: number }) {
   const { data: rawDeals, isLoading, isError, error } = useDealTrends({ weeks });
   const deals = useMemo<DealTrend[]>(() => {
     if (!rawDeals) return [];
-    return rawDeals as DealTrend[];
+    return rawDeals as unknown as DealTrend[];
   }, [rawDeals]);
 
   const chartData = useMemo(() => buildChartData(deals), [deals]);

@@ -191,7 +191,7 @@ export default function FeedbackPage() {
     author: authorFilter || undefined,
   });
 
-  const items: FeedbackItem[] = (rawItems ?? []) as FeedbackItem[];
+  const items: FeedbackItem[] = (rawItems ?? []) as unknown as FeedbackItem[];
 
   return (
     <div className="p-6 space-y-6">
@@ -203,7 +203,7 @@ export default function FeedbackPage() {
       </div>
 
       {/* Summary */}
-      {!summaryLoading && summary && <SummaryCards summary={summary} />}
+      {!summaryLoading && summary && <SummaryCards summary={summary as unknown as FeedbackSummary} />}
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row">

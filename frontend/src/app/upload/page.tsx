@@ -204,7 +204,7 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
 
     try {
       const calls = await api.gdrive.listCalls(account.name, account.path, maxCalls);
-      setRecentCalls(calls);
+      setRecentCalls(calls as unknown as DriveCall[]);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Failed to load calls');
     } finally {
@@ -251,7 +251,7 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
         team_name: teamName || undefined,
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
-      setImportResult(result);
+      setImportResult(result as unknown as ImportResult);
       onImportComplete?.();
 
       // Trigger analysis pipeline — returns real run_id immediately
@@ -594,7 +594,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
 
     try {
       const calls = await api.gdrive.listCalls(account.name, account.path, maxCalls);
-      setRecentCalls(calls);
+      setRecentCalls(calls as unknown as DriveCall[]);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Failed to load calls');
     } finally {
@@ -640,7 +640,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
         team_name: teamName || undefined,
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
-      setImportResult(result);
+      setImportResult(result as unknown as ImportResult);
       onImportComplete?.();
 
       // Trigger analysis pipeline — returns real run_id immediately
@@ -918,7 +918,7 @@ function ManualUploadTab() {
       },
       {
         onSuccess: (data) => {
-          setUploadResult(data as UploadResult);
+          setUploadResult(data as unknown as UploadResult);
           setRawText('');
           setDurationMinutes('');
         },
@@ -1091,7 +1091,7 @@ function PastUploadsTable({ refreshKey }: { refreshKey: number }) {
     setIsLoading(true);
     try {
       const data = await api.accounts.list();
-      setAccounts(data);
+      setAccounts(data as unknown as PastUploadAccount[]);
     } catch {
       // Silently fail — list is supplementary
     } finally {

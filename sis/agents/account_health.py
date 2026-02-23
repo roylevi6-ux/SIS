@@ -14,7 +14,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, run_agent
-from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT, MANAGER_INSIGHT_FRAGMENT
 
 from sis.config import MODEL_AGENTS_2_8
 
@@ -70,6 +70,11 @@ class AccountHealthFindings(BaseModel):
         default_factory=list,
         description="Notes on data quality affecting this analysis. Max 3 items.",
     )
+    manager_insight: str = Field(
+        default="",
+        description="2-3 sentences for the sales manager: pattern interpretation, "
+        "silence signals, and one specific recommended action.",
+    )
 
 
 # --- Envelope output ---
@@ -83,7 +88,7 @@ class AccountHealthOutput(BaseModel):
         description="Number of full transcripts analyzed", ge=0
     )
     narrative: str = Field(
-        description="Analytical narrative about existing customer relationship health and expansion dynamics. Max 300 words."
+        description="Analytical narrative about existing customer relationship health and expansion dynamics. Max 500 words."
     )
     findings: AccountHealthFindings = Field(
         description="Agent-specific structured findings"
@@ -142,7 +147,7 @@ Consider: product satisfaction, support experience, executive relationship, hist
 - Typical AM relationships: QBRs, support tickets, performance reviews
 - Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 - Use Gong's KEY POINTS section as a reliable signal source.
-""" + ENVELOPE_PROMPT_FRAGMENT + """
+""" + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
 Respond with a single JSON object using this envelope structure:

@@ -122,12 +122,15 @@ def _enhance_system_prompt(system_prompt: str, output_model: type[BaseModel]) ->
         + "\n\n## Required JSON Schema\n"
         "Your response MUST be a JSON object matching this exact schema. "
         "Use these EXACT field names.\n\n"
-        "## CONCISENESS RULES (critical for latency)\n"
-        "- narrative: MAX 150 words. Be analytical, not descriptive.\n"
-        "- evidence quote: MAX 1 sentence. Verbatim or [Call N, Speaker].\n"
-        "- evidence interpretation: MAX 1 sentence.\n"
-        "- confidence rationale: MAX 2 sentences.\n"
-        "- List fields: MAX 5 items. Only the most significant.\n"
+        "## OUTPUT DEPTH GUIDELINES\n"
+        "- narrative: Write analytically — interpret patterns, explain implications, "
+        "flag what's missing. Aim for 400-500 words.\n"
+        "- evidence quote: 1-2 sentences. Include enough context for the quote to stand alone.\n"
+        "- evidence interpretation: 1-2 sentences explaining causal relevance and deal impact.\n"
+        "- confidence rationale: 2-3 sentences.\n"
+        "- List fields: Include ALL significant items up to schema limit.\n"
+        "- Prioritize managerial insight: what does this MEAN for the deal, "
+        "what should the manager DO?\n"
         "- Do NOT pad with qualifiers, hedging, or restating the obvious.\n"
         "- Every word must earn its place.\n\n"
         f"```json\n{schema}\n```"
@@ -148,8 +151,8 @@ def _inject_deterministic_fields(result: BaseModel, transcript_count: int | None
             object.__setattr__(result, "sparse_data_flag", transcript_count < 3)
 
 
-def strip_for_downstream(agent_output: dict) -> dict:
-    """Strip verbose fields from agent output before passing to Agents 9/10.
+def strip_for_synthesis(agent_output: dict) -> dict:
+    """Aggressively strip agent output for Agent 10 (Synthesis).
 
     Removes evidence[], narrative, confidence.rationale, confidence.data_gaps,
     and data_quality_notes from findings. Keeps only the essential data:
@@ -172,6 +175,32 @@ def strip_for_downstream(agent_output: dict) -> dict:
             continue
         stripped[key] = value
     return stripped
+
+
+def strip_for_adversarial(agent_output: dict) -> dict:
+    """Lightly strip agent output for Agent 9 (Adversarial Validator).
+
+    Preserves evidence[] and narrative so Agent 9 can verify claims against
+    their supporting quotes. Only strips confidence.data_gaps and
+    data_quality_notes to save tokens.
+    """
+    stripped = {}
+    for key, value in agent_output.items():
+        if key == "confidence" and isinstance(value, dict):
+            stripped[key] = {
+                "overall": value.get("overall", 0.0),
+                "rationale": value.get("rationale", ""),
+            }
+            continue
+        if key == "findings" and isinstance(value, dict):
+            stripped[key] = {k: v for k, v in value.items() if k != "data_quality_notes"}
+            continue
+        stripped[key] = value
+    return stripped
+
+
+# Backward-compatible alias
+strip_for_downstream = strip_for_synthesis
 
 
 def _copy_data_quality_to_confidence(result: BaseModel) -> None:

@@ -58,7 +58,7 @@ class ConfidenceAssessment(BaseModel):
 ENVELOPE_PROMPT_FRAGMENT = """\
 
 ## Evidence Citation Rules
-For every factual claim, provide evidence citations (3-5 most important only):
+For every factual claim, provide evidence citations (8-12 for thorough coverage):
 - `claim_id`: snake_case, max 30 characters, matches a specific finding
 - `transcript_index`: which transcript (1-indexed)
 - `speaker`: format as "NAME (Company -- Role)" when known
@@ -77,3 +77,18 @@ Include a rationale and list specific data gaps.
 ## Sparse Data Flag
 Set sparse_data_flag=true if fewer than 3 full transcripts were provided. \
 When sparse_data_flag=true, confidence MUST NOT exceed 0.75 unless explicitly justified."""
+
+
+MANAGER_INSIGHT_FRAGMENT = """\
+
+## Managerial Intelligence Guidelines
+Think like a VP Sales reading your output before a pipeline review. For every dimension you analyze:
+
+1. **Pattern Interpretation** — don't just detect a signal, explain what it MEANS for the deal
+2. **Cross-Call Narrative Arc** — how has this dimension evolved across calls? Improving, degrading, static?
+3. **Silence Signals** — what SHOULD be discussed at this deal stage but isn't? Absence of evidence is evidence.
+4. **The "So What"** — connect every finding to a deal outcome. "Champion went quiet" → "forecast risk because..."
+5. **Manager Action** — in the `manager_insight` field, provide one specific action the manager should take THIS WEEK
+
+Write the `manager_insight` field as 2-3 sentences addressed directly to the sales manager: \
+what pattern you see, what silence signal matters most, and what they should do about it."""

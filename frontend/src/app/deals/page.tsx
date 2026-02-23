@@ -22,7 +22,7 @@ export default function DealsPage() {
 
   const deals = useMemo<PipelineDeal[]>(() => {
     if (!rawData) return [];
-    return rawData as PipelineDeal[];
+    return rawData as unknown as PipelineDeal[];
   }, [rawData]);
 
   const filtered = useMemo(() => {

@@ -15,7 +15,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, build_analysis_prompt, run_agent
-from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT, MANAGER_INSIGHT_FRAGMENT
 
 
 # --- Sub-models ---
@@ -46,6 +46,11 @@ class CompetitiveFindings(BaseModel):
     no_decision_evidence: list[str] = Field(default_factory=list, description="Evidence supporting the no-decision risk assessment. Max 5 items.")
     recommended_catalyst_actions: list[str] = Field(default_factory=list, description="Recommended actions to strengthen catalyst and reduce no-decision risk")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
+    manager_insight: str = Field(
+        default="",
+        description="2-3 sentences for the sales manager: pattern interpretation, "
+        "silence signals, and one specific recommended action.",
+    )
 
 
 # --- Envelope output ---
@@ -56,7 +61,7 @@ class CompetitiveOutput(BaseModel):
 
     agent_id: str = Field(default="agent_8_competitive")
     transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
-    narrative: str = Field(description="Analytical narrative about competitive dynamics and displacement readiness. Max 300 words.")
+    narrative: str = Field(description="Analytical narrative about competitive dynamics and displacement readiness. Max 500 words.")
     findings: CompetitiveFindings = Field(description="Agent-specific structured findings")
     evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
     confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
@@ -107,7 +112,7 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 5. A strong catalyst creates urgency. No catalyst = the buyer can always delay.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 7. Use Gong's KEY POINTS section as a reliable signal source.
-""" + ENVELOPE_PROMPT_FRAGMENT + """
+""" + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
 Respond with a single JSON object using this envelope structure:

@@ -31,10 +31,10 @@ class TestModelRouter:
         model = router.get_model("agent_1")
         assert "haiku" in model
 
-    def test_get_model_agent_10_opus(self):
+    def test_get_model_agent_10_sonnet(self):
         router = ModelRouter.get_instance()
         model = router.get_model("agent_10")
-        assert "opus" in model
+        assert "sonnet" in model
 
     def test_get_model_default_fallback(self):
         router = ModelRouter.get_instance()

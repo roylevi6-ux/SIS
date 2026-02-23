@@ -117,7 +117,7 @@ export default function CalibrationPage() {
             ))}
           </div>
         )}
-        {!currentLoading && current && <ConfigDisplay config={current as Record<string, unknown>} />}
+        {!currentLoading && current && <ConfigDisplay config={current as unknown as Record<string, unknown>} />}
         {!currentLoading && !current && (
           <p className="text-sm text-muted-foreground">No calibration config found</p>
         )}

@@ -13,6 +13,7 @@ from typing import Optional
 
 from sis.db.session import get_session
 from sis.db.models import Account, DealAssessment, AgentAnalysis
+from sis.services.utils import safe_json as _safe_json
 
 
 def export_deal_brief(account_id: str, format: str = "markdown") -> str:
@@ -47,17 +48,6 @@ def export_deal_brief(account_id: str, format: str = "markdown") -> str:
         )
         if not assessment:
             return f"**Error:** No assessment found for account `{account.account_name}`."
-
-        # Extract structured data from JSON columns (safe parse)
-        def _safe_json(val, default=None):
-            if default is None:
-                default = []
-            if not val:
-                return default
-            try:
-                return json.loads(val)
-            except (json.JSONDecodeError, TypeError):
-                return default
 
         health_breakdown = _safe_json(assessment.health_breakdown)
         top_risks = _safe_json(assessment.top_risks)
