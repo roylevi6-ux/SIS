@@ -35,7 +35,14 @@ def validate_drive_path(path: str) -> tuple[bool, str]:
         return False, f"Path is not a directory: {p}"
 
     # Check if it has sub-folders (accounts)
-    sub_dirs = [d for d in p.iterdir() if d.is_dir() and not d.name.startswith(".")]
+    try:
+        sub_dirs = [d for d in p.iterdir() if d.is_dir() and not d.name.startswith(".")]
+    except PermissionError:
+        return False, (
+            f"Permission denied reading {p}. "
+            "On macOS, grant Full Disk Access to your terminal app: "
+            "System Settings → Privacy & Security → Full Disk Access."
+        )
     if not sub_dirs:
         return False, f"No account sub-folders found in: {p}"
 
@@ -54,7 +61,15 @@ def list_account_folders(drive_path: str) -> list[dict]:
         raise FileNotFoundError(f"Drive path not found: {root}")
 
     accounts = []
-    for d in sorted(root.iterdir()):
+    try:
+        entries = sorted(root.iterdir())
+    except PermissionError:
+        raise PermissionError(
+            f"Permission denied reading {root}. "
+            "On macOS, grant Full Disk Access to your terminal app: "
+            "System Settings → Privacy & Security → Full Disk Access."
+        )
+    for d in entries:
         if not d.is_dir() or d.name.startswith("."):
             continue
 
