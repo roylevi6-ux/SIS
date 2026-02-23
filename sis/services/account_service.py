@@ -7,7 +7,10 @@ import logging
 from typing import Optional
 
 from sis.db.session import get_session
-from sis.db.models import Account, AnalysisRun, DealAssessment
+from sis.db.models import (
+    Account, AnalysisRun, DealAssessment,
+    AgentAnalysis, Transcript, ScoreFeedback, CoachingEntry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +172,61 @@ def list_accounts(
 
             result.append(summary)
         return result
+
+
+def delete_account(account_id: str) -> dict:
+    """Delete an account and all related data in correct FK dependency order.
+
+    Returns dict with account_name and total rows_deleted.
+    """
+    with get_session() as session:
+        account = session.query(Account).filter_by(id=account_id).one_or_none()
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
+
+        account_name = account.account_name
+        total_deleted = 0
+
+        # 1. score_feedback (FK to account_id and deal_assessment_id)
+        n = session.query(ScoreFeedback).filter_by(account_id=account_id).delete()
+        total_deleted += n
+
+        # 2. coaching_entries (FK to account_id)
+        n = session.query(CoachingEntry).filter_by(account_id=account_id).delete()
+        total_deleted += n
+
+        # 3. agent_analyses (FK to analysis_run_id — get run IDs first)
+        run_ids = [
+            r.id for r in
+            session.query(AnalysisRun.id).filter_by(account_id=account_id).all()
+        ]
+        if run_ids:
+            n = session.query(AgentAnalysis).filter(
+                AgentAnalysis.analysis_run_id.in_(run_ids)
+            ).delete(synchronize_session="fetch")
+            total_deleted += n
+
+        # 4. deal_assessments (FK to account_id)
+        n = session.query(DealAssessment).filter_by(account_id=account_id).delete()
+        total_deleted += n
+
+        # 5. analysis_runs (FK to account_id)
+        n = session.query(AnalysisRun).filter_by(account_id=account_id).delete()
+        total_deleted += n
+
+        # 6. transcripts (FK to account_id)
+        n = session.query(Transcript).filter_by(account_id=account_id).delete()
+        total_deleted += n
+
+        # 7. account itself
+        session.delete(account)
+        total_deleted += 1
+
+        logger.info(
+            "Deleted account %s (%s) — %d rows total",
+            account_id, account_name, total_deleted,
+        )
+        return {"account_name": account_name, "rows_deleted": total_deleted}
 
 
 def get_account_detail(account_id: str) -> dict:

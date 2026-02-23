@@ -31,9 +31,14 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from .budget import RunBudget
 from .cost_tracker import RunCostSummary
 
 logger = logging.getLogger(__name__)
+
+
+class _CancelledError(Exception):
+    """Internal signal that the pipeline was cancelled by the user."""
 
 
 @dataclass
@@ -141,6 +146,7 @@ class AnalysisPipeline:
 
         deal_type = deal_context.get("deal_type", "new_logo") if deal_context else "new_logo"
         is_expansion = deal_type.startswith("expansion")
+        budget = RunBudget()
 
         result = PipelineResult(
             account_id=account_id,
@@ -155,7 +161,7 @@ class AnalysisPipeline:
         if self._run_id:
             from sis.orchestrator.progress_store import (
                 init_run, mark_agent_running, mark_agent_completed,
-                mark_agent_failed, mark_run_completed,
+                mark_agent_failed, mark_run_completed, is_cancelled,
             )
             init_run(self._run_id)
 
@@ -224,6 +230,12 @@ class AnalysisPipeline:
                 logger.error("Agent 1 failed — continuing without stage context: %s", exc)
                 if self._run_id:
                     mark_agent_failed(self._run_id, "agent_1", str(exc))
+
+            # ── Cancellation check before Step 2 ──
+            if self._run_id and is_cancelled(self._run_id):
+                logger.info("Pipeline cancelled before Step 2")
+                result.status = "cancelled"
+                raise _CancelledError()
 
             # ── STEP 2: Agents 0E + 2-8 (parallel, all with stage_context) ──
             step2_label = "Agents 0E+2-8: Parallel Analysis" if is_expansion else "Agents 2-8: Parallel Analysis"
@@ -305,6 +317,20 @@ class AnalysisPipeline:
                     [f"[{agent_id}] {w}" for w in warnings]
                 )
 
+            # ── Cancellation check before Step 3 ──
+            if self._run_id and is_cancelled(self._run_id):
+                logger.info("Pipeline cancelled before Step 3")
+                result.status = "cancelled"
+                raise _CancelledError()
+
+            # ── Budget check after parallel batch ──
+            violations = budget.check(result.cost_summary, result.errors)
+            if violations:
+                logger.warning("Budget exceeded after parallel batch: %s", violations)
+                result.errors.append(f"[budget] {'; '.join(violations)}")
+                result.status = "partial"
+                raise _CancelledError()
+
             # ── STEP 3: Agent 9 (Open Discovery) ──────────────────────
             self._report_progress("Agent 9: Open Discovery", 3)
             if self._run_id:
@@ -336,6 +362,20 @@ class AnalysisPipeline:
                     agent9_result.attempts,
                 )
 
+            # ── Cancellation check before Step 4 ──
+            if self._run_id and is_cancelled(self._run_id):
+                logger.info("Pipeline cancelled before Step 4")
+                result.status = "cancelled"
+                raise _CancelledError()
+
+            # ── Budget check after Agent 9 ──
+            violations = budget.check(result.cost_summary, result.errors)
+            if violations:
+                logger.warning("Budget exceeded after Agent 9: %s", violations)
+                result.errors.append(f"[budget] {'; '.join(violations)}")
+                result.status = "partial"
+                raise _CancelledError()
+
             # ── STEP 4: Agent 10 (Synthesis) ──────────────────────────
             self._report_progress("Agent 10: Synthesis", 4)
             if self._run_id:
@@ -358,6 +398,12 @@ class AnalysisPipeline:
                     agent10_result.attempts,
                 )
 
+            # ── Cancellation check before Step 5 ──
+            if self._run_id and is_cancelled(self._run_id):
+                logger.info("Pipeline cancelled before Step 5")
+                result.status = "cancelled"
+                raise _CancelledError()
+
             # ── STEP 5: POST-SYNTHESIS VALIDATION ─────────────────────
             self._report_progress("Post-synthesis validation", 5)
             from sis.validation import validate_synthesis_output
@@ -379,6 +425,10 @@ class AnalysisPipeline:
                 result.status = "partial"
             else:
                 result.status = "completed"
+
+        except _CancelledError:
+            result.status = "cancelled"
+            logger.info("Pipeline cancelled for account %s", account_id)
 
         except Exception as e:
             result.status = "failed"

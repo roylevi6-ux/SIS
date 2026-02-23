@@ -11,7 +11,8 @@ import logging
 
 import anthropic
 
-from sis.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, MODEL_CHAT
+from sis.config import MODEL_CHAT
+from sis.llm.client import get_client
 from sis.services.account_service import list_accounts
 from sis.services.dashboard_service import (
     get_pipeline_overview,
@@ -35,23 +36,6 @@ Rules:
 - For pipeline questions, summarize by health tier (Healthy 70+, At Risk 45-69, Critical <45).
 - When asked about forecast divergence, explain both AI and IC categories and the delta.
 """
-
-# Module-level singleton client (connection pooling, matches runner.py pattern)
-_client: anthropic.Anthropic | None = None
-
-
-def _get_client() -> anthropic.Anthropic:
-    """Get or create the shared chat Anthropic client."""
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(
-            api_key=ANTHROPIC_API_KEY,
-            base_url=ANTHROPIC_BASE_URL,
-            timeout=120.0,
-            max_retries=1,
-        )
-    return _client
-
 
 def _build_context() -> str:
     """Build a context string with all pipeline data for the LLM."""
@@ -135,7 +119,7 @@ def query(user_message: str, history: list[dict] | None = None) -> str:
         "content": f"<pipeline_data>\n{context}\n</pipeline_data>\n\n{user_message}",
     })
 
-    client = _get_client()
+    client = get_client()
 
     try:
         # Use streaming to avoid Riskified proxy 60s timeout (matches runner.py pattern)

@@ -61,6 +61,21 @@ async def run_analysis(body: AnalysisRequest, user: dict = Depends(get_current_u
     return {"status": "started", "account_id": body.account_id, "run_id": run_id}
 
 
+@router.post("/{run_id}/cancel")
+async def cancel_analysis(run_id: str, user: dict = Depends(get_current_user)):
+    """Cancel a running analysis pipeline."""
+    from sis.orchestrator.progress_store import cancel_run, get_snapshot
+
+    snapshot = get_snapshot(run_id)
+    if not snapshot:
+        raise HTTPException(404, f"Run {run_id} not found")
+    if snapshot["status"] != "running":
+        raise HTTPException(422, f"Run is already {snapshot['status']}")
+
+    cancel_run(run_id)
+    return {"status": "cancelling", "run_id": run_id}
+
+
 @router.get("/delta/{account_id}")
 def get_delta(account_id: str, user: dict = Depends(get_current_user)):
     """Get assessment delta (latest vs previous) for an account."""

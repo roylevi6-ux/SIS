@@ -9,7 +9,9 @@ import {
   Loader2,
   Clock,
   Minus,
+  Square,
 } from 'lucide-react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -33,7 +35,7 @@ interface AgentProgress {
 
 interface RunProgress {
   run_id: string;
-  status: 'running' | 'completed' | 'failed' | 'partial' | 'not_found';
+  status: 'running' | 'completed' | 'failed' | 'partial' | 'cancelled' | 'not_found';
   started_at?: string;
   agents: Record<string, AgentProgress>;
   total_cost_usd: number;
@@ -93,10 +95,13 @@ export function AnalysisProgressDetail({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const isTerminal =
     progress?.status === 'completed' ||
     progress?.status === 'failed' ||
-    progress?.status === 'partial';
+    progress?.status === 'partial' ||
+    progress?.status === 'cancelled';
 
   // -- SSE connection -------------------------------------------------------
   useEffect(() => {
@@ -112,7 +117,8 @@ export function AnalysisProgressDetail({
         if (
           data.status === 'completed' ||
           data.status === 'failed' ||
-          data.status === 'partial'
+          data.status === 'partial' ||
+          data.status === 'cancelled'
         ) {
           es.close();
           onCompleteRef.current?.(data);
@@ -184,13 +190,37 @@ export function AnalysisProgressDetail({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">
-            {isTerminal ? 'Analysis Complete' : 'Running Analysis...'}
+            {progress?.status === 'cancelled'
+              ? 'Analysis Cancelled'
+              : isTerminal
+              ? 'Analysis Complete'
+              : 'Running Analysis...'}
           </CardTitle>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {isTerminal
-              ? formatElapsed(progress?.total_elapsed_seconds ?? 0)
-              : formatElapsed(wallClock)}
-          </span>
+          <div className="flex items-center gap-2">
+            {!isTerminal && progress?.status === 'running' && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={async () => {
+                  setIsCancelling(true);
+                  try {
+                    await api.analyses.cancel(runId);
+                  } catch {
+                    setIsCancelling(false);
+                  }
+                }}
+                disabled={isCancelling}
+              >
+                <Square className="size-3 mr-1.5" />
+                {isCancelling ? 'Stopping...' : 'Stop Analysis'}
+              </Button>
+            )}
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {isTerminal
+                ? formatElapsed(progress?.total_elapsed_seconds ?? 0)
+                : formatElapsed(wallClock)}
+            </span>
+          </div>
         </div>
         <Progress value={progressPct} className="h-2 mt-2" />
         <p className="text-xs text-muted-foreground mt-1">
@@ -320,6 +350,17 @@ export function AnalysisProgressDetail({
                 ))}
               </ul>
             )}
+          </div>
+        )}
+
+        {progress?.status === 'cancelled' && (
+          <div className="flex items-center justify-between pt-4 mt-2 border-t border-amber-200 dark:border-amber-900">
+            <div className="flex items-center gap-2">
+              <Square className="size-4 text-amber-500" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                Analysis cancelled
+              </span>
+            </div>
           </div>
         )}
       </CardContent>

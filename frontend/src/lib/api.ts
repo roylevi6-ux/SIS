@@ -43,6 +43,8 @@ export const api = {
       apiFetch<any>('/api/accounts/', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: any) =>
       apiFetch<any>(`/api/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      apiFetch<any>(`/api/accounts/${id}`, { method: 'DELETE' }),
     setForecast: (id: string, category: string) =>
       apiFetch<any>(`/api/accounts/${id}/ic-forecast`, {
         method: 'POST',
@@ -67,6 +69,8 @@ export const api = {
       apiFetch<any>(`/api/analyses/${runId}/rerun/${agentId}`, { method: 'POST' }),
     resynthesize: (runId: string) =>
       apiFetch<any>(`/api/analyses/${runId}/resynthesize`, { method: 'POST' }),
+    cancel: (runId: string) =>
+      apiFetch<any>(`/api/analyses/${runId}/cancel`, { method: 'POST' }),
     delta: (accountId: string) =>
       apiFetch<any>(`/api/analyses/delta/${accountId}`),
     timeline: (accountId: string) =>
