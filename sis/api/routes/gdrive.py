@@ -25,6 +25,11 @@ class ImportRequest(BaseModel):
     account_name: str
     account_path: str
     max_calls: int = 5
+    deal_type: Optional[str] = None
+    mrr_estimate: Optional[float] = None
+    ae_owner: Optional[str] = None
+    team_lead: Optional[str] = None
+    team_name: Optional[str] = None
 
 
 # ── Routes ───────────────────────────────────────────────────────────
@@ -89,7 +94,14 @@ def import_from_drive(body: ImportRequest):
             break
 
     if not account_id:
-        acct_obj = create_account(name=body.account_name)
+        acct_obj = create_account(
+            name=body.account_name,
+            deal_type=body.deal_type,
+            mrr=body.mrr_estimate,
+            ae_owner=body.ae_owner,
+            team_lead=body.team_lead,
+            team=body.team_name,
+        )
         account_id = acct_obj.id
 
     # Upload to DB
