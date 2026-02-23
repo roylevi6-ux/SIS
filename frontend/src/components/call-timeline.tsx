@@ -82,6 +82,52 @@ function getInternalNames(participants: Participant[] | null): string {
     .join(', ');
 }
 
+/** Extract a single topic keyword from a Gong call title. */
+const TOPIC_KEYWORDS = [
+  'discovery', 'demo', 'kickoff', 'onboarding', 'review', 'sync',
+  'proposal', 'integration', 'integrations', 'walkthrough', 'pricing',
+  'commercial', 'technical', 'security', 'legal', 'contract',
+  'negotiation', 'poc', 'pilot', 'qbr', 'planning', 'status',
+  'training', 'workshop', 'simulation', 'analysis', 'intro',
+  'retrospective', 'data', 'weekly', 'standup', 'chargeback',
+];
+
+const FILLER_WORDS = new Set([
+  'the', 'a', 'an', 'for', 'on', 'in', 'of', 'to', 'up', 'and', 'or',
+  'with', 'catch', 'quick', 'progress',
+]);
+
+function extractTopicWord(title: string | null): string | null {
+  if (!title) return null;
+
+  // Strip separators and company-like prefixes
+  const cleaned = title
+    .replace(/\/\//g, ' ')
+    .replace(/<>/g, ' ')
+    .replace(/[–—-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const words = cleaned.split(' ');
+
+  // Try to find a known topic keyword (scan right-to-left for the most specific)
+  for (let i = words.length - 1; i >= 0; i--) {
+    if (TOPIC_KEYWORDS.includes(words[i].toLowerCase())) {
+      return words[i].charAt(0).toUpperCase() + words[i].slice(1).toLowerCase();
+    }
+  }
+
+  // Fallback: last word that's 4+ chars and not filler
+  for (let i = words.length - 1; i >= 0; i--) {
+    const w = words[i].toLowerCase().replace(/[^a-z]/g, '');
+    if (w.length >= 4 && !FILLER_WORDS.has(w)) {
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    }
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Generate adaptive axis tick marks
 // ---------------------------------------------------------------------------
@@ -233,12 +279,8 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
               if (internal) tooltipLines.push(`Internal: ${internal}`);
               if (call.analyzed) tooltipLines.push('Included in analysis');
 
-              // Short label for below the dot (truncate to ~12 chars)
-              const shortLabel = call.call_title
-                ? call.call_title.length > 14
-                  ? call.call_title.slice(0, 12) + '…'
-                  : call.call_title
-                : null;
+              // Single topic keyword extracted from the call title
+              const shortLabel = extractTopicWord(call.call_title);
 
               return (
                 <Tooltip key={call.id}>
