@@ -17,12 +17,19 @@ import { DealMemo } from '@/components/deal-memo';
 import { AgentCard } from '@/components/agent-card';
 import { ActionsList } from '@/components/actions-list';
 import { DealTimeline } from '@/components/deal-timeline';
+import { CallTimeline } from '@/components/call-timeline';
 import { DeltaBadge } from '@/components/delta-badge';
 import type { AgentAnalysis } from '@/components/agent-card';
 
 // ---------------------------------------------------------------------------
 // Types for the account detail response
 // ---------------------------------------------------------------------------
+
+interface Participant {
+  name: string;
+  affiliation?: string;
+  title?: string;
+}
 
 interface Transcript {
   id: string;
@@ -31,13 +38,15 @@ interface Transcript {
   token_count: number | null;
   is_active: boolean;
   created_at: string;
+  participants: Participant[] | null;
+  analyzed: boolean;
 }
 
 interface Assessment {
   id: string;
   deal_memo: string | null;
   health_score: number;
-  health_breakdown: Record<string, number>;
+  health_breakdown: unknown;
   momentum_direction: string | null;
   momentum_trend: string | null;
   ai_forecast_category: string | null;
@@ -552,6 +561,11 @@ export default function DealDetailPage({
       </div>
 
       <Separator />
+
+      {/* ---- Call Timeline (always shown if we have transcripts) ---- */}
+      {account.transcripts && account.transcripts.length > 0 && (
+        <CallTimeline transcripts={account.transcripts} />
+      )}
 
       {/* ---- No assessment state ---- */}
       {!assessment && (
