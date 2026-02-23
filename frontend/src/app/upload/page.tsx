@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { Upload, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Upload, CheckCircle2, FolderOpen, FileText, Loader2 } from 'lucide-react';
 import { useAccounts, useUploadTranscript } from '@/lib/hooks';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -14,6 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,25 +42,337 @@ interface UploadResult {
   [key: string]: unknown;
 }
 
+interface DriveAccount {
+  name: string;
+  path: string;
+  call_count: number;
+}
+
+interface DriveCall {
+  date: string;
+  title: string;
+  has_transcript: boolean;
+}
+
+interface ImportResult {
+  account_id: string;
+  account_name: string;
+  imported_count: number;
+  calls: Array<{ date: string; title: string; token_count: number }>;
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function UploadPage() {
+  return (
+    <div className="p-6 max-w-3xl">
+      <h1 className="text-2xl font-bold tracking-tight mb-1">
+        Upload Transcript
+      </h1>
+      <p className="text-sm text-muted-foreground mb-6">
+        Import from Google Drive or paste a transcript manually.
+      </p>
+
+      <Tabs defaultValue="drive" className="w-full">
+        <TabsList className="w-full">
+          <TabsTrigger value="drive" className="flex-1 gap-1.5">
+            <FolderOpen className="size-4" />
+            Import from Drive
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="flex-1 gap-1.5">
+            <FileText className="size-4" />
+            Paste Text
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="drive" className="mt-4">
+          <DriveImportTab />
+        </TabsContent>
+
+        <TabsContent value="manual" className="mt-4">
+          <ManualUploadTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab 1: Google Drive Import
+// ---------------------------------------------------------------------------
+
+function DriveImportTab() {
+  const [drivePath, setDrivePath] = useState('');
+  const [pathValidated, setPathValidated] = useState(false);
+  const [pathMessage, setPathMessage] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+
+  const [driveAccounts, setDriveAccounts] = useState<DriveAccount[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+
+  const [selectedAccount, setSelectedAccount] = useState<DriveAccount | null>(null);
+  const [recentCalls, setRecentCalls] = useState<DriveCall[]>([]);
+  const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importError, setImportError] = useState('');
+
+  // Load saved config on mount
+  useEffect(() => {
+    api.gdrive.config().then((cfg) => {
+      if (cfg.path) {
+        setDrivePath(cfg.path);
+      }
+    }).catch(() => { /* ignore if backend not ready */ });
+  }, []);
+
+  async function handleValidatePath() {
+    if (!drivePath.trim()) return;
+    setIsValidating(true);
+    setPathValidated(false);
+    setPathMessage('');
+    setDriveAccounts([]);
+    setSelectedAccount(null);
+    setRecentCalls([]);
+    setImportResult(null);
+
+    try {
+      const result = await api.gdrive.validate(drivePath.trim());
+      setPathValidated(result.is_valid);
+      setPathMessage(result.message);
+
+      if (result.is_valid) {
+        setIsLoadingAccounts(true);
+        const accounts = await api.gdrive.listAccounts(drivePath.trim());
+        setDriveAccounts(accounts);
+        setIsLoadingAccounts(false);
+      }
+    } catch (err) {
+      setPathMessage(err instanceof Error ? err.message : 'Validation failed');
+    } finally {
+      setIsValidating(false);
+    }
+  }
+
+  async function handleSelectAccount(accountName: string) {
+    const account = driveAccounts.find((a) => a.name === accountName);
+    if (!account) return;
+
+    setSelectedAccount(account);
+    setRecentCalls([]);
+    setImportResult(null);
+    setImportError('');
+    setIsLoadingCalls(true);
+
+    try {
+      const calls = await api.gdrive.listCalls(account.name, account.path, 5);
+      setRecentCalls(calls);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Failed to load calls');
+    } finally {
+      setIsLoadingCalls(false);
+    }
+  }
+
+  async function handleImport() {
+    if (!selectedAccount) return;
+
+    setIsImporting(true);
+    setImportError('');
+    setImportResult(null);
+
+    try {
+      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, 5);
+      setImportResult(result);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Import from Google Drive</CardTitle>
+        <CardDescription>
+          Enter the local path to your Google Drive folder containing account
+          sub-folders with Gong JSON exports.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Step 1: Drive path */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium" htmlFor="drive-path">
+            Google Drive Folder Path
+          </label>
+          <div className="flex gap-2">
+            <Input
+              id="drive-path"
+              placeholder="~/Library/CloudStorage/GoogleDrive-you@company.com/My Drive/Transcripts"
+              value={drivePath}
+              onChange={(e) => {
+                setDrivePath(e.target.value);
+                setPathValidated(false);
+                setDriveAccounts([]);
+                setSelectedAccount(null);
+              }}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleValidatePath}
+              disabled={!drivePath.trim() || isValidating}
+              variant="secondary"
+            >
+              {isValidating ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                'Scan'
+              )}
+            </Button>
+          </div>
+          {pathMessage && (
+            <p className={`text-sm ${pathValidated ? 'text-emerald-600' : 'text-destructive'}`}>
+              {pathValidated ? '✅' : '❌'} {pathMessage}
+            </p>
+          )}
+        </div>
+
+        {/* Step 2: Account selector */}
+        {(isLoadingAccounts || driveAccounts.length > 0) && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Select Account</label>
+            {isLoadingAccounts ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Scanning folders...
+              </div>
+            ) : (
+              <Select onValueChange={handleSelectAccount}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose an account to import" />
+                </SelectTrigger>
+                <SelectContent>
+                  {driveAccounts.map((a) => (
+                    <SelectItem key={a.name} value={a.name}>
+                      {a.name} ({a.call_count} calls)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Recent calls table */}
+        {isLoadingCalls && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading recent calls...
+          </div>
+        )}
+
+        {recentCalls.length > 0 && selectedAccount && (
+          <div className="space-y-3">
+            <p className="text-sm font-medium">
+              {recentCalls.length} most recent calls for{' '}
+              <strong>{selectedAccount.name}</strong>:
+            </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead className="text-center">Transcript</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentCalls.map((call, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-mono text-xs">{call.date}</TableCell>
+                    <TableCell>{call.title}</TableCell>
+                    <TableCell className="text-center">
+                      {call.has_transcript ? (
+                        <Badge variant="default" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          ✓
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">—</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <Button
+              onClick={handleImport}
+              disabled={isImporting}
+              className="w-full"
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Upload className="size-4" />
+                  Import {recentCalls.length} Calls
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Import error */}
+        {importError && (
+          <div className="rounded-md border border-destructive bg-destructive/5 p-3">
+            <p className="text-sm text-destructive">{importError}</p>
+          </div>
+        )}
+
+        {/* Import success */}
+        {importResult && (
+          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-2">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                  Imported {importResult.imported_count} calls for {importResult.account_name}
+                </p>
+              </div>
+            </div>
+            <div className="ml-7 space-y-1">
+              {importResult.calls.map((c, i) => (
+                <p key={i} className="text-sm text-emerald-600 dark:text-emerald-400">
+                  {c.date}: {c.title} ({c.token_count.toLocaleString()} tokens)
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab 2: Manual Text Upload (preserved)
+// ---------------------------------------------------------------------------
+
+function ManualUploadTab() {
   const { data: accountsData, isLoading: accountsLoading } = useAccounts();
   const accounts = (accountsData ?? []) as Account[];
   const uploadMutation = useUploadTranscript();
 
-  // Form state
   const [accountId, setAccountId] = useState('');
   const [callDate, setCallDate] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('');
   const [rawText, setRawText] = useState('');
-
-  // Result state
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
 
-  // Validation
   const isValid = accountId !== '' && callDate !== '' && rawText.trim() !== '';
 
   function handleSubmit(e: React.FormEvent) {
@@ -67,7 +390,6 @@ export default function UploadPage() {
       {
         onSuccess: (data) => {
           setUploadResult(data as UploadResult);
-          // Reset form fields on success (keep account selected)
           setRawText('');
           setDurationMinutes('');
         },
@@ -81,147 +403,138 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold tracking-tight mb-1">
-        Upload Transcript
-      </h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        Upload a call transcript for analysis.
-      </p>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Transcript Details</CardTitle>
-          <CardDescription>
-            Paste the full call transcript and fill in the metadata.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Account selector */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="account-select">
-                Account
-              </label>
-              <Select
-                value={accountId}
-                onValueChange={(v) => {
-                  setAccountId(v);
-                  handleReset();
-                }}
-                disabled={accountsLoading}
-              >
-                <SelectTrigger id="account-select" className="w-full">
-                  <SelectValue
-                    placeholder={
-                      accountsLoading ? 'Loading accounts...' : 'Select an account'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.account_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Call date */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="call-date">
-                Call Date
-              </label>
-              <Input
-                id="call-date"
-                type="date"
-                value={callDate}
-                onChange={(e) => setCallDate(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Duration */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="duration">
-                Duration (mins)
-              </label>
-              <Input
-                id="duration"
-                type="number"
-                min={1}
-                placeholder="Optional"
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(e.target.value)}
-              />
-            </div>
-
-            {/* Transcript text */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="transcript-text">
-                Transcript Text
-              </label>
-              <Textarea
-                id="transcript-text"
-                placeholder="Paste the full call transcript here..."
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                rows={12}
-                className="min-h-[200px] font-mono text-xs"
-                required
-              />
-            </div>
-
-            {/* Submit button */}
-            <Button
-              type="submit"
-              disabled={!isValid || uploadMutation.isPending}
-              className="w-full sm:w-auto"
+    <Card>
+      <CardHeader>
+        <CardTitle>Transcript Details</CardTitle>
+        <CardDescription>
+          Paste the full call transcript and fill in the metadata.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Account selector */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium" htmlFor="account-select">
+              Account
+            </label>
+            <Select
+              value={accountId}
+              onValueChange={(v) => {
+                setAccountId(v);
+                handleReset();
+              }}
+              disabled={accountsLoading}
             >
-              {uploadMutation.isPending ? (
-                <>
-                  <Upload className="size-4 animate-pulse" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="size-4" />
-                  Upload Transcript
-                </>
-              )}
-            </Button>
+              <SelectTrigger id="account-select" className="w-full">
+                <SelectValue
+                  placeholder={
+                    accountsLoading ? 'Loading accounts...' : 'Select an account'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.account_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Error message */}
-            {uploadMutation.isError && (
-              <div className="rounded-md border border-destructive bg-destructive/5 p-3">
-                <p className="text-sm text-destructive">
-                  {uploadMutation.error instanceof Error
-                    ? uploadMutation.error.message
-                    : 'Upload failed. Please try again.'}
+          {/* Call date */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium" htmlFor="call-date">
+              Call Date
+            </label>
+            <Input
+              id="call-date"
+              type="date"
+              value={callDate}
+              onChange={(e) => setCallDate(e.target.value)}
+              required
+            />
+          </div>
+
+          {/* Duration */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium" htmlFor="duration">
+              Duration (mins)
+            </label>
+            <Input
+              id="duration"
+              type="number"
+              min={1}
+              placeholder="Optional"
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(e.target.value)}
+            />
+          </div>
+
+          {/* Transcript text */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium" htmlFor="transcript-text">
+              Transcript Text
+            </label>
+            <Textarea
+              id="transcript-text"
+              placeholder="Paste the full call transcript here..."
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+              rows={12}
+              className="min-h-[200px] font-mono text-xs"
+              required
+            />
+          </div>
+
+          {/* Submit button */}
+          <Button
+            type="submit"
+            disabled={!isValid || uploadMutation.isPending}
+            className="w-full sm:w-auto"
+          >
+            {uploadMutation.isPending ? (
+              <>
+                <Upload className="size-4 animate-pulse" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="size-4" />
+                Upload Transcript
+              </>
+            )}
+          </Button>
+
+          {/* Error message */}
+          {uploadMutation.isError && (
+            <div className="rounded-md border border-destructive bg-destructive/5 p-3">
+              <p className="text-sm text-destructive">
+                {uploadMutation.error instanceof Error
+                  ? uploadMutation.error.message
+                  : 'Upload failed. Please try again.'}
+              </p>
+            </div>
+          )}
+
+          {/* Success message */}
+          {uploadResult && (
+            <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3 flex items-start gap-2">
+              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                  Transcript uploaded successfully!
                 </p>
-              </div>
-            )}
-
-            {/* Success message */}
-            {uploadResult && (
-              <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3 flex items-start gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                    Transcript uploaded successfully!
+                {uploadResult.token_count != null && (
+                  <p className="text-emerald-600 dark:text-emerald-400">
+                    Token count: {uploadResult.token_count.toLocaleString()}
                   </p>
-                  {uploadResult.token_count != null && (
-                    <p className="text-emerald-600 dark:text-emerald-400">
-                      Token count: {uploadResult.token_count.toLocaleString()}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
-            )}
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            </div>
+          )}
+        </form>
+      </CardContent>
+    </Card>
   );
 }

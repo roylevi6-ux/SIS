@@ -51,6 +51,7 @@ from sis.api.routes import (  # noqa: E402
     export,
     chat,
     sse,
+    gdrive,
 )
 
 app.include_router(auth.router)
@@ -64,3 +65,4 @@ app.include_router(admin.router)
 app.include_router(export.router)
 app.include_router(chat.router)
 app.include_router(sse.router)
+app.include_router(gdrive.router)

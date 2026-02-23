@@ -21,7 +21,7 @@
 | Cold start data | 8-10 historical closed deals (partial) |
 | Sample transcripts | Available this week |
 | IC forecast entry | VP enters manually for all deals |
-| Tech stack | Python, Streamlit, SQLite -> PostgreSQL |
+| Tech stack | Python + FastAPI (backend), Next.js + TypeScript (frontend), SQLite → PostgreSQL |
 | Call types | External calls only for now |
 | Access model | TLs see own deals, VP sees all |
 
