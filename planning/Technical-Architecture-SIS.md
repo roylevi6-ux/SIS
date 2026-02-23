@@ -1,8 +1,8 @@
 # Technical Architecture Document: Riskified Sales Intelligence System (SIS)
 
-**Version:** 1.0
-**Date:** February 19, 2026
-**Status:** Architecture Design — Pre-Implementation
+**Version:** 2.0
+**Date:** February 23, 2026 (updated from v1.0, Feb 19)
+**Status:** Active — Next.js + FastAPI in Production
 **Audience:** VP Sales (builder), future engineering support
 **PRD Reference:** PRD v1.4 — Sections 7, 8, and Data Model
 
@@ -17,29 +17,37 @@
     USER LAYER
     ==========
     +---------------------+     +------------------------+
-    | Streamlit Dashboard  |     | Converslit Chat Panel  |
-    | (Pipeline, Deals,    |     | (Conversational Query  |
-    |  Divergence, Team    |     |  Interface — LLM-based |
-    |  Rollup, Feedback)   |     |  RAG over stored data) |
+    | Next.js Frontend    |     | Chat Panel (React)     |
+    | (Pipeline, Deals,   |     | (Conversational Query  |
+    |  Divergence, Team   |     |  Interface — LLM-based |
+    |  Rollup, Feedback)  |     |  RAG over stored data) |
     +----------+----------+     +-----------+------------+
                |                            |
                +------------+---------------+
                             |
                             v
-    API LAYER (Internal Python functions — not HTTP for POC)
+    API LAYER (FastAPI REST API — http://localhost:8000)
     =========================================================
     +---------------------------------------------------------------+
-    |                     SIS Service Layer                          |
+    |                     FastAPI Router Layer                       |
     |                                                               |
+    |  /api/accounts  /api/analyses  /api/transcripts               |
+    |  /api/feedback  /api/dashboard /api/gdrive /api/chat          |
+    +---------------------------------------------------------------+
+               |                    |                    |
+               v                    v                    v
+    SERVICE LAYER
+    =============
+    +---------------------------------------------------------------+
     |  account_service    analysis_service    query_service          |
-    |  feedback_service   dashboard_service   export_service         |
+    |  feedback_service   dashboard_service   gdrive_service         |
     +---------------------------------------------------------------+
                |                    |                    |
                v                    v                    v
     PROCESSING LAYER
     ================
     +-------------------+
-    | Transcript Upload |  (Streamlit file_uploader / text_area)
+    | Transcript Upload |  (Next.js UI + Google Drive local import)
     | & Association     |  Associates transcript with Account
     +--------+----------+
              |
@@ -136,9 +144,12 @@
 
 | Component | Library | Version | Rationale |
 |-----------|---------|---------|-----------|
-| Language | Python | 3.12+ | Builder familiarity, Streamlit ecosystem, LLM library support |
-| Package manager | uv | 0.6+ | Fast, resolves dependencies reliably, pip-compatible |
-| Web/UI | Streamlit | 1.42+ | Python-only, rapid iteration, good enough for internal POC |
+| Language (backend) | Python | 3.9+ | Service layer, agent pipeline, LLM integration |
+| Language (frontend) | TypeScript | 5.0+ | Next.js React frontend, type-safe component interfaces |
+| Package manager (Python) | uv / pip | 0.6+ | Fast, resolves dependencies reliably, pip-compatible |
+| Package manager (JS) | npm | 10+ | Standard Node.js package manager |
+| Web/UI | Next.js | 15+ | React-based, component architecture maps to Salesforce LWC |
+| API Server | FastAPI | 0.115+ | REST API layer between frontend and Python services |
 | LLM abstraction | LiteLLM | 1.60+ | Provider-agnostic (Anthropic, OpenAI, Bedrock), unified API, cost tracking built-in |
 | Agent orchestration | asyncio (stdlib) | 3.12 | Parallel agent execution; no framework overhead |
 | Database ORM | SQLAlchemy | 2.0+ | PostgreSQL-compatible dialect; async support; clean model definitions |
@@ -173,7 +184,7 @@
 |---------|--------|
 | LangChain / LangGraph | Over-abstraction for 10 well-defined agents; adds complexity without value for this use case |
 | CrewAI / AutoGen | Multi-agent frameworks add indirection; our orchestrator is ~200 lines of asyncio |
-| FastAPI | No HTTP API needed for POC (Streamlit calls Python functions directly); adds unnecessary infra |
+| Streamlit | Replaced by Next.js + FastAPI for production-grade UI and LWC portability (see Section 5) |
 | Celery / Redis | Overkill for POC scale (100 deals, minutes-per-analysis acceptable) |
 | Alembic | Migration tool — useful post-POC but premature for SQLite phase |
 
@@ -619,11 +630,11 @@ SQLAlchemy's `Column` definitions should use type mapping that auto-switches:
 
 The frontend follows a deliberate migration path designed for speed-to-value now and Salesforce-native deployment later:
 
-| Phase | Frontend | Backend | Purpose |
-|-------|----------|---------|---------|
-| **Phase 1 (POC)** | Streamlit | Python services + SQLite | Validate pipeline quality, calibrate prompts, prove value |
-| **Phase 2 (Intermediate)** | Next.js + FastAPI | Python services + PostgreSQL | Production-grade UI, REST API layer, component architecture matching LWC |
-| **Phase 3 (Production)** | Salesforce Lightning Web Components | Apex controllers calling Python API (or Salesforce-native) | Embedded in Salesforce, native CRM integration, enterprise deployment |
+| Phase | Frontend | Backend | Purpose | Status |
+|-------|----------|---------|---------|--------|
+| ~~Phase 1 (POC)~~ | ~~Streamlit~~ | ~~Python services + SQLite~~ | ~~Validate pipeline quality~~ | **Completed & Retired** |
+| **Phase 2 (Current)** | **Next.js + FastAPI** | **Python services + SQLite** | Production-grade UI, REST API layer, component architecture matching LWC | **Active** |
+| **Phase 3 (Future)** | Salesforce Lightning Web Components | Apex controllers calling Python API (or Salesforce-native) | Embedded in Salesforce, native CRM integration, enterprise deployment | Planned |
 
 ### 5.2 Design Patterns for Portability
 
@@ -636,7 +647,7 @@ The system is designed so that each component maps cleanly to a Salesforce LWC c
 | SQLite/PostgreSQL tables | PostgreSQL via SQLAlchemy | Salesforce Custom Objects | Each table maps to a custom object. JSON columns become related lists or JSONB fields. |
 | Calibration YAML | Loaded at API startup | Custom Metadata Types | Key-value calibration params become Custom Metadata, editable in Setup without code deployment. |
 | Prompt templates (Jinja2) | Served by FastAPI | Stored in Custom Metadata or Static Resources | Templates are pure text with `{{variable}}` placeholders — language-agnostic. |
-| Streamlit pages | Next.js React components | Lightning Web Components | Each Next.js component maps 1:1 to an LWC component (props → `@api`, state → `@track`, events → CustomEvent). |
+| Next.js pages (current) | Next.js React components | Lightning Web Components | Each Next.js component maps 1:1 to an LWC component (props → `@api`, state → `@track`, events → CustomEvent). |
 | Chat interface | Next.js chat component + FastAPI | LWC chat component or Agentforce conversational layer | Same REST API; only the UI shell changes. |
 | Output validator | FastAPI middleware | Apex validation triggers | Before-save triggers on custom objects enforce schema and NEVER rules. |
 
@@ -664,19 +675,19 @@ Next.js was chosen specifically to minimize the Phase 3 LWC migration effort:
 
 6. **REST API as the portability boundary.** The FastAPI layer defines the contract between frontend and backend. Any frontend (Next.js, LWC, mobile) can consume the same endpoints. This is the critical migration enabler.
 
-### 5.5 Migration Checklist (Phase 2: Next.js)
+### 5.5 Migration Checklist (Phase 2: Next.js) — ✅ COMPLETED
 
 ```
 Phase 2 Migration Steps (Streamlit → Next.js):
 ================================================
-[ ] Add FastAPI layer exposing all service functions as REST endpoints
+[x] Add FastAPI layer exposing all service functions as REST endpoints
 [ ] Migrate SQLite → PostgreSQL (schema already compatible)
-[ ] Build Next.js app with component structure mirroring LWC target
-[ ] Map each Streamlit page to a Next.js page/component
-[ ] Implement authentication (supports SF SSO for Phase 3)
+[x] Build Next.js app with component structure mirroring LWC target
+[x] Map each Streamlit page to a Next.js page/component
+[x] Implement authentication (JWT-based, supports SF SSO for Phase 3)
 [ ] Deploy Next.js frontend + FastAPI backend (Vercel + Railway/Render)
-[ ] Validate all user flows work end-to-end via REST API
-[ ] Run golden test set against API endpoints
+[x] Validate all user flows work end-to-end via REST API
+[x] Run golden test set against API endpoints
 ```
 
 ### 5.6 Migration Checklist (Phase 3: Salesforce LWC)
@@ -699,9 +710,9 @@ Phase 3 Migration Steps (Next.js → Salesforce LWC):
 
 ---
 
-## 6. API Design — Internal Service Interfaces
+## 6. API Design — FastAPI REST Endpoints
 
-Even though Streamlit calls Python functions directly (no HTTP) during Phase 1, clean interfaces are essential for testability, the Next.js/FastAPI migration (Phase 2), and the eventual Salesforce LWC deployment (Phase 3).
+The FastAPI layer exposes all service functions as REST endpoints. The Next.js frontend consumes these via `fetch()`. Clean interfaces are essential for testability and the eventual Salesforce LWC deployment (Phase 3).
 
 ### 6.1 Analysis Service
 
@@ -951,21 +962,23 @@ sis/
 |   |   |-- session.py              # Session management
 |   |   |-- seed.py                 # Initial data seeding (golden test accounts)
 |   |
-|   |-- ui/
+|   |-- api/
 |   |   |-- __init__.py
-|   |   |-- app.py                  # Streamlit app entry point + page routing
-|   |   |-- pages/
-|   |   |   |-- pipeline_overview.py    # Main dashboard
-|   |   |   |-- deal_detail.py          # Per-account drill-down
-|   |   |   |-- divergence_view.py      # AI vs IC comparison
-|   |   |   |-- team_rollup.py          # Team-level aggregates
-|   |   |   |-- upload_transcript.py    # Transcript upload + association
-|   |   |   |-- run_analysis.py         # Trigger analysis + progress view
-|   |   |   |-- feedback.py             # Score feedback form
-|   |   |   |-- feedback_dashboard.py   # Aggregated feedback view
+|   |   |-- main.py                  # FastAPI app entry point + CORS + router registration
+|   |   |-- deps.py                  # Dependency injection (auth, user context)
+|   |   |-- routes/
+|   |   |   |-- accounts.py             # Account CRUD
+|   |   |   |-- transcripts.py          # Transcript upload + listing
+|   |   |   |-- analyses.py             # Run/rerun analysis pipeline
+|   |   |   |-- dashboard.py            # Pipeline, divergence, team rollup
+|   |   |   |-- gdrive.py               # Google Drive local import
+|   |   |   |-- feedback.py             # Score feedback
 |   |   |   |-- chat.py                 # Conversational interface
-|   |   |   |-- calibration.py          # Calibration config viewer + log
-|   |   |   |-- cost_monitor.py         # LLM cost tracking dashboard
+|   |   |   |-- calibration.py          # Calibration config
+|   |   |   |-- admin.py                # Admin endpoints
+|   |   |   |-- export.py               # Brief/report export
+|   |   |   |-- auth.py                 # JWT authentication
+|   |-- ui/                          # (Legacy Streamlit — retained for reference)
 |   |   |-- components/
 |   |   |   |-- health_badge.py         # Reusable health score display
 |   |   |   |-- momentum_indicator.py   # Improving/Stable/Declining visual
@@ -1029,7 +1042,8 @@ sis/
 | `sis/services/` | 8 | Medium — mostly CRUD + orchestrator calls |
 | `sis/llm/` | 4 | Low — thin wrapper around LiteLLM |
 | `sis/db/` | 5 | Low — standard SQLAlchemy models |
-| `sis/ui/` | 15 | Medium — Streamlit pages, each ~100-200 lines |
+| `sis/api/` | 15 | Medium — FastAPI routes + schemas, each ~50-150 lines |
+| `frontend/src/` | 25+ | Medium — Next.js pages + components, React with TypeScript |
 | `tests/` | 15+ | Medium — mocked LLM tests, golden test runner |
 | **TOTAL** | ~70 | **Manageable for one builder with AI assistance** |
 
@@ -1102,14 +1116,14 @@ sis/
 **Why it matters:** The POC has organizational investment (CRO approval, TL commitments, baseline measurements). A stalled POC is worse than no POC — it damages credibility for future AI initiatives.
 
 **Mitigations:**
-- Architecture deliberately favors simplicity: SQLite (no database ops), Streamlit (no frontend framework), standard Python (no exotic patterns), well-known libraries only.
+- Architecture deliberately favors simplicity: SQLite (no database ops), Next.js (popular frontend framework with strong LWC mapping), FastAPI (thin REST layer), standard Python (no exotic patterns), well-known libraries only.
 - Structured logging (structlog) means debugging is possible by reading log files, not stepping through code.
 - Configuration-as-YAML means calibration and prompt changes don't require code changes.
 - Docker containerization (post-POC) means the system can be handed to a developer without environment setup struggles.
 - This architecture document and the prompt guidelines serve as onboarding material for a future developer.
 - The directory structure and clean service interfaces mean a developer can understand the system's boundaries quickly.
 
-**Residual risk:** This is the highest risk. If the VP encounters a fundamental issue (e.g., asyncio deadlock, SQLAlchemy session management bug, Streamlit state management complexity), resolution may require developer assistance. Recommendation: identify one developer who can be on-call for 2-4 hours/week during the POC as a safety net.
+**Residual risk:** This is the highest risk. If the VP encounters a fundamental issue (e.g., asyncio deadlock, SQLAlchemy session management bug, React state management complexity), resolution may require developer assistance. Recommendation: identify one developer who can be on-call for 2-4 hours/week during the POC as a safety net.
 
 ---
 
@@ -1201,36 +1215,40 @@ user_prompt: |
 
 ---
 
-## Appendix B: Streamlit Application Layout
+## Appendix B: Next.js Application Layout
 
 ```
-Sidebar Navigation:
-====================
+Sidebar Navigation (frontend/src/components/sidebar.tsx):
+=========================================================
   [Logo/Title: SIS]
   ---
-  Pipeline Overview        (pipeline_overview.py)
-  Deal Detail              (deal_detail.py) — selected from overview
-  Divergence View          (divergence_view.py)
-  Team Rollup              (team_rollup.py)
+  Analytics:
+    Pipeline Overview        (/pipeline)
+    Deal Detail              (/deals/[id])
+    Divergence View          (/divergence)
+    Team Rollup              (/team-rollup)
+    Deal Trends              (/trends)
   ---
-  Upload Transcript        (upload_transcript.py)
-  Run Analysis             (run_analysis.py)
+  Actions:
+    Upload Transcript        (/upload)  — Google Drive import + manual paste
+    Run Analysis             (/analyze)
+    Chat                     (/chat)
+    Meeting Prep             (/meeting-prep)
   ---
-  Chat                     (chat.py)
-  ---
-  Feedback Dashboard       (feedback_dashboard.py)
-  Calibration              (calibration.py)
-  Cost Monitor             (cost_monitor.py)
+  Admin:
+    Feedback Dashboard       (/feedback)
+    Calibration              (/calibration)
+    Cost Monitor             (/costs)
+    Activity Log             (/activity-log)
 
-Key Streamlit Patterns:
-========================
-- st.session_state for chat history and selected account context
-- st.cache_data for database reads (invalidated on new analysis run)
-- st.columns for side-by-side metrics (health score + momentum + forecast)
-- st.expander for per-agent detail sections in deal drill-down
-- st.progress for analysis pipeline progress (Step 1/4, Step 2/4, etc.)
-- st.form for feedback submission (prevents re-run on every widget interaction)
-- Multi-page app using Streamlit's built-in pages/ directory convention
+Key Next.js Patterns:
+======================
+- React Query (TanStack Query) for data fetching + cache invalidation
+- Radix UI primitives (Tabs, Select, Dialog, Table) for accessible components
+- FastAPI REST endpoints consumed via frontend/src/lib/api.ts
+- TypeScript interfaces for all API response types
+- JWT authentication via frontend/src/lib/auth.tsx
+- App Router (Next.js 15) with file-based routing
 ```
 
 ---
@@ -1247,7 +1265,7 @@ WEEK 1-2: Foundation
   [x] LLM client wrapper (LiteLLM integration, cost tracking)
   [x] Prompt loader (YAML + Jinja2 rendering)
   [x] Transcript preprocessor (speaker normalization, truncation)
-  [x] Basic Streamlit shell (sidebar nav, upload page)
+  [x] Basic UI shell (sidebar nav, upload page) — migrated to Next.js
   MILESTONE: Can upload a transcript, preprocess it, store it, call an LLM
 
 WEEK 3-4: Agent Pipeline

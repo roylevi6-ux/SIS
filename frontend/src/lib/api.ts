@@ -150,4 +150,27 @@ export const api = {
     summary: (days?: number) =>
       apiFetch<any>(`/api/logs/actions/summary?days=${days ?? 30}`),
   },
+  gdrive: {
+    config: () => apiFetch<{ path: string }>('/api/gdrive/config'),
+    validate: (path: string) =>
+      apiFetch<{ is_valid: boolean; message: string }>('/api/gdrive/validate', {
+        method: 'POST',
+        body: JSON.stringify({ path }),
+      }),
+    listAccounts: (path: string) =>
+      apiFetch<any[]>('/api/gdrive/accounts', {
+        method: 'POST',
+        body: JSON.stringify({ path }),
+      }),
+    listCalls: (accountName: string, accountPath: string, maxCalls?: number) =>
+      apiFetch<any[]>('/api/gdrive/calls', {
+        method: 'POST',
+        body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5 }),
+      }),
+    import: (accountName: string, accountPath: string, maxCalls?: number) =>
+      apiFetch<any>('/api/gdrive/import', {
+        method: 'POST',
+        body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5 }),
+      }),
+  },
 };

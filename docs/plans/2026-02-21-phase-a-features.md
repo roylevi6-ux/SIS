@@ -4,9 +4,12 @@
 
 **Goal:** Make SIS usable by TLs and VP — LLM-powered chat, IC forecast entry, meeting prep, deal briefs.
 
-**Architecture:** Each feature is a service function + Streamlit UI page. The query service uses the Anthropic client (via `sis/agents/runner.py:get_client()`) to translate natural language into structured DB queries, format the results, and return them. No new agents — these features layer on top of existing pipeline data.
+**Architecture:** Each feature is a service function + FastAPI route + Next.js UI page. The query service uses the Anthropic client (via `sis/agents/runner.py:get_client()`) to translate natural language into structured DB queries, format the results, and return them. No new agents — these features layer on top of existing pipeline data.
 
-**Tech Stack:** Anthropic Claude (via proxy), Streamlit, SQLAlchemy, Pydantic, existing service layer.
+**Tech Stack:** Anthropic Claude (via proxy), Next.js (frontend), FastAPI (API), SQLAlchemy, Pydantic, existing service layer.
+
+> [!NOTE]
+> Code samples below were written for the original Streamlit POC. The actual implementation uses Next.js + FastAPI. Service layer code (`sis/services/`) remains the same; only the UI layer has changed.
 
 ---
 
