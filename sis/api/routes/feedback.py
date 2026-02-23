@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from sis.api.deps import get_optional_user
 from sis.services import feedback_service
 from sis.api.schemas.feedback import FeedbackCreate, FeedbackResolve
 
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
 
 @router.post("/")
-def submit_feedback(body: FeedbackCreate):
+def submit_feedback(body: FeedbackCreate, user: Optional[dict] = Depends(get_optional_user)):
     """Submit score feedback for a deal assessment."""
     try:
         return feedback_service.submit_feedback(
@@ -47,7 +48,7 @@ def list_feedback(
 
 
 @router.patch("/{feedback_id}/resolve")
-def resolve(feedback_id: str, body: FeedbackResolve):
+def resolve(feedback_id: str, body: FeedbackResolve, user: Optional[dict] = Depends(get_optional_user)):
     """Resolve a feedback item."""
     try:
         return feedback_service.resolve_feedback(

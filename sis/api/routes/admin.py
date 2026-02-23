@@ -6,8 +6,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from sis.api.deps import get_optional_user
 from sis.services import (
     usage_tracking_service,
     user_action_log_service,
@@ -18,7 +19,10 @@ from sis.services import (
 )
 from sis.api.schemas.admin import (
     CoachingCreate,
+    LogActionBody,
     PromptVersionCreate,
+    RollbackVersionBody,
+    TrackEventBody,
 )
 
 router = APIRouter(tags=["admin"])
@@ -41,15 +45,16 @@ def get_cro_metrics():
 
 @router.post("/api/tracking/event")
 def track_event(
-    body: dict,
+    body: TrackEventBody,
+    user: Optional[dict] = Depends(get_optional_user),
 ):
     """Log a usage event. Fire-and-forget."""
     usage_tracking_service.track_event(
-        event_type=body.get("event_type", ""),
-        user_name=body.get("user_name"),
-        account_id=body.get("account_id"),
-        page_name=body.get("page_name"),
-        metadata=body.get("metadata"),
+        event_type=body.event_type,
+        user_name=body.user_name,
+        account_id=body.account_id,
+        page_name=body.page_name,
+        metadata=body.metadata,
     )
     return {"status": "ok"}
 
@@ -82,17 +87,17 @@ def get_action_summary(days: int = 30):
 
 
 @router.post("/api/logs/actions")
-def log_action(body: dict):
+def log_action(body: LogActionBody, user: Optional[dict] = Depends(get_optional_user)):
     """Log a user action. Fire-and-forget."""
     user_action_log_service.log_action(
-        action_type=body.get("action_type", ""),
-        action_detail=body.get("action_detail"),
-        user_name=body.get("user_name"),
-        account_id=body.get("account_id"),
-        account_name=body.get("account_name"),
-        page_name=body.get("page_name"),
-        session_id=body.get("session_id"),
-        metadata=body.get("metadata"),
+        action_type=body.action_type,
+        action_detail=body.action_detail,
+        user_name=body.user_name,
+        account_id=body.account_id,
+        account_name=body.account_name,
+        page_name=body.page_name,
+        session_id=body.session_id,
+        metadata=body.metadata,
     )
     return {"status": "ok"}
 
@@ -101,7 +106,7 @@ def log_action(body: dict):
 
 
 @router.post("/api/coaching/")
-def submit_coaching(body: CoachingCreate):
+def submit_coaching(body: CoachingCreate, user: Optional[dict] = Depends(get_optional_user)):
     """Submit a coaching entry for a rep on a specific dimension."""
     try:
         return coaching_service.submit_coaching(
@@ -135,7 +140,7 @@ def list_coaching(
 
 
 @router.patch("/api/coaching/{entry_id}/incorporate")
-def mark_incorporated(entry_id: str, notes: Optional[str] = None):
+def mark_incorporated(entry_id: str, notes: Optional[str] = None, user: Optional[dict] = Depends(get_optional_user)):
     """Mark a coaching entry as incorporated."""
     try:
         return coaching_service.mark_incorporated(entry_id=entry_id, notes=notes)
@@ -174,7 +179,7 @@ def get_active_version(agent_id: str):
 
 
 @router.post("/api/prompts/versions")
-def create_version(body: PromptVersionCreate):
+def create_version(body: PromptVersionCreate, user: Optional[dict] = Depends(get_optional_user)):
     """Create a new prompt version, deactivating the previous active version."""
     return prompt_version_service.create_version(
         agent_id=body.agent_id,
@@ -186,12 +191,12 @@ def create_version(body: PromptVersionCreate):
 
 
 @router.post("/api/prompts/versions/rollback")
-def rollback_version(body: dict):
+def rollback_version(body: RollbackVersionBody, user: Optional[dict] = Depends(get_optional_user)):
     """Reactivate a previous prompt version."""
     try:
         return prompt_version_service.rollback_version(
-            agent_id=body.get("agent_id", ""),
-            version_id=body.get("version_id", ""),
+            agent_id=body.agent_id,
+            version_id=body.version_id,
         )
     except ValueError as e:
         raise HTTPException(

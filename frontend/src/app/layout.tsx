@@ -4,6 +4,7 @@ import './globals.css';
 
 import { Providers } from '@/components/providers';
 import { AuthGuard } from '@/components/auth-guard';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { DesktopSidebar, MobileSidebar } from '@/components/sidebar';
 
 const geistSans = Geist({
@@ -40,10 +41,12 @@ export default function RootLayout({
             <MobileSidebar />
 
             {/* Main content area: offset by sidebar width on desktop */}
-            <main className="min-h-screen lg:ml-64">
-              {/* Top padding on mobile to clear the hamburger button */}
-              <div className="pt-16 lg:pt-0">{children}</div>
-            </main>
+            <ErrorBoundary>
+              <main className="min-h-screen lg:ml-64">
+                {/* Top padding on mobile to clear the hamburger button */}
+                <div className="pt-16 lg:pt-0">{children}</div>
+              </main>
+            </ErrorBoundary>
           </AuthGuard>
         </Providers>
       </body>

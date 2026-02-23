@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useRepScorecard } from '@/lib/hooks/use-admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -290,9 +290,8 @@ export default function RepScorecardPage() {
                 </TableHeader>
                 <TableBody>
                   {reps.map((rep) => (
-                    <>
+                    <Fragment key={rep.rep_name}>
                       <TableRow
-                        key={rep.rep_name}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() =>
                           setExpandedRep(
@@ -335,7 +334,7 @@ export default function RepScorecardPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>

@@ -125,10 +125,32 @@ function ResolveDialog({ feedbackId, open, onClose }: ResolveDialogProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface FeedbackSummary {
+  total: number;
+  by_status: { pending: number; accepted: number; rejected: number };
+  by_direction: { too_high: number; too_low: number };
+}
+
+interface FeedbackItem {
+  id: string;
+  account_id: string;
+  account_name: string | null;
+  author: string;
+  direction: string;
+  reason: string;
+  health_score: number | null;
+  status: string;
+  created_at: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Summary cards
 // ---------------------------------------------------------------------------
 
-function SummaryCards({ summary }: { summary: any }) {
+function SummaryCards({ summary }: { summary: FeedbackSummary }) {
   const cards = [
     { label: 'Total', value: summary?.total ?? '--' },
     { label: 'Pending', value: summary?.by_status?.pending ?? 0 },
@@ -169,7 +191,7 @@ export default function FeedbackPage() {
     author: authorFilter || undefined,
   });
 
-  const items: any[] = rawItems ?? [];
+  const items: FeedbackItem[] = (rawItems ?? []) as FeedbackItem[];
 
   return (
     <div className="p-6 space-y-6">
@@ -258,7 +280,7 @@ export default function FeedbackPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {!isLoading && items.map((item: any) => (
+                  {!isLoading && items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.account_name ?? item.account_id}</TableCell>
                       <TableCell>{item.author}</TableCell>

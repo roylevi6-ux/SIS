@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Optional
 
+from fastapi import APIRouter, Depends
+
+from sis.api.deps import get_optional_user
 from sis.services import calibration_service
 from sis.api.schemas.admin import CalibrationCreate
 
@@ -23,7 +26,7 @@ def get_patterns():
 
 
 @router.post("/")
-def create(body: CalibrationCreate):
+def create(body: CalibrationCreate, user: Optional[dict] = Depends(get_optional_user)):
     """Persist a calibration change log entry."""
     return calibration_service.create_calibration_log(
         config_version=body.config_version,
