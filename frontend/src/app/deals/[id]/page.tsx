@@ -4,7 +4,7 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, MessageSquarePlus, AlertTriangle, Zap } from 'lucide-react';
 import { useAccount } from '@/lib/hooks/use-accounts';
-import { useAnalysisHistory, useAgentAnalyses } from '@/lib/hooks/use-analyses';
+import { useAnalysisHistory, useAgentAnalyses, useAssessmentDelta } from '@/lib/hooks/use-analyses';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import { HealthBreakdown } from '@/components/health-breakdown';
 import { DealMemo } from '@/components/deal-memo';
 import { AgentCard } from '@/components/agent-card';
 import { ActionsList } from '@/components/actions-list';
+import { DealTimeline } from '@/components/deal-timeline';
+import { DeltaBadge } from '@/components/delta-badge';
 import type { AgentAnalysis } from '@/components/agent-card';
 
 // ---------------------------------------------------------------------------
@@ -360,6 +362,8 @@ export default function DealDetailPage({
   const { data, isLoading, isError, error } = useAccount(id);
   const account = data as AccountDetail | undefined;
   const [_feedbackOpen, setFeedbackOpen] = useState(false);
+  const { data: deltaData } = useAssessmentDelta(id);
+  const deltaFields = deltaData?.fields as Record<string, { previous: unknown; current: unknown; changed: boolean; delta?: number }> | undefined;
 
   // Loading state
   if (isLoading) {
@@ -420,6 +424,7 @@ export default function DealDetailPage({
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm text-muted-foreground">Health:</span>
                     <HealthBadge score={assessment.health_score} />
+                    <DeltaBadge field={deltaFields?.health_score} />
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -427,6 +432,7 @@ export default function DealDetailPage({
                     <MomentumIndicator
                       direction={assessment.momentum_direction as 'Improving' | 'Stable' | 'Declining' | null}
                     />
+                    <DeltaBadge field={deltaFields?.momentum_direction} />
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -435,6 +441,7 @@ export default function DealDetailPage({
                       {assessment.inferred_stage}
                       {assessment.stage_name && ` - ${assessment.stage_name}`}
                     </span>
+                    <DeltaBadge field={deltaFields?.stage_name} />
                   </div>
                 </>
               ) : (
@@ -448,6 +455,7 @@ export default function DealDetailPage({
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm text-muted-foreground">AI Forecast:</span>
                   <ForecastBadge category={assessment.ai_forecast_category} />
+                  <DeltaBadge field={deltaFields?.ai_forecast_category} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm text-muted-foreground">IC Forecast:</span>
@@ -458,6 +466,7 @@ export default function DealDetailPage({
                   <span className="text-sm font-medium tabular-nums">
                     {Math.round(assessment.overall_confidence)}%
                   </span>
+                  <DeltaBadge field={deltaFields?.overall_confidence} />
                 </div>
                 {assessment.divergence_flag && (
                   <Badge
@@ -593,6 +602,9 @@ export default function DealDetailPage({
       )}
 
       <Separator />
+
+      {/* Assessment Timeline */}
+      <DealTimeline accountId={id} />
 
       {/* Analysis History */}
       <AnalysisHistorySection accountId={id} />

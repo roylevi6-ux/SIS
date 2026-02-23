@@ -1,4 +1,8 @@
-"""SSE (Server-Sent Events) route — pipeline progress streaming."""
+"""SSE (Server-Sent Events) route — pipeline progress streaming.
+
+Enhanced to read from the in-memory progress store for real-time
+per-agent detail. Falls back to DB for completed runs not in memory.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,7 @@ from fastapi.responses import StreamingResponse
 
 from sis.db.models import AnalysisRun
 from sis.db.session import get_session
+from sis.orchestrator.progress_store import get_snapshot
 
 router = APIRouter(prefix="/api/sse", tags=["sse"])
 
@@ -18,31 +23,41 @@ router = APIRouter(prefix="/api/sse", tags=["sse"])
 async def analysis_progress(run_id: str):
     """Server-Sent Events stream for pipeline analysis progress.
 
-    Polls the DB every 2 seconds and emits the run status as JSON.
-    The stream closes when the run reaches a terminal status
-    (completed, failed, or partial).
+    Reads from the in-memory progress store (1s interval) for real-time
+    per-agent detail. Falls back to DB for runs not in memory.
+    The stream closes when the run reaches a terminal status.
     """
 
     async def event_stream():
         while True:
-            status = _get_run_status(run_id)
+            status = _get_progress(run_id)
             yield f"data: {json.dumps(status)}\n\n"
             if status["status"] in ("completed", "failed", "partial"):
                 break
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-def _get_run_status(run_id: str) -> dict:
-    """Read current run status from DB."""
+def _get_progress(run_id: str) -> dict:
+    """Read current run progress — prefer in-memory store, fall back to DB."""
+    # Try progress store first (real-time per-agent detail)
+    snapshot = get_snapshot(run_id)
+    if snapshot:
+        return snapshot
+
+    # Fall back to DB for runs that have already completed and been cleaned up
     with get_session() as session:
         run = session.query(AnalysisRun).filter_by(id=run_id).first()
         if not run:
-            return {"run_id": run_id, "status": "not_found"}
+            return {"run_id": run_id, "status": "not_found", "agents": {}}
         return {
             "run_id": run.id,
             "status": run.status,
             "started_at": run.started_at,
             "completed_at": run.completed_at,
+            "agents": {},
+            "total_cost_usd": run.total_cost_usd or 0,
+            "total_elapsed_seconds": 0,
+            "errors": [],
         }

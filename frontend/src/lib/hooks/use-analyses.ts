@@ -41,3 +41,19 @@ export function useResynthesize() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['analyses'] }),
   });
 }
+
+export function useAssessmentDelta(accountId: string) {
+  return useQuery({
+    queryKey: ['analyses', 'delta', accountId],
+    queryFn: () => api.analyses.delta(accountId),
+    enabled: !!accountId,
+  });
+}
+
+export function useAssessmentTimeline(accountId: string) {
+  return useQuery({
+    queryKey: ['analyses', 'timeline', accountId],
+    queryFn: () => api.analyses.timeline(accountId),
+    enabled: !!accountId,
+  });
+}

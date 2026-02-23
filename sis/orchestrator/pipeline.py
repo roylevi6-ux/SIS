@@ -58,14 +58,20 @@ class AnalysisPipeline:
         result = await pipeline.run_async(account_id, transcript_texts, timeline_entries)
     """
 
-    def __init__(self, progress_callback: Callable[[str, int, int], None] | None = None):
+    def __init__(
+        self,
+        progress_callback: Callable[[str, int, int], None] | None = None,
+        run_id: str | None = None,
+    ):
         """Initialize pipeline.
 
         Args:
             progress_callback: Optional callback(step_name, current_step, total_steps)
                 for UI progress reporting.
+            run_id: Optional run ID for progress store tracking.
         """
         self._progress_callback = progress_callback
+        self._run_id = run_id
 
     def _report_progress(self, step_name: str, current: int, total: int = 4) -> None:
         if self._progress_callback:
@@ -109,7 +115,7 @@ class AnalysisPipeline:
         from sis.agents.open_discovery import build_call as discovery_build_call
         from sis.agents.synthesis import build_call as synthesis_build_call
         from sis.agents.runner import (
-            run_agent, run_agent_async, run_agents_parallel,
+            run_agent, run_agent_async,
             strip_for_downstream, AgentError,
         )
         from sis.validation import validate_agent_output
@@ -122,9 +128,19 @@ class AnalysisPipeline:
         pipeline_start = time.time()
         num_transcripts = len(transcript_texts)
 
+        # Initialize progress store if run_id provided
+        if self._run_id:
+            from sis.orchestrator.progress_store import (
+                init_run, mark_agent_running, mark_agent_completed,
+                mark_agent_failed, mark_run_completed,
+            )
+            init_run(self._run_id)
+
         try:
             # ── STEP 1: Agent 1 (Stage & Progress) ────────────────────
             self._report_progress("Agent 1: Stage & Progress", 1)
+            if self._run_id:
+                mark_agent_running(self._run_id, "agent_1")
             agent1_call = stage_build_call(transcript_texts, timeline_entries)
             agent1_result = await run_agent_async(**agent1_call)
 
@@ -143,6 +159,13 @@ class AnalysisPipeline:
                 agent1_result.input_tokens, agent1_result.output_tokens,
                 agent1_result.elapsed_seconds, agent1_result.attempts - 1,
             )
+            if self._run_id:
+                mark_agent_completed(
+                    self._run_id, "agent_1",
+                    agent1_result.input_tokens, agent1_result.output_tokens,
+                    agent1_result.elapsed_seconds, agent1_result.model,
+                    agent1_result.attempts,
+                )
 
             # Validate
             warnings = validate_agent_output(stage_output)
@@ -171,19 +194,33 @@ class AnalysisPipeline:
                 ("agent_8", competitive_build_call),
             ]
 
+            # Mark all parallel agents as running in progress store
+            if self._run_id:
+                for agent_id, _ in agent_builders:
+                    mark_agent_running(self._run_id, agent_id)
+
             parallel_tasks = []
             for agent_id, builder in agent_builders:
                 call_kwargs = builder(transcript_texts, stage_context, timeline_entries)
-                # Ensure transcript_count is set for sparse_data_flag injection
                 call_kwargs.setdefault("transcript_count", num_transcripts)
                 parallel_tasks.append(call_kwargs)
 
-            parallel_results = await run_agents_parallel(parallel_tasks)
+            # Wrapper that returns (agent_id, result) for as_completed matching
+            async def _tagged_run(aid: str, kwargs: dict):
+                r = await run_agent_async(**kwargs)
+                return aid, r
 
-            for (agent_id, _), agent_result in zip(agent_builders, parallel_results):
-                if isinstance(agent_result, Exception):
-                    result.errors.append(f"[{agent_id}] {agent_result}")
-                    logger.error("[%s] Failed: %s", agent_id, agent_result)
+            tagged_tasks = [
+                asyncio.create_task(_tagged_run(aid, kw))
+                for (aid, _), kw in zip(agent_builders, parallel_tasks)
+            ]
+
+            for completed_future in asyncio.as_completed(tagged_tasks):
+                try:
+                    agent_id, agent_result = await completed_future
+                except Exception as exc:
+                    result.errors.append(f"[parallel] {exc}")
+                    logger.error("[parallel] Agent failed: %s", exc)
                     continue
 
                 output_dict = agent_result.output.model_dump()
@@ -200,6 +237,13 @@ class AnalysisPipeline:
                     agent_result.input_tokens, agent_result.output_tokens,
                     agent_result.elapsed_seconds, agent_result.attempts - 1,
                 )
+                if self._run_id:
+                    mark_agent_completed(
+                        self._run_id, agent_id,
+                        agent_result.input_tokens, agent_result.output_tokens,
+                        agent_result.elapsed_seconds, agent_result.model,
+                        agent_result.attempts,
+                    )
                 warnings = validate_agent_output(output_dict)
                 result.validation_warnings.extend(
                     [f"[{agent_id}] {w}" for w in warnings]
@@ -207,6 +251,8 @@ class AnalysisPipeline:
 
             # ── STEP 3: Agent 9 (Open Discovery) ──────────────────────
             self._report_progress("Agent 9: Open Discovery", 3)
+            if self._run_id:
+                mark_agent_running(self._run_id, "agent_9")
             agent9_call = discovery_build_call(
                 transcript_texts, stage_context, result.agent_outputs, timeline_entries
             )
@@ -226,9 +272,18 @@ class AnalysisPipeline:
                 agent9_result.input_tokens, agent9_result.output_tokens,
                 agent9_result.elapsed_seconds, agent9_result.attempts - 1,
             )
+            if self._run_id:
+                mark_agent_completed(
+                    self._run_id, "agent_9",
+                    agent9_result.input_tokens, agent9_result.output_tokens,
+                    agent9_result.elapsed_seconds, agent9_result.model,
+                    agent9_result.attempts,
+                )
 
             # ── STEP 4: Agent 10 (Synthesis) ──────────────────────────
             self._report_progress("Agent 10: Synthesis", 4)
+            if self._run_id:
+                mark_agent_running(self._run_id, "agent_10")
             agent10_call = synthesis_build_call(result.agent_outputs, stage_context)
             agent10_result = await run_agent_async(**agent10_call)
 
@@ -239,6 +294,13 @@ class AnalysisPipeline:
                 agent10_result.input_tokens, agent10_result.output_tokens,
                 agent10_result.elapsed_seconds, agent10_result.attempts - 1,
             )
+            if self._run_id:
+                mark_agent_completed(
+                    self._run_id, "agent_10",
+                    agent10_result.input_tokens, agent10_result.output_tokens,
+                    agent10_result.elapsed_seconds, agent10_result.model,
+                    agent10_result.attempts,
+                )
 
             # ── POST-SYNTHESIS VALIDATION ──────────────────────────────
             from sis.validation import validate_synthesis_output
@@ -267,6 +329,11 @@ class AnalysisPipeline:
 
         result.completed_at = datetime.now(timezone.utc).isoformat()
         result.wall_clock_seconds = time.time() - pipeline_start
+
+        # Update progress store with terminal status
+        if self._run_id:
+            mark_run_completed(self._run_id, result.status)
+
         logger.info(
             "Pipeline finished: status=%s, cost=$%.4f, time=%.1fs, agents=%d/%d",
             result.status,
@@ -276,3 +343,5 @@ class AnalysisPipeline:
             10,
         )
         return result
+
+

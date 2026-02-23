@@ -38,9 +38,12 @@ def load_account_calls(account_dir: str | Path) -> list[ParsedCall]:
     if not account_dir.exists():
         raise FileNotFoundError(f"Account directory not found: {account_dir}")
 
-    # Find all metadata files (those without _transcript suffix)
+    # Find all metadata files (those without transcript suffix)
     all_json = sorted(account_dir.glob("*.json"))
-    meta_files = [f for f in all_json if "_transcript" not in f.name]
+    meta_files = [
+        f for f in all_json
+        if not f.name.endswith(("-transcript.json", "_transcript.json"))
+    ]
 
     calls = []
     for mf in meta_files:
@@ -65,6 +68,23 @@ def load_recent_calls(account_dir: str | Path, max_calls: int = 5) -> list[Parse
     # Sort by date descending and take most recent
     all_calls.sort(key=lambda c: c.metadata.date, reverse=True)
     return all_calls[:max_calls]
+
+
+def load_calls_from_files(meta_files: list[Path]) -> list[ParsedCall]:
+    """Load Gong calls from specific metadata file paths.
+
+    Used by gdrive_service for flat-layout folders where files are
+    pre-filtered by account name.
+    """
+    calls = []
+    for mf in meta_files:
+        try:
+            parsed = parse_call(mf)
+            calls.append(parsed)
+        except Exception as e:
+            logger.warning("Failed to parse %s: %s", mf.name, e)
+    calls.sort(key=lambda c: c.metadata.date)
+    return calls
 
 
 def parse_call(metadata_path: str | Path) -> ParsedCall:
@@ -108,20 +128,24 @@ def parse_call(metadata_path: str | Path) -> ParsedCall:
 
 def _load_transcript_file(metadata_path: Path) -> dict | None:
     """Find and load the companion transcript file for a metadata file."""
-    # Pattern: base_name.json -> base_name_transcript.json
     stem = metadata_path.stem
-    transcript_path = metadata_path.parent / f"{stem}_transcript.json"
+    parent = metadata_path.parent
 
-    if transcript_path.exists():
-        with open(transcript_path) as f:
-            return json.load(f)
+    # Try both naming conventions: _transcript.json and -transcript.json
+    for sep in ("_", "-"):
+        transcript_path = parent / f"{stem}{sep}transcript.json"
+        if transcript_path.exists():
+            with open(transcript_path) as f:
+                return json.load(f)
 
     # Try glob for fuzzy match (handles edge cases in naming)
-    pattern = str(metadata_path.parent / f"*{metadata_path.stem.split('_', 3)[-1] if '_' in stem else stem}*_transcript.json")
-    candidates = glob.glob(pattern)
-    if candidates:
-        with open(candidates[0]) as f:
-            return json.load(f)
+    for sep in ("_", "-"):
+        base = metadata_path.stem.split("_", 3)[-1] if "_" in stem else stem
+        pattern = str(parent / f"*{base}*{sep}transcript.json")
+        candidates = glob.glob(pattern)
+        if candidates:
+            with open(candidates[0]) as f:
+                return json.load(f)
 
     logger.info("No transcript file found for %s", metadata_path.name)
     return None

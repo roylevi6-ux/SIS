@@ -67,6 +67,10 @@ export const api = {
       apiFetch<any>(`/api/analyses/${runId}/rerun/${agentId}`, { method: 'POST' }),
     resynthesize: (runId: string) =>
       apiFetch<any>(`/api/analyses/${runId}/resynthesize`, { method: 'POST' }),
+    delta: (accountId: string) =>
+      apiFetch<any>(`/api/analyses/delta/${accountId}`),
+    timeline: (accountId: string) =>
+      apiFetch<any[]>(`/api/analyses/timeline/${accountId}`),
   },
   dashboard: {
     pipeline: (team?: string) =>

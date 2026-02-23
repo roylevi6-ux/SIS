@@ -77,11 +77,25 @@ def render():
     )
     selected_account = accounts[selected_idx]
 
+    # Rescan button
+    if st.button("🔄 Rescan Folder", key="rescan_btn"):
+        st.rerun()
+
     # ── Step 3: Recent calls preview ───────────────────────────────────
     st.markdown(f"**Account: {selected_account['name']}** — {selected_account['call_count']} total calls")
 
+    max_calls = st.number_input(
+        "Max calls to import",
+        min_value=1,
+        max_value=20,
+        value=5,
+        step=1,
+        key="import_max_calls",
+        help="Number of most recent calls to import",
+    )
+
     with st.spinner("Loading most recent calls..."):
-        recent_calls = get_recent_calls_info(selected_account["path"], max_calls=5)
+        recent_calls = get_recent_calls_info(selected_account["path"], max_calls=max_calls)
 
     if not recent_calls:
         st.warning("No call files found in this account folder.")
@@ -143,7 +157,7 @@ def render():
             ae_owner=ae_owner or None,
             team_lead=team_lead or None,
             team_name=team_name or None,
-            max_calls=5,
+            max_calls=max_calls,
         )
 
     # ── Fallback: manual text-paste ────────────────────────────────────
@@ -208,12 +222,15 @@ def _execute_import_and_analyze(
     progress.progress(25, text="Uploading transcripts to database...")
 
     try:
-        results = upload_calls_to_db(parsed_calls, account_id)
+        upload_result = upload_calls_to_db(parsed_calls, account_id)
+        results = upload_result["imported"]
+        skipped = upload_result["skipped"]
     except Exception as e:
         st.error(f"Failed to upload transcripts: {e}")
         return
 
-    progress.progress(40, text=f"Uploaded {len(results)} transcripts")
+    skip_msg = f" ({len(skipped)} already imported)" if skipped else ""
+    progress.progress(40, text=f"Uploaded {len(results)} transcripts{skip_msg}")
 
     log_action(
         ACTION_TRANSCRIPT_UPLOAD,
@@ -253,9 +270,10 @@ def _execute_import_and_analyze(
 
         # ── Results summary ────────────────────────────────────────────
         if result["status"] == "completed":
+            skip_line = f"\n- **Already imported (skipped):** {len(skipped)}" if skipped else ""
             st.success(
                 f"✅ **Import & Analysis complete for {account_name}**\n\n"
-                f"- **Transcripts imported:** {len(results)}\n"
+                f"- **Transcripts imported:** {len(results)}{skip_line}\n"
                 f"- **Agents completed:** {result['agents_completed']}/{result['agents_total']}\n"
                 f"- **Cost:** ${result['total_cost_usd']:.4f}\n"
                 f"- **Time:** {result['wall_clock_seconds']}s"

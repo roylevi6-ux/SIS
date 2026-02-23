@@ -50,6 +50,7 @@ def upload_transcript(
     call_date: str,
     participants: Optional[list[dict]] = None,
     duration_minutes: Optional[int] = None,
+    gong_call_id: Optional[str] = None,
 ) -> Transcript:
     """Upload and preprocess a transcript. Enforces 5-transcript limit."""
     with get_session() as session:
@@ -82,12 +83,25 @@ def upload_transcript(
             raw_text=raw_text,
             preprocessed_text=preprocessed["text"],
             token_count=preprocessed["token_count"],
+            gong_call_id=gong_call_id,
             is_active=1,
         )
         session.add(transcript)
         session.flush()
         session.expunge(transcript)
         return transcript
+
+
+def transcript_exists(account_id: str, gong_call_id: str) -> bool:
+    """Check if a transcript with this gong_call_id already exists for the account."""
+    if not gong_call_id:
+        return False
+    with get_session() as session:
+        return (
+            session.query(Transcript.id)
+            .filter_by(account_id=account_id, gong_call_id=gong_call_id)
+            .first()
+        ) is not None
 
 
 def list_transcripts(account_id: str, active_only: bool = True) -> list[dict]:

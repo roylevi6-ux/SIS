@@ -12,7 +12,13 @@ import json
 import streamlit as st
 
 from sis.services.account_service import get_account_detail, list_accounts
-from sis.services.analysis_service import get_agent_analyses, get_latest_run_id, get_carry_forward_actions
+from sis.services.analysis_service import (
+    get_agent_analyses,
+    get_latest_run_id,
+    get_carry_forward_actions,
+    get_assessment_delta,
+    get_assessment_timeline,
+)
 from sis.services.feedback_service import list_feedback
 from sis.services.user_action_log_service import log_action, ACTION_FEEDBACK_SUBMIT
 from sis.ui.components.health_badge import render_health_badge, render_momentum_indicator, render_forecast_badge
@@ -53,21 +59,39 @@ def render():
         st.warning("No analysis run yet for this account. Go to 'Run Analysis' to start.")
         return
 
+    # ── Delta annotations (compare with previous run) ──
+    delta = get_assessment_delta(account_id)
+    delta_fields = delta["fields"] if delta else {}
+
     # ── Header metrics ──
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         render_health_badge(assessment["health_score"])
+        if delta_fields.get("health_score", {}).get("changed"):
+            d = delta_fields["health_score"]
+            sign = "+" if d["delta"] > 0 else ""
+            color = "green" if d["delta"] > 0 else "red"
+            st.caption(f":{color}[{d['previous']} → {d['current']} ({sign}{d['delta']})]")
     with col2:
         st.metric("Stage", f"{assessment['inferred_stage']} - {assessment['stage_name']}")
         st.caption(f"Confidence: {assessment['stage_confidence']:.0%}")
+        if delta_fields.get("stage_name", {}).get("changed"):
+            d = delta_fields["stage_name"]
+            st.caption(f":blue[{d['previous']} → {d['current']}]")
     with col3:
         st.markdown("**Momentum**")
         render_momentum_indicator(assessment["momentum_direction"])
         if assessment.get("momentum_trend"):
             st.caption(assessment["momentum_trend"])
+        if delta_fields.get("momentum_direction", {}).get("changed"):
+            d = delta_fields["momentum_direction"]
+            st.caption(f":blue[{d['previous']} → {d['current']}]")
     with col4:
         st.markdown("**Forecast**")
         render_forecast_badge(assessment["ai_forecast_category"])
+        if delta_fields.get("ai_forecast_category", {}).get("changed"):
+            d = delta_fields["ai_forecast_category"]
+            st.caption(f":blue[{d['previous']} → {d['current']}]")
         if detail.get("ic_forecast_category"):
             st.caption(f"IC: {detail['ic_forecast_category']}")
             if assessment.get("divergence_flag"):
@@ -198,6 +222,23 @@ def render():
         agent_analyses = get_agent_analyses(latest_run_id)
         for analysis in agent_analyses:
             render_agent_card(analysis)
+
+    # ── Assessment Timeline ──
+    section_divider()
+    timeline = get_assessment_timeline(account_id)
+    if len(timeline) > 1:
+        st.subheader("Assessment Timeline")
+        timeline_data = []
+        for entry in reversed(timeline):
+            timeline_data.append({
+                "Date": entry["created_at"][:16],
+                "Health": entry["health_score"],
+                "Stage": f"{entry['inferred_stage']} - {entry['stage_name']}",
+                "Momentum": entry["momentum_direction"],
+                "Forecast": entry["ai_forecast_category"],
+                "Confidence": f"{entry['overall_confidence']:.0f}%",
+            })
+        st.table(timeline_data)
 
     # ── Score Feedback Button ──
     section_divider()
