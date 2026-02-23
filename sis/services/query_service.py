@@ -40,6 +40,11 @@ Rules:
 - If asked about a specific deal, include: health score, stage, momentum, forecast, top risks.
 - For pipeline questions, summarize by health tier (Healthy 70+, At Risk 45-69, Critical <45).
 - When asked about forecast divergence, explain both AI and IC categories and the delta.
+- For rep performance questions ("How is X doing?", "Compare reps", "Who is underperforming?"):
+  - Reference their avg health score, deal count, MRR, and health tier breakdown.
+  - Highlight momentum trends (how many deals improving vs declining).
+  - Flag divergent forecasts and critical deals by name.
+  - When comparing reps, use a consistent format: health, MRR, momentum, risks.
 
 When deal-specific data is available (marked with "## Deal Deep Dive"):
 - Reference specific agent findings and confidence levels when explaining assessments.
@@ -244,6 +249,72 @@ def _build_deal_context(account_id: str) -> str:
     return "\n".join(sections)
 
 
+# ── Rep performance context ─────────────────────────────────────────
+
+
+def _build_rep_context(accounts: list[dict]) -> str:
+    """Build per-rep performance summary from account data.
+
+    Groups accounts by ae_owner (the rep who owns the deal), aggregates
+    health scores, MRR, momentum, forecast distribution, and flags.
+    """
+    reps: dict[str, list[dict]] = {}
+    for a in accounts:
+        rep = a.get("ae_owner") or a.get("team_lead") or "Unassigned"
+        reps.setdefault(rep, []).append(a)
+
+    if not reps or (len(reps) == 1 and "Unassigned" in reps):
+        return ""
+
+    lines: list[str] = ["\n## Rep Performance"]
+
+    for rep_name in sorted(reps.keys()):
+        deals = reps[rep_name]
+        scored = [d for d in deals if d.get("health_score") is not None]
+        total_mrr = sum(d.get("mrr_estimate") or 0 for d in deals)
+
+        # Health tiers
+        healthy = sum(1 for d in scored if d["health_score"] >= 70)
+        at_risk = sum(1 for d in scored if 45 <= d["health_score"] < 70)
+        critical = sum(1 for d in scored if d["health_score"] < 45)
+        avg_health = (
+            round(sum(d["health_score"] for d in scored) / len(scored), 1)
+            if scored else None
+        )
+
+        # Momentum breakdown
+        momentum_counts: dict[str, int] = {}
+        for d in scored:
+            mom = d.get("momentum_direction", "Unknown")
+            momentum_counts[mom] = momentum_counts.get(mom, 0) + 1
+
+        # Forecast distribution
+        forecast_counts: dict[str, int] = {}
+        for d in scored:
+            fc = d.get("ai_forecast_category", "Unknown")
+            forecast_counts[fc] = forecast_counts.get(fc, 0) + 1
+
+        divergent = sum(1 for d in scored if d.get("divergence_flag"))
+
+        # Build rep line
+        avg_str = f"{avg_health:.0f}" if avg_health is not None else "N/A"
+        mom_str = ", ".join(f"{k}={v}" for k, v in sorted(momentum_counts.items()))
+        fc_str = ", ".join(f"{k}={v}" for k, v in sorted(forecast_counts.items()))
+        deal_names = [d["account_name"] for d in deals]
+
+        lines.append(
+            f"### {rep_name}\n"
+            f"  Deals ({len(deals)}): {', '.join(deal_names)}\n"
+            f"  Avg Health: {avg_str} | MRR: ${total_mrr:,.0f}\n"
+            f"  Healthy: {healthy}, At Risk: {at_risk}, Critical: {critical}\n"
+            f"  Momentum: {mom_str}\n"
+            f"  Forecast: {fc_str}\n"
+            f"  Divergent: {divergent}"
+        )
+
+    return "\n".join(lines)
+
+
 # ── Tier 1: pipeline-wide context ───────────────────────────────────
 
 
@@ -296,6 +367,11 @@ def _build_context(accounts: list[dict]) -> str:
                 f"Avg Health={avg}, MRR=${t['total_mrr']:,.0f}, "
                 f"Divergent={t.get('divergent_count', 0)}"
             )
+
+    # Rep performance
+    rep_section = _build_rep_context(accounts)
+    if rep_section:
+        sections.append(rep_section)
 
     return "\n".join(sections)
 
