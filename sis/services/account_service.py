@@ -205,6 +205,7 @@ def get_account_detail(account_id: str) -> dict:
                 "is_active": bool(t.is_active),
                 "created_at": t.created_at,
                 "participants": json.loads(t.participants) if t.participants else None,
+                "call_title": t.call_title,
                 "analyzed": t.id in analyzed_ids,
             }
             for t in account.transcripts

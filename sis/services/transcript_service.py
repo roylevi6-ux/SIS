@@ -51,27 +51,10 @@ def upload_transcript(
     participants: Optional[list[dict]] = None,
     duration_minutes: Optional[int] = None,
     gong_call_id: Optional[str] = None,
+    call_title: Optional[str] = None,
 ) -> Transcript:
     """Upload and preprocess a transcript. Enforces 5-transcript limit."""
     with get_session() as session:
-        # Check active transcript count
-        active_count = (
-            session.query(Transcript)
-            .filter_by(account_id=account_id, is_active=1)
-            .count()
-        )
-
-        # Archive oldest if at limit
-        if active_count >= MAX_TRANSCRIPTS_PER_ACCOUNT:
-            oldest = (
-                session.query(Transcript)
-                .filter_by(account_id=account_id, is_active=1)
-                .order_by(Transcript.call_date.asc())
-                .first()
-            )
-            if oldest:
-                oldest.is_active = 0
-
         # Basic preprocessing (token counting)
         preprocessed = _preprocess(raw_text)
 
@@ -83,11 +66,18 @@ def upload_transcript(
             raw_text=raw_text,
             preprocessed_text=preprocessed["text"],
             token_count=preprocessed["token_count"],
+            call_title=call_title,
             gong_call_id=gong_call_id,
             is_active=1,
         )
         session.add(transcript)
         session.flush()
+
+        # Ensure only the N most recent by call_date stay active.
+        # This is safe regardless of import order.
+        _enforce_active_limit(session, account_id)
+
+        session.refresh(transcript)
         session.expunge(transcript)
         return transcript
 

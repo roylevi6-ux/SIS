@@ -39,6 +39,7 @@ interface Transcript {
   is_active: boolean;
   created_at: string;
   participants: Participant[] | null;
+  call_title: string | null;
   analyzed: boolean;
 }
 
