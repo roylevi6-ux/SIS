@@ -50,7 +50,10 @@ def list_drive_accounts(body: DrivePathRequest):
     if not is_valid:
         raise HTTPException(status_code=400, detail=message)
 
-    accounts = gdrive_service.list_account_folders(body.path)
+    try:
+        accounts = gdrive_service.list_account_folders(body.path)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     return accounts
 
 
