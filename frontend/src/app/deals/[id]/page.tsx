@@ -494,7 +494,7 @@ export default function DealDetailPage({
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm text-muted-foreground">Confidence:</span>
                   <span className="text-sm font-medium tabular-nums">
-                    {Math.round(assessment.overall_confidence)}%
+                    {Math.round(assessment.overall_confidence <= 1.0 ? assessment.overall_confidence * 100 : assessment.overall_confidence)}%
                   </span>
                   <DeltaBadge field={deltaFields?.overall_confidence} />
                 </div>
