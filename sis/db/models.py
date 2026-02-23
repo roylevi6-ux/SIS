@@ -42,6 +42,7 @@ class Account(Base):
     team_lead = Column(Text, nullable=True)
     ae_owner = Column(Text, nullable=True)
     team_name = Column(Text, nullable=True)
+    deal_type = Column(Text, nullable=True)  # New Logo / Expansion - Upsell / Expansion - Cross Sell / Expansion - Both / Renewal
     created_at = Column(Text, nullable=False, default=_now)
     updated_at = Column(Text, nullable=False, default=_now, onupdate=_now)
 
