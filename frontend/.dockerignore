@@ -1,0 +1,19 @@
+# Dependencies (rebuilt in container)
+node_modules/
+
+# Build output
+.next/
+out/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Misc
+README.md
+*.tsbuildinfo
