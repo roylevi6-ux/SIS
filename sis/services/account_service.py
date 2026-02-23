@@ -12,7 +12,7 @@ from sis.db.models import Account, DealAssessment
 logger = logging.getLogger(__name__)
 
 # Whitelist of fields that can be updated via update_account
-UPDATABLE_FIELDS = {"account_name", "mrr_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name"}
+UPDATABLE_FIELDS = {"account_name", "mrr_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value"}
 
 # Whitelist of fields that can be used for sorting
 SORTABLE_FIELDS = {"account_name", "mrr_estimate", "team_name", "created_at", "updated_at"}
@@ -24,7 +24,8 @@ def create_account(
     team_lead: Optional[str] = None,
     ae_owner: Optional[str] = None,
     team: Optional[str] = None,
-    deal_type: Optional[str] = None,
+    deal_type: str = "new_logo",
+    prior_contract_value: Optional[float] = None,
 ) -> Account:
     """Create a new account."""
     with get_session() as session:
@@ -35,6 +36,7 @@ def create_account(
             ae_owner=ae_owner,
             team_name=team,
             deal_type=deal_type,
+            prior_contract_value=prior_contract_value,
         )
         session.add(account)
         session.flush()
@@ -133,6 +135,7 @@ def list_accounts(
 
             summary = {
                 "id": acct.id,
+                "account_id": acct.id,
                 "account_name": acct.account_name,
                 "mrr_estimate": acct.mrr_estimate,
                 "team_lead": acct.team_lead,
