@@ -203,26 +203,41 @@ function CustomAngleTick({
   const score = scoreMap?.get(label);
   const color = score !== undefined ? getZoneColor(score) : '#6b7280';
 
-  // Nudge outward from chart centre
+  // Push the tick outward from the chart centre
   const dx = x - cx;
   const dy = y - cy;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const nudge = dist > 0 ? 10 : 0;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nudge = 14;
   const nx = x + (dx / dist) * nudge;
   const ny = y + (dy / dist) * nudge;
 
-  // Upper vs lower half — if tick is above centre, pill goes below label;
-  // if below, pill goes above label (so it doesn't overlap the chart).
-  const isUpperHalf = ny < cy;
-  const labelY = isUpperHalf ? ny - 10 : ny + 14;
-  const pillY = isUpperHalf ? ny + 1 : ny - 4;
+  // Pill dimensions
+  const PILL_W = 38;
+  const PILL_H = 18;
+  const PILL_GAP = 4; // gap between label baseline and pill top
+
+  // Pill horizontal alignment follows the textAnchor so it sits flush with
+  // the label — not always centered, which caused overlaps on the sides.
+  let pillRectX: number;
+  if (textAnchor === 'start') {
+    pillRectX = nx;
+  } else if (textAnchor === 'end') {
+    pillRectX = nx - PILL_W;
+  } else {
+    pillRectX = nx - PILL_W / 2;
+  }
+  const pillTextX = pillRectX + PILL_W / 2;
+
+  // Label at ny, pill directly below with a small gap
+  const labelBaseY = ny;
+  const pillTopY = labelBaseY + PILL_GAP;
 
   return (
     <g>
       {/* Dimension label */}
       <text
         x={nx}
-        y={labelY}
+        y={labelBaseY}
         textAnchor={textAnchor}
         dominantBaseline="auto"
         style={{
@@ -234,35 +249,35 @@ function CustomAngleTick({
         {label}
       </text>
 
-      {/* Score pill */}
+      {/* Score pill — anchored below label, aligned to same edge */}
       {score !== undefined && (
         <>
           <rect
-            x={nx - 16}
-            y={pillY}
-            width={32}
-            height={16}
-            rx={8}
+            x={pillRectX}
+            y={pillTopY}
+            width={PILL_W}
+            height={PILL_H}
+            rx={PILL_H / 2}
             fill={color}
-            fillOpacity={0.15}
+            fillOpacity={0.14}
           />
           <rect
-            x={nx - 16}
-            y={pillY}
-            width={32}
-            height={16}
-            rx={8}
+            x={pillRectX}
+            y={pillTopY}
+            width={PILL_W}
+            height={PILL_H}
+            rx={PILL_H / 2}
             fill="none"
             stroke={color}
             strokeWidth={0.8}
-            strokeOpacity={0.6}
+            strokeOpacity={0.55}
           />
           <text
-            x={nx}
-            y={pillY + 12}
+            x={pillTextX}
+            y={pillTopY + PILL_H / 2 + 4}
             textAnchor="middle"
             dominantBaseline="auto"
-            style={{ fontSize: 10.5, fill: color, fontWeight: 700 }}
+            style={{ fontSize: 11, fill: color, fontWeight: 700 }}
           >
             {score}%
           </text>
@@ -478,13 +493,13 @@ export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
       {/* Chart with centred overall score */}
       <CardContent className="px-2 pt-2 pb-4">
         <div className="relative">
-          <ResponsiveContainer width="100%" height={440}>
+          <ResponsiveContainer width="100%" height={480}>
             <RadarChart
               cx="50%"
               cy="50%"
-              outerRadius="68%"
+              outerRadius="72%"
               data={data}
-              margin={{ top: 28, right: 40, bottom: 28, left: 40 }}
+              margin={{ top: 36, right: 48, bottom: 36, left: 48 }}
             >
               {/* Zone band: outer healthy ring (green, covers full area) */}
               <Radar
