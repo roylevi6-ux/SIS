@@ -1,18 +1,23 @@
-"""AnalysisPipeline — 3-step agent execution flow per Technical Architecture Section 3.2.
+"""AnalysisPipeline — 5-step agent execution flow per Technical Architecture Section 3.2.
 
 Manages the full pipeline for one account:
-  Step 1: Agents 1-8 (all parallel via asyncio.as_completed)
-          Agent 1 (Stage Classifier) runs alongside Agents 2-8.
-          Agents 2-8 run without stage context (stage_context=None).
-          For expansion deals: Agent 0E also runs in parallel with 1-8.
-  Step 2: Agent 9 (Open Discovery / Adversarial) — reads all outputs + stage context
-  Step 3: Agent 10 (Synthesis) — reads all outputs including Agent 9 + stage context
+  Step 1: Agent 1 (Stage Classifier) runs FIRST, alone (Haiku — fast, cheap)
+  Step 2: Extract stage_context from Agent 1's output
+  Step 3: Agents 0E + 2-8 run in PARALLEL, ALL receiving stage_context
+          For expansion deals: Agent 0E also runs in parallel with 2-8.
+  Step 4: Agent 9 (Open Discovery / Adversarial) — reads all outputs + stage context
+  Step 5: Agent 10 (Synthesis) — reads all outputs including Agent 9 + stage context
+
+Agent 1 feeds stage context to ALL downstream agents so they can adjust
+their analysis based on where the deal is in the pipeline (e.g., Commercial
+analysis differs at Stage 3 vs Stage 6).
 
 Design principles:
 - No agent-to-agent communication except through the orchestrator
 - Agents are pure functions: (transcripts, context) -> AgentOutput
 - asyncio.as_completed for parallel execution with per-agent progress reporting
 - Failed agents get retried independently; partial results are acceptable
+- Agent 1 failure is non-fatal: pipeline continues with stage_context=None
 - All results persisted to DB via the service layer
 """
 
@@ -52,7 +57,14 @@ class PipelineResult:
 
 
 class AnalysisPipeline:
-    """Manages the 3-step agent execution pipeline for one account.
+    """Manages the 5-step agent execution pipeline for one account.
+
+    Flow:
+        Step 1: Agent 1 (Stage Classifier) — solo, Haiku, fast
+        Step 2: Extract stage_context
+        Step 3: Agents 0E + 2-8 — parallel, all with stage_context
+        Step 4: Agent 9 (Open Discovery)
+        Step 5: Agent 10 (Synthesis)
 
     Usage:
         pipeline = AnalysisPipeline()
@@ -76,7 +88,7 @@ class AnalysisPipeline:
         self._progress_callback = progress_callback
         self._run_id = run_id
 
-    def _report_progress(self, step_name: str, current: int, total: int = 3) -> None:
+    def _report_progress(self, step_name: str, current: int, total: int = 5) -> None:
         if self._progress_callback:
             self._progress_callback(step_name, current, total)
         logger.info("Pipeline step %d/%d: %s", current, total, step_name)
@@ -148,15 +160,76 @@ class AnalysisPipeline:
             init_run(self._run_id)
 
         try:
-            # ── STEP 1: Agents 1-8 + optional 0E (all parallel) ────────
-            step1_label = "Agents 0E+1-8: Parallel Analysis" if is_expansion else "Agents 1-8: Parallel Analysis"
-            self._report_progress(step1_label, 1)
+            # ── STEP 1: Agent 1 (Stage Classifier) — runs FIRST, alone ──
+            # Agent 1 uses Haiku (fast, cheap) and classifies the deal stage.
+            # Its output feeds stage_context to ALL downstream agents.
+            self._report_progress("Agent 1: Stage Classification", 1)
+            if self._run_id:
+                mark_agent_running(self._run_id, "agent_1")
 
-            # Agent 1 has a different build_call signature (no stage_context)
-            # Agent 0E has a different signature (deal_context instead of stage_context)
-            agent_builders = [
-                ("agent_1", None),  # sentinel — built separately below
-            ]
+            stage_context = None
+            try:
+                agent1_call = stage_build_call(
+                    transcript_texts, timeline_entries, deal_context,
+                )
+                agent1_call.setdefault("transcript_count", num_transcripts)
+                agent1_result = await run_agent_async(**agent1_call)
+
+                agent1_output = agent1_result.output.model_dump()
+                result.agent_outputs["agent_1"] = agent1_output
+                result.agent_metadata["agent_1"] = {
+                    "input_tokens": agent1_result.input_tokens,
+                    "output_tokens": agent1_result.output_tokens,
+                    "elapsed_seconds": agent1_result.elapsed_seconds,
+                    "model": agent1_result.model,
+                    "attempts": agent1_result.attempts,
+                }
+                result.cost_summary.add(
+                    "agent_1", agent1_result.model,
+                    agent1_result.input_tokens, agent1_result.output_tokens,
+                    agent1_result.elapsed_seconds, agent1_result.attempts - 1,
+                )
+                if self._run_id:
+                    mark_agent_completed(
+                        self._run_id, "agent_1",
+                        agent1_result.input_tokens, agent1_result.output_tokens,
+                        agent1_result.elapsed_seconds, agent1_result.model,
+                        agent1_result.attempts,
+                    )
+                warnings = validate_agent_output(agent1_output)
+                result.validation_warnings.extend(
+                    [f"[agent_1] {w}" for w in warnings]
+                )
+
+                # Extract stage context for all downstream agents
+                result.stage_output = agent1_output
+                stage_context = {
+                    "deal_type": deal_type,
+                    "stage_model": agent1_output["findings"].get("stage_model", "new_logo_7"),
+                    "inferred_stage": agent1_output["findings"]["inferred_stage"],
+                    "stage_name": agent1_output["findings"]["stage_name"],
+                    "confidence": agent1_output["confidence"]["overall"],
+                    "reasoning": agent1_output["findings"]["reasoning"],
+                }
+                logger.info(
+                    "Agent 1 completed: stage=%d (%s), confidence=%.2f, deal_type=%s",
+                    stage_context["inferred_stage"],
+                    stage_context["stage_name"],
+                    stage_context["confidence"],
+                    stage_context["deal_type"],
+                )
+            except Exception as exc:
+                # Agent 1 failure is non-fatal — continue without stage context
+                result.errors.append(f"[agent_1] {exc}")
+                logger.error("Agent 1 failed — continuing without stage context: %s", exc)
+                if self._run_id:
+                    mark_agent_failed(self._run_id, "agent_1", str(exc))
+
+            # ── STEP 2: Agents 0E + 2-8 (parallel, all with stage_context) ──
+            step2_label = "Agents 0E+2-8: Parallel Analysis" if is_expansion else "Agents 2-8: Parallel Analysis"
+            self._report_progress(step2_label, 2)
+
+            agent_builders = []
             if is_expansion:
                 agent_builders.append(("agent_0e", account_health_build_call))
             agent_builders.extend([
@@ -169,21 +242,22 @@ class AnalysisPipeline:
                 ("agent_8", competitive_build_call),
             ])
 
-            # Mark all agents as running in progress store
+            # Mark all parallel agents as running in progress store
             if self._run_id:
                 for agent_id, _ in agent_builders:
                     mark_agent_running(self._run_id, agent_id)
 
-            # Build call kwargs for each agent
+            # Build call kwargs — ALL agents now receive stage_context
             parallel_tasks = []
             for agent_id, builder in agent_builders:
-                if agent_id == "agent_1":
-                    call_kwargs = stage_build_call(transcript_texts, timeline_entries)
-                elif agent_id == "agent_0e":
-                    call_kwargs = builder(transcript_texts, timeline_entries, deal_context)
+                if agent_id == "agent_0e":
+                    # Agent 0E: (transcripts, timeline, deal_context, stage_context)
+                    call_kwargs = builder(
+                        transcript_texts, timeline_entries, deal_context, stage_context,
+                    )
                 else:
-                    # Agents 2-8 run without stage context (None)
-                    call_kwargs = builder(transcript_texts, None, timeline_entries)
+                    # Agents 2-8: (transcripts, stage_context, timeline)
+                    call_kwargs = builder(transcript_texts, stage_context, timeline_entries)
                 call_kwargs.setdefault("transcript_count", num_transcripts)
                 parallel_tasks.append(call_kwargs)
 
@@ -231,22 +305,8 @@ class AnalysisPipeline:
                     [f"[{agent_id}] {w}" for w in warnings]
                 )
 
-            # Extract stage context from Agent 1's output for downstream agents
-            stage_output = result.agent_outputs.get("agent_1")
-            if stage_output:
-                result.stage_output = stage_output
-                stage_context = {
-                    "inferred_stage": stage_output["findings"]["inferred_stage"],
-                    "stage_name": stage_output["findings"]["stage_name"],
-                    "confidence": stage_output["confidence"]["overall"],
-                    "reasoning": stage_output["findings"]["reasoning"],
-                }
-            else:
-                stage_context = None
-                result.errors.append("[pipeline] Agent 1 failed — stage context unavailable")
-
-            # ── STEP 2: Agent 9 (Open Discovery) ──────────────────────
-            self._report_progress("Agent 9: Open Discovery", 2)
+            # ── STEP 3: Agent 9 (Open Discovery) ──────────────────────
+            self._report_progress("Agent 9: Open Discovery", 3)
             if self._run_id:
                 mark_agent_running(self._run_id, "agent_9")
             agent9_call = discovery_build_call(
@@ -276,8 +336,8 @@ class AnalysisPipeline:
                     agent9_result.attempts,
                 )
 
-            # ── STEP 3: Agent 10 (Synthesis) ──────────────────────────
-            self._report_progress("Agent 10: Synthesis", 3)
+            # ── STEP 4: Agent 10 (Synthesis) ──────────────────────────
+            self._report_progress("Agent 10: Synthesis", 4)
             if self._run_id:
                 mark_agent_running(self._run_id, "agent_10")
             agent10_call = synthesis_build_call(result.agent_outputs, stage_context)
@@ -298,7 +358,8 @@ class AnalysisPipeline:
                     agent10_result.attempts,
                 )
 
-            # ── POST-SYNTHESIS VALIDATION ──────────────────────────────
+            # ── STEP 5: POST-SYNTHESIS VALIDATION ─────────────────────
+            self._report_progress("Post-synthesis validation", 5)
             from sis.validation import validate_synthesis_output
             synthesis_warnings = validate_synthesis_output(
                 synthesis_output, agent_outputs=result.agent_outputs,
