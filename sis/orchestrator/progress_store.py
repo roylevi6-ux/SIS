@@ -149,16 +149,28 @@ def get_snapshot(run_id: str) -> dict | None:
 
 
 def _recompute_totals(entry: dict) -> None:
-    """Recompute total cost and elapsed from agent data. Caller must hold _lock."""
+    """Recompute total cost and elapsed from agent data. Caller must hold _lock.
+
+    Elapsed time reflects wall-clock: agent_1 + max(0E, 2-8) + agent_9 + agent_10.
+    Agent 1 runs sequentially first, then 0E + 2-8 in parallel, then 9 and 10 sequential.
+    """
     total_cost = 0.0
-    total_elapsed = 0.0
-    for agent in entry["agents"].values():
+    parallel_elapsed = 0.0  # max of agents running in parallel (0e, 2-8)
+    sequential_elapsed = 0.0  # sum of sequential agents (1, 9, 10)
+    parallel_agents = {"agent_0e", "agent_2", "agent_3", "agent_4",
+                       "agent_5", "agent_6", "agent_7", "agent_8"}
+
+    for agent_id, agent in entry["agents"].items():
         if agent["cost_usd"] is not None:
             total_cost += agent["cost_usd"]
         if agent["elapsed_seconds"] is not None:
-            total_elapsed += agent["elapsed_seconds"]
+            if agent_id in parallel_agents:
+                parallel_elapsed = max(parallel_elapsed, agent["elapsed_seconds"])
+            else:
+                sequential_elapsed += agent["elapsed_seconds"]
+
     entry["total_cost_usd"] = round(total_cost, 4)
-    entry["total_elapsed_seconds"] = round(total_elapsed, 1)
+    entry["total_elapsed_seconds"] = round(parallel_elapsed + sequential_elapsed, 1)
 
 
 def _cleanup_run(run_id: str) -> None:

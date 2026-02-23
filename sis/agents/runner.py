@@ -61,8 +61,8 @@ def build_analysis_prompt(
     and differ only in their final instruction line. Centralizing this avoids
     duplicating ~30 lines across 7 agent modules.
 
-    stage_context is optional — when Agent 1 runs in parallel with Agents 2-8,
-    stage context is not yet available. Agents analyze transcripts independently.
+    stage_context is optional — Agent 1 runs first and its output is passed here.
+    If Agent 1 fails, stage_context is None and agents analyze without it.
 
     deal_context is optional — for expansion deals, injects deal type and prior
     contract value into the prompt so agents can adjust their analysis.
@@ -76,9 +76,12 @@ def build_analysis_prompt(
 
     if stage_context:
         parts.append("## STAGE CONTEXT (from Agent 1)")
+        parts.append(f"Deal type: {stage_context.get('deal_type', 'new_logo')}")
+        parts.append(f"Stage model: {stage_context.get('stage_model', 'new_logo_7')}")
         parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
         parts.append(f"Confidence: {stage_context.get('confidence')}")
         parts.append(f"Reasoning: {stage_context.get('reasoning')}")
+        parts.append("Use this stage context to calibrate your analysis — focus on what matters most at this stage.")
         parts.append("")
 
     # Expansion deal context injection
