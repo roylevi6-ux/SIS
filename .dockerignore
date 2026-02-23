@@ -35,7 +35,6 @@ docs/
 planning/
 scripts/
 README.md
-.streamlit/
 
 # Environment
 .env
