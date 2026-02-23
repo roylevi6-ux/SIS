@@ -246,7 +246,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
 
         {/* Timeline */}
         <TooltipProvider delayDuration={100}>
-          <div className="relative h-14">
+          <div className="relative h-20">
             {/* Horizontal axis line */}
             <div className="absolute left-0 right-0 top-1/2 -translate-y-px h-px bg-border" />
 
@@ -262,8 +262,8 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
               </div>
             )}
 
-            {/* Call dots */}
-            {sorted.map((call) => {
+            {/* Call dots — labels alternate above/below the line */}
+            {sorted.map((call, idx) => {
               const dateMs = parseDate(call.call_date).getTime();
               const pct = ((dateMs - axisStart) / axisRange) * 100;
               const d = parseDate(call.call_date);
@@ -279,33 +279,40 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
               if (internal) tooltipLines.push(`Internal: ${internal}`);
               if (call.analyzed) tooltipLines.push('Included in analysis');
 
-              // Single topic keyword extracted from the call title
               const shortLabel = extractTopicWord(call.call_title);
+              const labelAbove = idx % 2 === 0;
 
               return (
                 <Tooltip key={call.id}>
                   <TooltipTrigger asChild>
                     <div
                       className="absolute -translate-x-1/2 cursor-default flex flex-col items-center"
-                      style={{ left: `${pct}%`, top: '50%', transform: `translateX(-50%) translateY(-50%)` }}
+                      style={{ left: `${pct}%`, top: '50%', transform: 'translateX(-50%) translateY(-50%)' }}
                     >
+                      {/* Label above the dot */}
+                      {shortLabel && labelAbove && (
+                        <span className="mb-1 text-[9px] leading-tight text-muted-foreground whitespace-nowrap max-w-[70px] truncate text-center">
+                          {shortLabel}
+                        </span>
+                      )}
+
                       {call.analyzed ? (
-                        /* Analyzed: larger circle with phone icon */
                         <div className="relative flex items-center justify-center size-7 rounded-full bg-violet-500 shadow-sm shadow-violet-200 dark:shadow-violet-900 transition-transform hover:scale-110">
                           <Phone className="size-3 text-white" />
                         </div>
                       ) : (
-                        /* Not analyzed: smaller muted dot */
                         <div className="size-3 rounded-full bg-muted-foreground/30 transition-transform hover:scale-125 hover:bg-muted-foreground/50" />
                       )}
-                      {shortLabel && (
-                        <span className="mt-1 text-[9px] leading-tight text-muted-foreground whitespace-nowrap max-w-[60px] truncate text-center">
+
+                      {/* Label below the dot */}
+                      {shortLabel && !labelAbove && (
+                        <span className="mt-1 text-[9px] leading-tight text-muted-foreground whitespace-nowrap max-w-[70px] truncate text-center">
                           {shortLabel}
                         </span>
                       )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs">
+                  <TooltipContent side={labelAbove ? 'bottom' : 'top'} className="max-w-xs">
                     {tooltipLines.map((line, i) => (
                       <p key={i} className={i === 0 ? 'font-medium' : 'text-muted-foreground'}>
                         {line}
