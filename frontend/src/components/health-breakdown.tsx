@@ -232,8 +232,18 @@ function CustomAngleTick({
   const labelBaseY = ny;
   const pillTopY = labelBaseY + PILL_GAP;
 
+  // Build native tooltip text for the label/pill area
+  const rationale = scoreMap && score !== undefined
+    ? undefined // rationale is in the data but not accessible from scoreMap
+    : undefined;
+  const zone = score !== undefined ? ZONE_LABEL[getZone(score)] : '';
+  const titleText = score !== undefined
+    ? `${label}: ${score}% (${zone})`
+    : label;
+
   return (
-    <g>
+    <g style={{ cursor: 'default' }}>
+      <title>{titleText}</title>
       {/* Dimension label */}
       <text
         x={nx}
