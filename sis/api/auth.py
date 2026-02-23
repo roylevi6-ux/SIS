@@ -14,13 +14,23 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 
 # ── Configuration ────────────────────────────────────────────────────
 
-JWT_SECRET: str = os.getenv("JWT_SECRET", "sis-dev-secret-change-me")
+_DEFAULT_SECRET = "sis-dev-secret-change-me"
+JWT_SECRET: str = os.getenv("JWT_SECRET", _DEFAULT_SECRET)
 JWT_ALGORITHM: str = "HS256"
 JWT_EXPIRY_HOURS: int = 24
+
+# Block startup with the default secret in production
+_environment = os.getenv("ENVIRONMENT", "development")
+if JWT_SECRET == _DEFAULT_SECRET and _environment == "production":
+    raise RuntimeError(
+        "JWT_SECRET must be set to a secure random value in production. "
+        "Generate one with: python3 -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
 
 # Valid roles for POC (will map to SF permission sets later)
 VALID_ROLES = {"admin", "team_lead", "ic"}
@@ -69,7 +79,7 @@ def decode_token(token: str) -> dict:
     """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except JWTError as exc:
+    except InvalidTokenError as exc:
         raise ValueError(f"Invalid token: {exc}") from exc
 
     sub: Optional[str] = payload.get("sub")

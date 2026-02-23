@@ -18,6 +18,9 @@ from sis.orchestrator.progress_store import get_snapshot
 
 router = APIRouter(prefix="/api/sse", tags=["sse"])
 
+# Maximum time (seconds) to keep an SSE stream open before closing
+SSE_TIMEOUT_SECONDS = 600  # 10 minutes
+
 
 @router.get("/analysis/{run_id}")
 async def analysis_progress(run_id: str):
@@ -25,16 +28,21 @@ async def analysis_progress(run_id: str):
 
     Reads from the in-memory progress store (1s interval) for real-time
     per-agent detail. Falls back to DB for runs not in memory.
-    The stream closes when the run reaches a terminal status.
+    The stream closes when the run reaches a terminal status or times out.
     """
 
     async def event_stream():
-        while True:
+        elapsed = 0
+        while elapsed < SSE_TIMEOUT_SECONDS:
             status = _get_progress(run_id)
             yield f"data: {json.dumps(status)}\n\n"
             if status["status"] in ("completed", "failed", "partial"):
                 break
             await asyncio.sleep(1)
+            elapsed += 1
+        else:
+            # Timed out — send a final timeout event
+            yield f"data: {json.dumps({'run_id': run_id, 'status': 'timeout', 'agents': {}})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from sis.api.deps import get_optional_user
+from sis.api.deps import get_current_user
 from sis.services import feedback_service
 from sis.api.schemas.feedback import FeedbackCreate, FeedbackResolve
 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
 
 @router.post("/")
-def submit_feedback(body: FeedbackCreate, user: Optional[dict] = Depends(get_optional_user)):
+def submit_feedback(body: FeedbackCreate, user: dict = Depends(get_current_user)):
     """Submit score feedback for a deal assessment."""
     try:
         return feedback_service.submit_feedback(
@@ -38,6 +38,7 @@ def list_feedback(
     account_id: Optional[str] = None,
     author: Optional[str] = None,
     status: Optional[str] = None,
+    user: dict = Depends(get_current_user),
 ):
     """List feedback with optional filters."""
     return feedback_service.list_feedback(
@@ -48,7 +49,7 @@ def list_feedback(
 
 
 @router.patch("/{feedback_id}/resolve")
-def resolve(feedback_id: str, body: FeedbackResolve, user: Optional[dict] = Depends(get_optional_user)):
+def resolve(feedback_id: str, body: FeedbackResolve, user: dict = Depends(get_current_user)):
     """Resolve a feedback item."""
     try:
         return feedback_service.resolve_feedback(
@@ -65,6 +66,6 @@ def resolve(feedback_id: str, body: FeedbackResolve, user: Optional[dict] = Depe
 
 
 @router.get("/summary")
-def summary():
+def summary(user: dict = Depends(get_current_user)):
     """Aggregated feedback statistics."""
     return feedback_service.get_feedback_summary()

@@ -15,11 +15,11 @@ class TestRunAnalysis:
     @patch("sis.api.routes.analyses.analysis_service")
     @patch("sis.api.routes.analyses.asyncio")
     @patch("sis.services.transcript_service.get_active_transcript_texts")
-    def test_run_analysis_returns_started(self, mock_texts, mock_asyncio, mock_svc, client):
+    def test_run_analysis_returns_started(self, mock_texts, mock_asyncio, mock_svc, client, auth_headers):
         mock_texts.return_value = ["transcript one", "transcript two"]
         mock_svc.create_analysis_run.return_value = "run-123"
         mock_loop = mock_asyncio.get_event_loop.return_value
-        resp = client.post("/api/analyses/", json={"account_id": "acct-1"})
+        resp = client.post("/api/analyses/", json={"account_id": "acct-1"}, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "started"
@@ -28,21 +28,21 @@ class TestRunAnalysis:
         mock_loop.run_in_executor.assert_called_once()
 
     @patch("sis.services.transcript_service.get_active_transcript_texts")
-    def test_run_analysis_no_transcripts_returns_422(self, mock_texts, client):
+    def test_run_analysis_no_transcripts_returns_422(self, mock_texts, client, auth_headers):
         mock_texts.return_value = []
-        resp = client.post("/api/analyses/", json={"account_id": "acct-1"})
+        resp = client.post("/api/analyses/", json={"account_id": "acct-1"}, headers=auth_headers)
         assert resp.status_code == 422
         assert "No active transcripts" in resp.json()["detail"]
 
     @patch("sis.services.transcript_service.get_active_transcript_texts")
-    def test_run_analysis_account_not_found_returns_404(self, mock_texts, client):
+    def test_run_analysis_account_not_found_returns_404(self, mock_texts, client, auth_headers):
         mock_texts.side_effect = ValueError("Account not found: bad-id")
-        resp = client.post("/api/analyses/", json={"account_id": "bad-id"})
+        resp = client.post("/api/analyses/", json={"account_id": "bad-id"}, headers=auth_headers)
         assert resp.status_code == 404
         assert "Account not found" in resp.json()["detail"]
 
-    def test_run_analysis_missing_account_id_returns_422(self, client):
-        resp = client.post("/api/analyses/", json={})
+    def test_run_analysis_missing_account_id_returns_422(self, client, auth_headers):
+        resp = client.post("/api/analyses/", json={}, headers=auth_headers)
         assert resp.status_code == 422
 
 
@@ -52,7 +52,7 @@ class TestRunAnalysis:
 class TestGetHistory:
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_get_history_returns_list(self, mock_svc, client):
+    def test_get_history_returns_list(self, mock_svc, client, auth_headers):
         mock_svc.get_analysis_history.return_value = [
             {
                 "run_id": "run-1",
@@ -64,7 +64,7 @@ class TestGetHistory:
                 "total_output_tokens": 2000,
             },
         ]
-        resp = client.get("/api/analyses/history/acct-1")
+        resp = client.get("/api/analyses/history/acct-1", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
@@ -72,16 +72,16 @@ class TestGetHistory:
         assert data[0]["status"] == "completed"
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_get_history_empty(self, mock_svc, client):
+    def test_get_history_empty(self, mock_svc, client, auth_headers):
         mock_svc.get_analysis_history.return_value = []
-        resp = client.get("/api/analyses/history/acct-1")
+        resp = client.get("/api/analyses/history/acct-1", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json() == []
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_get_history_passes_account_id(self, mock_svc, client):
+    def test_get_history_passes_account_id(self, mock_svc, client, auth_headers):
         mock_svc.get_analysis_history.return_value = []
-        client.get("/api/analyses/history/acct-42")
+        client.get("/api/analyses/history/acct-42", headers=auth_headers)
         mock_svc.get_analysis_history.assert_called_once_with("acct-42")
 
 
@@ -91,7 +91,7 @@ class TestGetHistory:
 class TestGetAgents:
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_get_agents_returns_list(self, mock_svc, client):
+    def test_get_agents_returns_list(self, mock_svc, client, auth_headers):
         mock_svc.get_agent_analyses.return_value = [
             {
                 "agent_id": "agent_1",
@@ -109,7 +109,7 @@ class TestGetAgents:
                 "status": "completed",
             },
         ]
-        resp = client.get("/api/analyses/run-1/agents")
+        resp = client.get("/api/analyses/run-1/agents", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
@@ -117,16 +117,16 @@ class TestGetAgents:
         assert data[0]["status"] == "completed"
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_get_agents_empty(self, mock_svc, client):
+    def test_get_agents_empty(self, mock_svc, client, auth_headers):
         mock_svc.get_agent_analyses.return_value = []
-        resp = client.get("/api/analyses/run-1/agents")
+        resp = client.get("/api/analyses/run-1/agents", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json() == []
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_get_agents_passes_run_id(self, mock_svc, client):
+    def test_get_agents_passes_run_id(self, mock_svc, client, auth_headers):
         mock_svc.get_agent_analyses.return_value = []
-        client.get("/api/analyses/run-99/agents")
+        client.get("/api/analyses/run-99/agents", headers=auth_headers)
         mock_svc.get_agent_analyses.assert_called_once_with("run-99")
 
 
@@ -136,7 +136,7 @@ class TestGetAgents:
 class TestRerunAgent:
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_rerun_agent_returns_result(self, mock_svc, client):
+    def test_rerun_agent_returns_result(self, mock_svc, client, auth_headers):
         mock_svc.rerun_agent.return_value = {
             "agent_id": "agent_3",
             "status": "completed",
@@ -144,25 +144,25 @@ class TestRerunAgent:
             "input_tokens": 800,
             "output_tokens": 400,
         }
-        resp = client.post("/api/analyses/run-1/rerun/agent_3")
+        resp = client.post("/api/analyses/run-1/rerun/agent_3", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["agent_id"] == "agent_3"
         assert data["status"] == "completed"
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_rerun_agent_not_found_returns_404(self, mock_svc, client):
+    def test_rerun_agent_not_found_returns_404(self, mock_svc, client, auth_headers):
         mock_svc.rerun_agent.side_effect = ValueError("Analysis run not found: bad-run")
-        resp = client.post("/api/analyses/bad-run/rerun/agent_1")
+        resp = client.post("/api/analyses/bad-run/rerun/agent_1", headers=auth_headers)
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"].lower()
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_rerun_agent_invalid_agent_returns_422(self, mock_svc, client):
+    def test_rerun_agent_invalid_agent_returns_422(self, mock_svc, client, auth_headers):
         mock_svc.rerun_agent.side_effect = ValueError(
             "Cannot rerun agent_10. Only agents 1-8 can be individually rerun."
         )
-        resp = client.post("/api/analyses/run-1/rerun/agent_10")
+        resp = client.post("/api/analyses/run-1/rerun/agent_10", headers=auth_headers)
         assert resp.status_code == 422
 
 
@@ -172,7 +172,7 @@ class TestRerunAgent:
 class TestResynthesize:
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_resynthesize_returns_result(self, mock_svc, client):
+    def test_resynthesize_returns_result(self, mock_svc, client, auth_headers):
         mock_svc.resynthesize.return_value = {
             "status": "completed",
             "health_score": 72,
@@ -180,7 +180,7 @@ class TestResynthesize:
             "input_tokens": 3000,
             "output_tokens": 1500,
         }
-        resp = client.post("/api/analyses/run-1/resynthesize")
+        resp = client.post("/api/analyses/run-1/resynthesize", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "completed"
@@ -188,15 +188,15 @@ class TestResynthesize:
         assert data["forecast_category"] == "Commit"
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_resynthesize_run_not_found_returns_404(self, mock_svc, client):
+    def test_resynthesize_run_not_found_returns_404(self, mock_svc, client, auth_headers):
         mock_svc.resynthesize.side_effect = ValueError("Analysis run not found: bad-run")
-        resp = client.post("/api/analyses/bad-run/resynthesize")
+        resp = client.post("/api/analyses/bad-run/resynthesize", headers=auth_headers)
         assert resp.status_code == 404
 
     @patch("sis.api.routes.analyses.analysis_service")
-    def test_resynthesize_missing_agent1_returns_422(self, mock_svc, client):
+    def test_resynthesize_missing_agent1_returns_422(self, mock_svc, client, auth_headers):
         mock_svc.resynthesize.side_effect = ValueError(
             "Agent 1 output missing — cannot resynthesize"
         )
-        resp = client.post("/api/analyses/run-1/resynthesize")
+        resp = client.post("/api/analyses/run-1/resynthesize", headers=auth_headers)
         assert resp.status_code == 422

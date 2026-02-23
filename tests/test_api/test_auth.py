@@ -46,7 +46,7 @@ class TestDecodeToken:
             decode_token("not-a-real-token")
 
     def test_expired_token(self):
-        from jose import jwt
+        import jwt
         import datetime
 
         payload = {
@@ -60,7 +60,7 @@ class TestDecodeToken:
             decode_token(expired)
 
     def test_missing_sub_claim(self):
-        from jose import jwt
+        import jwt
         import datetime
 
         payload = {
@@ -72,7 +72,7 @@ class TestDecodeToken:
             decode_token(token)
 
     def test_invalid_role_in_token(self):
-        from jose import jwt
+        import jwt
         import datetime
 
         payload = {
@@ -85,7 +85,7 @@ class TestDecodeToken:
             decode_token(token)
 
     def test_wrong_secret_fails(self):
-        from jose import jwt
+        import jwt
 
         payload = {"sub": "alice", "role": "admin", "exp": 9999999999}
         token = jwt.encode(payload, "wrong-secret", algorithm="HS256")

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends
 
-from sis.api.deps import get_optional_user
+from sis.api.deps import get_current_user
 from sis.services import calibration_service
 from sis.api.schemas.admin import CalibrationCreate
 
@@ -14,19 +12,19 @@ router = APIRouter(prefix="/api/calibration", tags=["calibration"])
 
 
 @router.get("/current")
-def get_current():
+def get_current(user: dict = Depends(get_current_user)):
     """Load the current calibration config from YAML."""
     return calibration_service.get_current_calibration()
 
 
 @router.get("/patterns")
-def get_patterns():
+def get_patterns(user: dict = Depends(get_current_user)):
     """Analyze feedback patterns for calibration review."""
     return calibration_service.get_feedback_patterns()
 
 
 @router.post("/")
-def create(body: CalibrationCreate, user: Optional[dict] = Depends(get_optional_user)):
+def create(body: CalibrationCreate, user: dict = Depends(get_current_user)):
     """Persist a calibration change log entry."""
     return calibration_service.create_calibration_log(
         config_version=body.config_version,
@@ -38,6 +36,6 @@ def create(body: CalibrationCreate, user: Optional[dict] = Depends(get_optional_
 
 
 @router.get("/history")
-def history():
+def history(user: dict = Depends(get_current_user)):
     """All calibration logs ordered by date descending."""
     return calibration_service.list_calibration_history()

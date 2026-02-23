@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from sis.api.deps import get_optional_user
+from sis.api.deps import get_current_user
 from sis.services import transcript_service
 from sis.api.schemas.transcripts import TranscriptUpload
 
@@ -12,13 +12,13 @@ router = APIRouter(prefix="/api/transcripts", tags=["transcripts"])
 
 
 @router.get("/{account_id}")
-def list_transcripts(account_id: str, active_only: bool = True):
+def list_transcripts(account_id: str, active_only: bool = True, user: dict = Depends(get_current_user)):
     """List transcripts for an account."""
     return transcript_service.list_transcripts(account_id, active_only=active_only)
 
 
 @router.post("/")
-def upload_transcript(body: TranscriptUpload, user: Optional[dict] = Depends(get_optional_user)):
+def upload_transcript(body: TranscriptUpload, user: dict = Depends(get_current_user)):
     """Upload and preprocess a new transcript."""
     transcript = transcript_service.upload_transcript(
         account_id=body.account_id,
