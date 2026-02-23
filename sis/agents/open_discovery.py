@@ -19,8 +19,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .runner import AgentResult, build_analysis_prompt, run_agent, strip_for_downstream
-from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
+from .runner import AgentResult, build_analysis_prompt, run_agent, strip_for_adversarial
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT, MANAGER_INSIGHT_FRAGMENT
 
 from sis.config import MODEL_AGENT_9
 
@@ -70,6 +70,11 @@ class OpenDiscoveryFindings(BaseModel):
         description="True if no novel findings beyond agents 1-8 (adversarial challenges still required)",
     )
     data_quality_notes: list[str] = Field(default_factory=list)
+    manager_insight: str = Field(
+        default="",
+        description="2-3 sentences for the sales manager: pattern interpretation, "
+        "silence signals, and one specific recommended action.",
+    )
 
 
 # --- Envelope output ---
@@ -80,7 +85,7 @@ class OpenDiscoveryOutput(BaseModel):
 
     agent_id: str = Field(default="agent_9_open_discovery")
     transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
-    narrative: str = Field(description="2-4 paragraphs summarizing novel findings and adversarial challenges. Max 300 words.")
+    narrative: str = Field(description="2-4 paragraphs summarizing novel findings and adversarial challenges. Max 500 words.")
     findings: OpenDiscoveryFindings = Field(description="Agent-specific structured findings")
     evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations for novel findings and challenges")
     confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
@@ -115,12 +120,19 @@ Look for signals that don't fit neatly into the 8 agent domains:
 4. Produce a challenge with: what was claimed, what contradicts it, and what the revised assessment should be
 5. Rate severity: Critical (claim is likely wrong), Moderate (overstated), Minor (nuance missing)
 
+## Evidence-Aware Validation
+You now receive each agent's evidence arrays and narratives (not just findings). Use this to:
+- Verify that high-confidence claims have strong supporting quotes — flag agents whose confidence exceeds their evidence quality
+- Check whether evidence actually supports the claimed interpretation — look for overreach
+- Flag agents with thin evidence relative to their confidence score
+- When challenging a claim, cite the specific evidence (or lack thereof) from the upstream agent
+
 ## NEVER Rules
 - NEVER pad findings when nothing new is found. "no_additional_signals: true" with an empty novel_findings list is valid output.
 - NEVER duplicate what agents 1-8 already captured. Your value is additive.
 - ALWAYS produce at least one adversarial challenge. Every deal has at least one finding that deserves scrutiny.
 - NEVER be adversarial for its own sake. Challenge only where transcript evidence supports a different conclusion.
-""" + ENVELOPE_PROMPT_FRAGMENT + """
+""" + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
 Respond with a single JSON object using this envelope structure:
@@ -175,7 +187,7 @@ def build_call(
     }
     for agent_id in sorted(upstream_outputs.keys()):
         label = agent_labels.get(agent_id, agent_id)
-        compressed = strip_for_downstream(upstream_outputs[agent_id])
+        compressed = strip_for_adversarial(upstream_outputs[agent_id])
         output_json = json.dumps(compressed, ensure_ascii=False)
         upstream_section += f"\n### {label}\n```json\n{output_json}\n```\n"
 

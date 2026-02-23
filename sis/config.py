@@ -61,7 +61,7 @@ ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com"
 MODEL_AGENT_1 = _get_model("agent_1", "anthropic/claude-haiku-4-5-20251001")
 MODEL_AGENTS_2_8 = _get_model("agent_2", "anthropic/claude-sonnet-4-20250514")
 MODEL_AGENT_9 = _get_model("agent_9", "anthropic/claude-sonnet-4-20250514")
-MODEL_AGENT_10 = _get_model("agent_10", "anthropic/claude-opus-4-20250514")
+MODEL_AGENT_10 = _get_model("agent_10", "anthropic/claude-sonnet-4-6-20250514")
 MODEL_CHAT = _get_model("chat", "anthropic/claude-sonnet-4-20250514")
 
 # Backwards compat aliases (used by test scripts and legacy imports)
@@ -75,8 +75,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/sis.db")
 MAX_TOKENS_PER_TRANSCRIPT = 8_000
 MAX_TRANSCRIPTS_PER_ACCOUNT = 5
 TOTAL_CONTEXT_BUDGET = 60_000
-MAX_OUTPUT_TOKENS_PER_AGENT = 3_500
-MAX_OUTPUT_TOKENS_SYNTHESIS = 8_000
+MAX_OUTPUT_TOKENS_PER_AGENT = 5_500
+MAX_OUTPUT_TOKENS_SYNTHESIS = 12_000
 
 # --- Alerts (defaults; overridden by calibration YAML) ---
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")

@@ -140,6 +140,7 @@ class AnalysisPipeline:
         from sis.agents.account_health import build_call as account_health_build_call
         from sis.agents.runner import (
             run_agent, run_agent_async,
+            strip_for_synthesis, strip_for_adversarial,
             strip_for_downstream, AgentError,
         )
         from sis.validation import validate_agent_output

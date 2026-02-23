@@ -91,7 +91,7 @@ function PollingProgress({
         if (cancelled) return;
 
         if (Array.isArray(history) && history.length > 0) {
-          const latest = history[0] as AnalysisRun;
+          const latest = history[0] as unknown as AnalysisRun;
           setLatestRun(latest);
           setPollError(false);
 
@@ -222,7 +222,7 @@ function PollingProgress({
 
 export default function AnalyzePage() {
   const { data: accountsData, isLoading: accountsLoading } = useAccounts();
-  const accounts = (accountsData ?? []) as Account[];
+  const accounts = (accountsData ?? []) as unknown as Account[];
   const runAnalysis = useRunAnalysis();
 
   const [accountId, setAccountId] = useState('');

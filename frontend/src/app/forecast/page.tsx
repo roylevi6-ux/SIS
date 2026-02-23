@@ -138,7 +138,7 @@ export default function ForecastPage() {
 
   const items = useMemo<ForecastDataItem[]>(() => {
     if (!rawData) return [];
-    return rawData as ForecastDataItem[];
+    return rawData as unknown as ForecastDataItem[];
   }, [rawData]);
 
   const chartData = useMemo(() => buildChartData(items), [items]);

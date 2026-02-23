@@ -1,4 +1,43 @@
 import { getStoredToken } from './auth';
+import type {
+  Account,
+  AccountCreate,
+  AgentAnalysisResponse,
+  AnalysisHistoryItem,
+  AnalysisRunResponse,
+  CalibrationSnapshot,
+  ChatMessage,
+  ChatResponse,
+  CoachingNote,
+  CoachingSummary,
+  CROMetric,
+  DealTrend,
+  DeltaResponse,
+  DivergenceItem,
+  ExportResponse,
+  FeedbackItem,
+  FeedbackSubmit,
+  FeedbackSummary,
+  ForecastData,
+  GDriveAccount,
+  GDriveCall,
+  GDriveConfig,
+  GDriveImportResult,
+  GDriveValidation,
+  InsightsResponse,
+  ActionLog,
+  ActionLogSummary,
+  PipelineOverview,
+  PortfolioSummary,
+  PromptVersion,
+  RepScorecard,
+  TeamRollup,
+  TeamTrend,
+  TimelineEntry,
+  Transcript,
+  TranscriptUpload,
+  UsageSummary,
+} from './api-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -37,148 +76,151 @@ export const api = {
   },
   accounts: {
     list: (params?: { sort_by?: string; team?: string }) =>
-      apiFetch<any[]>(`/api/accounts/?${new URLSearchParams(params as any)}`),
-    get: (id: string) => apiFetch<any>(`/api/accounts/${id}`),
-    create: (data: any) =>
-      apiFetch<any>('/api/accounts/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: any) =>
-      apiFetch<any>(`/api/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      apiFetch<Account[]>(`/api/accounts/?${new URLSearchParams(params as Record<string, string>)}`),
+    get: (id: string) => apiFetch<Account>(`/api/accounts/${id}`),
+    create: (data: AccountCreate) =>
+      apiFetch<Account>('/api/accounts/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<AccountCreate>) =>
+      apiFetch<Account>(`/api/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
-      apiFetch<any>(`/api/accounts/${id}`, { method: 'DELETE' }),
+      apiFetch<{ ok: boolean }>(`/api/accounts/${id}`, { method: 'DELETE' }),
     setForecast: (id: string, category: string) =>
-      apiFetch<any>(`/api/accounts/${id}/ic-forecast`, {
+      apiFetch<Account>(`/api/accounts/${id}/ic-forecast`, {
         method: 'POST',
         body: JSON.stringify({ category }),
       }),
   },
   transcripts: {
     list: (accountId: string, activeOnly?: boolean) =>
-      apiFetch<any[]>(`/api/transcripts/${accountId}?active_only=${activeOnly ?? true}`),
-    upload: (data: any) =>
-      apiFetch<any>('/api/transcripts/', { method: 'POST', body: JSON.stringify(data) }),
+      apiFetch<Transcript[]>(`/api/transcripts/${accountId}?active_only=${activeOnly ?? true}`),
+    upload: (data: TranscriptUpload) =>
+      apiFetch<Transcript>('/api/transcripts/', { method: 'POST', body: JSON.stringify(data) }),
   },
   analyses: {
     run: (accountId: string) =>
-      apiFetch<any>('/api/analyses/', {
+      apiFetch<AnalysisRunResponse>('/api/analyses/', {
         method: 'POST',
         body: JSON.stringify({ account_id: accountId }),
       }),
-    history: (accountId: string) => apiFetch<any[]>(`/api/analyses/history/${accountId}`),
-    agents: (runId: string) => apiFetch<any[]>(`/api/analyses/${runId}/agents`),
+    history: (accountId: string) => apiFetch<AnalysisHistoryItem[]>(`/api/analyses/history/${accountId}`),
+    agents: (runId: string) => apiFetch<AgentAnalysisResponse[]>(`/api/analyses/${runId}/agents`),
     rerun: (runId: string, agentId: string) =>
-      apiFetch<any>(`/api/analyses/${runId}/rerun/${agentId}`, { method: 'POST' }),
+      apiFetch<AnalysisRunResponse>(`/api/analyses/${runId}/rerun/${agentId}`, { method: 'POST' }),
     resynthesize: (runId: string) =>
-      apiFetch<any>(`/api/analyses/${runId}/resynthesize`, { method: 'POST' }),
+      apiFetch<AnalysisRunResponse>(`/api/analyses/${runId}/resynthesize`, { method: 'POST' }),
     cancel: (runId: string) =>
-      apiFetch<any>(`/api/analyses/${runId}/cancel`, { method: 'POST' }),
+      apiFetch<{ ok: boolean }>(`/api/analyses/${runId}/cancel`, { method: 'POST' }),
     delta: (accountId: string) =>
-      apiFetch<any>(`/api/analyses/delta/${accountId}`),
+      apiFetch<DeltaResponse>(`/api/analyses/delta/${accountId}`),
     timeline: (accountId: string) =>
-      apiFetch<any[]>(`/api/analyses/timeline/${accountId}`),
+      apiFetch<TimelineEntry[]>(`/api/analyses/timeline/${accountId}`),
   },
   dashboard: {
     pipeline: (team?: string) =>
-      apiFetch<any>(`/api/dashboard/pipeline${team ? `?team=${team}` : ''}`),
+      apiFetch<PipelineOverview>(`/api/dashboard/pipeline${team ? `?team=${team}` : ''}`),
     divergence: (team?: string) =>
-      apiFetch<any[]>(`/api/dashboard/divergence${team ? `?team=${team}` : ''}`),
+      apiFetch<DivergenceItem[]>(`/api/dashboard/divergence${team ? `?team=${team}` : ''}`),
     teamRollup: (team?: string) =>
-      apiFetch<any[]>(`/api/dashboard/team-rollup${team ? `?team=${team}` : ''}`),
-    insights: () => apiFetch<any>('/api/dashboard/insights'),
+      apiFetch<TeamRollup[]>(`/api/dashboard/team-rollup${team ? `?team=${team}` : ''}`),
+    insights: () => apiFetch<InsightsResponse>('/api/dashboard/insights'),
     dealTrends: (params?: { account_id?: string; weeks?: number }) =>
-      apiFetch<any[]>(`/api/dashboard/trends/deals?${new URLSearchParams(params as any)}`),
+      apiFetch<DealTrend[]>(`/api/dashboard/trends/deals?${new URLSearchParams(params as Record<string, string>)}`),
     teamTrends: (weeks?: number) =>
-      apiFetch<any[]>(`/api/dashboard/trends/teams?weeks=${weeks ?? 4}`),
+      apiFetch<TeamTrend[]>(`/api/dashboard/trends/teams?weeks=${weeks ?? 4}`),
     portfolioSummary: (weeks?: number) =>
-      apiFetch<any>(`/api/dashboard/trends/portfolio?weeks=${weeks ?? 4}`),
+      apiFetch<PortfolioSummary>(`/api/dashboard/trends/portfolio?weeks=${weeks ?? 4}`),
   },
   feedback: {
-    submit: (data: any) =>
-      apiFetch<any>('/api/feedback/', { method: 'POST', body: JSON.stringify(data) }),
+    submit: (data: FeedbackSubmit) =>
+      apiFetch<FeedbackItem>('/api/feedback/', { method: 'POST', body: JSON.stringify(data) }),
     list: (params?: { account_id?: string; author?: string; status?: string }) =>
-      apiFetch<any[]>(`/api/feedback/?${new URLSearchParams(params as any)}`),
-    resolve: (id: string, data: any) =>
-      apiFetch<any>(`/api/feedback/${id}/resolve`, {
+      apiFetch<FeedbackItem[]>(`/api/feedback/?${new URLSearchParams(params as Record<string, string>)}`),
+    resolve: (id: string, data: { resolution_note: string }) =>
+      apiFetch<FeedbackItem>(`/api/feedback/${id}/resolve`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
-    summary: () => apiFetch<any>('/api/feedback/summary'),
+    summary: () => apiFetch<FeedbackSummary>('/api/feedback/summary'),
   },
   chat: {
-    query: (message: string, history?: any[]) =>
-      apiFetch<{ response: string }>('/api/chat/query', {
+    query: (message: string, history?: ChatMessage[]) =>
+      apiFetch<ChatResponse>('/api/chat/query', {
         method: 'POST',
         body: JSON.stringify({ message, history }),
       }),
   },
   calibration: {
-    current: () => apiFetch<any>('/api/calibration/current'),
-    patterns: () => apiFetch<any>('/api/calibration/patterns'),
-    create: (data: any) =>
-      apiFetch<any>('/api/calibration/', { method: 'POST', body: JSON.stringify(data) }),
-    history: () => apiFetch<any[]>('/api/calibration/history'),
+    current: () => apiFetch<CalibrationSnapshot>('/api/calibration/current'),
+    patterns: () => apiFetch<Record<string, unknown>>('/api/calibration/patterns'),
+    create: (data: Record<string, unknown>) =>
+      apiFetch<CalibrationSnapshot>('/api/calibration/', { method: 'POST', body: JSON.stringify(data) }),
+    history: () => apiFetch<CalibrationSnapshot[]>('/api/calibration/history'),
   },
   tracking: {
-    summary: (days?: number) => apiFetch<any>(`/api/tracking/summary?days=${days ?? 30}`),
-    croMetrics: () => apiFetch<any[]>('/api/tracking/cro-metrics'),
+    summary: (days?: number) => apiFetch<UsageSummary>(`/api/tracking/summary?days=${days ?? 30}`),
+    croMetrics: () => apiFetch<CROMetric[]>('/api/tracking/cro-metrics'),
   },
   coaching: {
-    submit: (data: any) =>
-      apiFetch<any>('/api/coaching/', { method: 'POST', body: JSON.stringify(data) }),
-    list: (params?: any) =>
-      apiFetch<any[]>(`/api/coaching/?${new URLSearchParams(params)}`),
+    submit: (data: { rep_name: string; note_text: string; author?: string }) =>
+      apiFetch<CoachingNote>('/api/coaching/', { method: 'POST', body: JSON.stringify(data) }),
+    list: (params?: Record<string, string>) =>
+      apiFetch<CoachingNote[]>(`/api/coaching/?${new URLSearchParams(params)}`),
     summary: (repName?: string) =>
-      apiFetch<any>(`/api/coaching/summary${repName ? `?rep_name=${repName}` : ''}`),
+      apiFetch<CoachingSummary>(`/api/coaching/summary${repName ? `?rep_name=${repName}` : ''}`),
   },
   prompts: {
     list: (agentId?: string) =>
-      apiFetch<any[]>(`/api/prompts/versions${agentId ? `?agent_id=${agentId}` : ''}`),
-    create: (data: any) =>
-      apiFetch<any>('/api/prompts/versions', { method: 'POST', body: JSON.stringify(data) }),
+      apiFetch<PromptVersion[]>(`/api/prompts/versions${agentId ? `?agent_id=${agentId}` : ''}`),
+    create: (data: { agent_id: string; system_prompt: string }) =>
+      apiFetch<PromptVersion>('/api/prompts/versions', { method: 'POST', body: JSON.stringify(data) }),
   },
   scorecard: {
     reps: (aeOwner?: string) =>
-      apiFetch<any[]>(`/api/scorecard/reps${aeOwner ? `?ae_owner=${aeOwner}` : ''}`),
+      apiFetch<RepScorecard[]>(`/api/scorecard/reps${aeOwner ? `?ae_owner=${aeOwner}` : ''}`),
   },
   forecast: {
     data: (team?: string) =>
-      apiFetch<any[]>(`/api/forecast/data${team ? `?team=${team}` : ''}`),
+      apiFetch<ForecastData[]>(`/api/forecast/data${team ? `?team=${team}` : ''}`),
     teams: () => apiFetch<string[]>('/api/forecast/teams'),
   },
   export: {
     brief: (accountId: string, format?: string) =>
-      apiFetch<{ content: string }>(
+      apiFetch<ExportResponse>(
         `/api/export/brief/${accountId}${format ? `?format=${format}` : ''}`,
       ),
     forecast: (params?: { team?: string; format?: string }) =>
-      apiFetch<{ content: string }>(`/api/export/forecast?${new URLSearchParams(params as any)}`),
+      apiFetch<ExportResponse>(`/api/export/forecast?${new URLSearchParams(params as Record<string, string>)}`),
   },
   logs: {
-    actions: (params?: any) =>
-      apiFetch<any[]>(`/api/logs/actions?${new URLSearchParams(params)}`),
+    actions: (params?: Record<string, string>) =>
+      apiFetch<ActionLog[]>(`/api/logs/actions?${new URLSearchParams(params)}`),
     summary: (days?: number) =>
-      apiFetch<any>(`/api/logs/actions/summary?days=${days ?? 30}`),
+      apiFetch<ActionLogSummary>(`/api/logs/actions/summary?days=${days ?? 30}`),
   },
   gdrive: {
-    config: () => apiFetch<{ path: string }>('/api/gdrive/config'),
+    config: () => apiFetch<GDriveConfig>('/api/gdrive/config'),
     validate: (path: string) =>
-      apiFetch<{ is_valid: boolean; message: string }>('/api/gdrive/validate', {
+      apiFetch<GDriveValidation>('/api/gdrive/validate', {
         method: 'POST',
         body: JSON.stringify({ path }),
       }),
     listAccounts: (path: string) =>
-      apiFetch<any[]>('/api/gdrive/accounts', {
+      apiFetch<GDriveAccount[]>('/api/gdrive/accounts', {
         method: 'POST',
         body: JSON.stringify({ path }),
       }),
     listCalls: (accountName: string, accountPath: string, maxCalls?: number) =>
-      apiFetch<any[]>('/api/gdrive/calls', {
+      apiFetch<GDriveCall[]>('/api/gdrive/calls', {
         method: 'POST',
         body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5 }),
       }),
-    import: (accountName: string, accountPath: string, maxCalls?: number, dealArgs?: any) =>
-      apiFetch<any>('/api/gdrive/import', {
+    import: (accountName: string, accountPath: string, maxCalls?: number, dealArgs?: Record<string, unknown>) =>
+      apiFetch<GDriveImportResult>('/api/gdrive/import', {
         method: 'POST',
         body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5, ...dealArgs }),
       }),
   },
 };
+
+// Re-export types for consumers
+export type * from './api-types';

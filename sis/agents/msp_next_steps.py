@@ -15,7 +15,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, build_analysis_prompt, run_agent
-from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT, MANAGER_INSIGHT_FRAGMENT
 
 
 # --- Sub-models ---
@@ -51,6 +51,11 @@ class MSPNextStepsFindings(BaseModel):
     structural_advancement: str = Field(description="Strong (deal moving through checkpoints), Moderate (some progress, some stalls), Weak (enthusiastic but not advancing), or Stalled")
     recommended_actions: list[str] = Field(default_factory=list, description="Recommended actions to establish or strengthen forward commitment")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
+    manager_insight: str = Field(
+        default="",
+        description="2-3 sentences for the sales manager: pattern interpretation, "
+        "silence signals, and one specific recommended action.",
+    )
 
 
 # --- Envelope output ---
@@ -61,7 +66,7 @@ class MSPNextStepsOutput(BaseModel):
 
     agent_id: str = Field(default="agent_7_msp_next_steps")
     transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
-    narrative: str = Field(description="Analytical narrative about structural deal advancement. Max 300 words.")
+    narrative: str = Field(description="Analytical narrative about structural deal advancement. Max 500 words.")
     findings: MSPNextStepsFindings = Field(description="Agent-specific structured findings")
     evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
     confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
@@ -113,7 +118,7 @@ A formal MSP includes:
 5. Go-live dates that keep moving are a red flag, even if the deal appears active.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 7. Use Gong's KEY POINTS section as a reliable signal source.
-""" + ENVELOPE_PROMPT_FRAGMENT + """
+""" + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
 Respond with a single JSON object using this envelope structure:

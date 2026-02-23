@@ -16,7 +16,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, run_agent
-from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT, MANAGER_INSIGHT_FRAGMENT
 
 from sis.config import MODEL_AGENT_1
 
@@ -47,6 +47,11 @@ class StageClassifierFindings(BaseModel):
     stage_model: str = Field(default="new_logo_7", description="Stage model used: 'new_logo_7' or 'expansion_7'")
     stage_risk_signals: list[str] = Field(default_factory=list, description="Signals suggesting the deal may be regressing or stalling. Max 5 items.")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on transcript quality issues. Max 5 items.")
+    manager_insight: str = Field(
+        default="",
+        description="2-3 sentences for the sales manager: pattern interpretation, "
+        "silence signals, and one specific recommended action.",
+    )
 
 
 # --- Envelope output ---
@@ -57,7 +62,7 @@ class StageClassifierOutput(BaseModel):
 
     agent_id: str = Field(default="agent_1_stage_progress")
     transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
-    narrative: str = Field(description="How the deal has progressed across calls -- trajectory, velocity, regression signals. Max 300 words.")
+    narrative: str = Field(description="How the deal has progressed across calls -- trajectory, velocity, regression signals. Max 500 words.")
     findings: StageClassifierFindings = Field(description="Agent-specific structured findings")
     evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
     confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
@@ -107,7 +112,7 @@ If the DEAL CONTEXT section indicates an expansion deal, use the Expansion Deal 
 5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew. Analyze in whatever language the content is in.
 6. Use Gong's KEY POINTS section as a reliable signal source.
 7. Note any data quality issues (poor ASR, very short calls, missing speakers) that affect your confidence.
-""" + ENVELOPE_PROMPT_FRAGMENT + """
+""" + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
 Respond with a single JSON object using this envelope structure:

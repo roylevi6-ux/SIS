@@ -15,7 +15,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .runner import AgentResult, build_analysis_prompt, run_agent
-from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT
+from .schemas import ConfidenceAssessment, EvidenceCitation, ENVELOPE_PROMPT_FRAGMENT, MANAGER_INSIGHT_FRAGMENT
 
 
 # --- Sub-models ---
@@ -44,6 +44,11 @@ class MomentumFindings(BaseModel):
     leading_indicators: list[str] = Field(default_factory=list, description="Leading indicators of acceleration or stall")
     stall_risk: Optional[str] = Field(default=None, description="If declining, what specifically suggests a stall")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
+    manager_insight: str = Field(
+        default="",
+        description="2-3 sentences for the sales manager: pattern interpretation, "
+        "silence signals, and one specific recommended action.",
+    )
 
 
 # --- Envelope output ---
@@ -54,7 +59,7 @@ class MomentumOutput(BaseModel):
 
     agent_id: str = Field(default="agent_4_momentum")
     transcript_count_analyzed: int = Field(description="Number of full transcripts analyzed", ge=0)
-    narrative: str = Field(description="Analytical narrative about momentum and engagement trajectory. Max 300 words.")
+    narrative: str = Field(description="Analytical narrative about momentum and engagement trajectory. Max 500 words.")
     findings: MomentumFindings = Field(description="Agent-specific structured findings")
     evidence: list[EvidenceCitation] = Field(description="5-8 most important evidence citations linking claims to transcripts")
     confidence: ConfidenceAssessment = Field(description="Confidence assessment covering entire output quality")
@@ -108,7 +113,7 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 4. Buyer-initiated next steps are much stronger signals than seller-proposed ones.
 5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
 6. Use Gong's KEY POINTS section as a reliable signal source.
-""" + ENVELOPE_PROMPT_FRAGMENT + """
+""" + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
 Respond with a single JSON object using this envelope structure:
