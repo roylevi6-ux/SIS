@@ -46,9 +46,9 @@ model_routing:
     rationale: "Open discovery needs good reasoning but not full Opus"
 
   agent_10:
-    model: "anthropic/claude-sonnet-4-6-20250514"
+    model: "anthropic/claude-sonnet-4-20250514"
     env_override: "MODEL_AGENT_10"
-    rationale: "Sonnet 4.6 is faster and cheaper; better prompting compensates for synthesis depth"
+    rationale: "Sonnet 4 — LiteLLM proxy does not support Sonnet 4.6 yet"
 
   chat:
     model: "anthropic/claude-sonnet-4-20250514"
