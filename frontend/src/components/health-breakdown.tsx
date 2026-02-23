@@ -7,7 +7,6 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
-  Tooltip,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -288,89 +287,15 @@ function CustomAngleTick({
 }
 
 // ---------------------------------------------------------------------------
-// Custom tooltip
+// Native tooltip text builder — used by SVG <title> for instant hover
 // ---------------------------------------------------------------------------
 
-function RadarTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean;
-  payload?: unknown[];
-}) {
-  if (!active || !Array.isArray(payload)) return null;
-
-  const scoreEntry = (
-    payload as Array<{ dataKey?: string; payload?: RadarDataItem }>
-  ).find((p) => p.dataKey === 'score');
-
-  const data = scoreEntry?.payload;
-  if (!data || typeof data.score !== 'number') return null;
-
-  const zone = getZone(data.score);
-  const color = getZoneColor(data.score);
-
-  return (
-    <div
-      className="rounded-xl border bg-background/98 backdrop-blur-sm px-3.5 py-3 text-xs shadow-xl max-w-[240px]"
-      style={{ borderColor: `${color}30` }}
-    >
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <p className="font-semibold text-sm text-foreground">{data.dimension}</p>
-        <span
-          className="shrink-0 text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-full"
-          style={{ background: `${color}18`, color }}
-        >
-          {data.score}%
-        </span>
-      </div>
-
-      <div className="flex items-center gap-1.5 mb-2">
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-          style={{ background: color }}
-        />
-        <span style={{ color }} className="font-medium">
-          {ZONE_LABEL[zone]}
-        </span>
-        {data.rawScore && (
-          <span className="text-muted-foreground ml-auto tabular-nums">
-            {data.rawScore}
-          </span>
-        )}
-      </div>
-
-      {/* Mini threshold bar */}
-      <div className="relative h-1.5 rounded-full bg-muted overflow-hidden mb-2.5">
-        <div
-          className="absolute inset-y-0 left-0"
-          style={{ width: '45%', background: COLOR_CRITICAL, opacity: 0.28 }}
-        />
-        <div
-          className="absolute inset-y-0"
-          style={{ left: '45%', width: '25%', background: COLOR_AT_RISK, opacity: 0.38 }}
-        />
-        <div
-          className="absolute inset-y-0 right-0"
-          style={{ left: '70%', background: COLOR_HEALTHY, opacity: 0.42 }}
-        />
-        <div
-          className="absolute inset-y-0 w-0.5 rounded-full"
-          style={{
-            left: `${Math.min(data.score, 99)}%`,
-            background: color,
-            boxShadow: `0 0 4px ${color}`,
-          }}
-        />
-      </div>
-
-      {data.rationale && (
-        <p className="text-muted-foreground leading-snug text-[11px]">
-          {data.rationale}
-        </p>
-      )}
-    </div>
-  );
+function buildTooltipText(item: RadarDataItem): string {
+  const zone = ZONE_LABEL[getZone(item.score)];
+  const parts = [`${item.dimension}: ${item.score}% (${zone})`];
+  if (item.rawScore) parts.push(`Score: ${item.rawScore}`);
+  if (item.rationale) parts.push(item.rationale);
+  return parts.join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -581,7 +506,7 @@ export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
                 tickLine={false}
               />
 
-              {/* Main score radar */}
+              {/* Main score radar — dots carry native <title> tooltips */}
               <Radar
                 dataKey="score"
                 stroke={radarColor}
@@ -605,42 +530,14 @@ export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
                       fill={dotColor}
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
-                    />
+                      style={{ cursor: 'default' }}
+                    >
+                      <title>{buildTooltipText(item)}</title>
+                    </circle>
                   );
                 }}
-                activeDot={(dotProps: {
-                  cx?: number;
-                  cy?: number;
-                  index?: number;
-                }) => {
-                  const { cx = 0, cy = 0, index = 0 } = dotProps;
-                  const item = data[index];
-                  const dotColor = item ? getZoneColor(item.score) : radarColor;
-                  return (
-                    <g key={`active-dot-${index}`}>
-                      {/* Outer glow */}
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={10}
-                        fill={dotColor}
-                        fillOpacity={0.18}
-                      />
-                      {/* Inner dot */}
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={5.5}
-                        fill={dotColor}
-                        stroke="hsl(var(--background))"
-                        strokeWidth={2}
-                      />
-                    </g>
-                  );
-                }}
+                activeDot={false}
               />
-
-              <Tooltip content={<RadarTooltip />} cursor={false} />
             </RadarChart>
           </ResponsiveContainer>
 
