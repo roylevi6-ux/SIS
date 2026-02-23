@@ -1,8 +1,8 @@
 """Agent 0E: Account Health & Sentiment — The account manager's ear.
 
 Expansion deals only. Tracks client sentiment, product satisfaction,
-renewal dynamics, and relationship health. Runs in parallel with Agents 1-8.
-Feeds only Agents 9 (Adversarial) and 10 (Synthesis).
+renewal dynamics, and relationship health. Runs in parallel with Agents 2-8
+(after Agent 1 completes). Feeds Agents 9 (Adversarial) and 10 (Synthesis).
 
 Output wrapped in standardized envelope per PRD Section 7.4.
 """
@@ -176,6 +176,7 @@ def build_call(
     transcript_texts: list[str],
     timeline_entries: list[str] | None = None,
     deal_context: dict | None = None,
+    stage_context: dict | None = None,
 ) -> dict:
     """Build kwargs dict for run_agent / run_agent_async."""
     parts = []
@@ -191,6 +192,17 @@ def build_call(
         parts.append(f"Deal type: {deal_context.get('deal_type', 'unknown')}")
         if deal_context.get("prior_contract_value"):
             parts.append(f"Prior contract value: ${deal_context['prior_contract_value']:,.0f}")
+        parts.append("")
+
+    # Stage context from Agent 1 (runs first in pipeline)
+    if stage_context:
+        parts.append("## STAGE CONTEXT (from Agent 1)")
+        parts.append(f"Deal type: {stage_context.get('deal_type', 'expansion')}")
+        parts.append(f"Stage model: {stage_context.get('stage_model', 'expansion_7')}")
+        parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} — {stage_context.get('stage_name')}")
+        parts.append(f"Confidence: {stage_context.get('confidence')}")
+        parts.append(f"Reasoning: {stage_context.get('reasoning')}")
+        parts.append("Use this stage context to calibrate your analysis — focus on what matters most at this stage.")
         parts.append("")
 
     num_transcripts = len(transcript_texts)
@@ -219,6 +231,7 @@ def run_account_health(
     transcript_texts: list[str],
     timeline_entries: list[str] | None = None,
     deal_context: dict | None = None,
+    stage_context: dict | None = None,
 ) -> AgentResult[AccountHealthOutput]:
     """Run Agent 0E: Account Health & Sentiment."""
-    return run_agent(**build_call(transcript_texts, timeline_entries, deal_context))
+    return run_agent(**build_call(transcript_texts, timeline_entries, deal_context, stage_context))

@@ -161,8 +161,8 @@ Produce health score, forecast category, signals, risks, and actions.
 Rate your overall synthesis confidence with key unknowns.
 
 ## Pipeline Note
-Agents 2-8 ran in parallel with Agent 1 and did NOT have stage context at analysis time.
-Their findings are stage-independent. Use Agent 1's output as the authoritative stage classification.
+Agent 1 runs first. Agents 2-8 ran in parallel and ALL received stage context from Agent 1.
+Use Agent 1's output as the authoritative stage classification.
 
 ## Weighting Rules
 - Weight each agent's findings by: agent_confidence x evidence_density
@@ -227,7 +227,10 @@ def build_call(
 
     parts = []
     parts.append("## STAGE CONTEXT (from Agent 1)")
-    parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} -- {stage_context.get('stage_name')}")
+    if stage_context:
+        parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} -- {stage_context.get('stage_name')}")
+    else:
+        parts.append("Stage context unavailable (Agent 1 failed). Infer stage from other agent outputs.")
     parts.append("")
 
     parts.append("## ALL AGENT OUTPUTS (Agents 1-9, findings + confidence only)")

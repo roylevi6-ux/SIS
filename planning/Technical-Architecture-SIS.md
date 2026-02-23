@@ -204,27 +204,35 @@ t=0s     PREPROCESSOR
          - Pack into context dict (total <= 60K tokens)
          ~2-5 seconds
 
-t=5s     STEP 1: Agents 1-8 ALL PARALLEL (asyncio.as_completed)
-         - Model: claude-haiku-4.5 for all 8 agents
-         - Input: preprocessed transcripts (each agent independently)
-         - For expansion deals: Agent 0E also runs in parallel
+t=5s     STEP 1: Agent 1 (Stage Classifier) — SEQUENTIAL, FIRST
+         - Model: claude-haiku-4.5
+         - Input: preprocessed transcripts + deal_context
+         - Outputs: stage_context (stage number, name, model, confidence)
+         - For expansion deals: uses expansion_7 stage model
+         - Agent 1 failure is non-fatal — pipeline continues with stage_context=None
+         ~5-10 seconds
+
+t=15s    STEP 2: Agents 0E + 2-8 ALL PARALLEL (asyncio.as_completed)
+         - Model: claude-haiku-4.5 for all agents
+         - Input: preprocessed transcripts + stage_context from Agent 1
+         - For expansion deals: Agent 0E also runs in parallel with 2-8
          - Per-agent progress reported via SSE as each completes
          - Wall-clock = slowest agent
          ~15-25 seconds (wall-clock, not cumulative)
 
-t=30s    STEP 2: Agent 9 (Open Discovery / Adversarial)
+t=40s    STEP 3: Agent 9 (Open Discovery / Adversarial)
          - Model: claude-haiku-4.5
-         - Input: transcripts + all prior agent outputs
+         - Input: transcripts + all prior agent outputs + stage_context
          - Catches gaps + challenges most optimistic finding
          ~10-15 seconds
 
-t=45s    STEP 3: Agent 10 (Synthesis)
+t=55s    STEP 4: Agent 10 (Synthesis)
          - Model: claude-sonnet-4 — full model
          - Input: all agent outputs including Agent 9 (no raw transcripts)
          - Produces: contradiction map, deal memo, structured fields
          ~15-25 seconds
 
-t=80s    OUTPUT VALIDATION
+t=80s    STEP 5: OUTPUT VALIDATION
          - Schema validation (Pydantic)
          - Content guardrails (evidence checks, NEVER rules)
          - If FAIL: retry the failing agent (max 2 retries)
@@ -240,14 +248,14 @@ The orchestrator is a single Python module (`sis/orchestrator/pipeline.py`) that
 
 ```
 class AnalysisPipeline:
-    """Manages the 4-step agent execution pipeline for one account."""
+    """Manages the 5-step agent execution pipeline for one account."""
 
     async def run(account_id: str) -> AnalysisResult:
         # 1. Load and preprocess transcripts
-        # 2. Run Agent 1 (stage inference)
-        # 3. Run Agents 2-8 in parallel (asyncio.gather)
-        # 4. Run Agent 9 (adversarial, receives all prior outputs)
-        # 5. Run Agent 10 (synthesis, receives all 9 outputs)
+        # 2. Run Agent 1 FIRST (stage classification — feeds stage_context to all downstream)
+        # 3. Run Agents 0E + 2-8 in parallel (all receive stage_context)
+        # 4. Run Agent 9 (adversarial, receives all prior outputs + stage_context)
+        # 5. Run Agent 10 (synthesis, receives all 9 outputs + stage_context)
         # 6. Validate output
         # 7. Persist to database
         # 8. Return result
@@ -257,7 +265,7 @@ Key design decisions:
 
 - **No agent-to-agent communication except through the orchestrator.** Agents are pure functions: `(transcripts, context) -> AgentOutput`. The orchestrator assembles context for each step.
 - **Each agent is a module, not a class hierarchy.** An agent is: a prompt template (YAML/Jinja2), a Pydantic output model, and a thin runner function. No base class inheritance needed.
-- **asyncio.gather for parallel execution.** Agents 2-8 are launched as concurrent coroutines. If any agent fails, the others continue (using `return_exceptions=True`). Failed agents get retried independently.
+- **Sequential-first, then parallel.** Agent 1 runs first to produce stage_context, then Agents 0E + 2-8 are launched as concurrent coroutines (all with stage_context). If any agent fails, the others continue. Failed agents get retried independently.
 
 ### 3.3 Error Handling and Retries
 
