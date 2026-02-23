@@ -42,7 +42,7 @@ class AdversarialChallenge(BaseModel):
 class OpenDiscoveryFinding(BaseModel):
     """A finding not captured by agents 1-8."""
 
-    finding_id: str = Field(description="snake_case identifier, max 30 chars", max_length=30)
+    finding_id: str = Field(description="snake_case identifier, max 50 chars", max_length=50)
     category: str = Field(description="Market/Timing, Cultural, Organizational, Opportunity, Risk, or Other")
     finding: str = Field(description="The finding in 1-2 sentences")
     evidence: str = Field(description="Supporting evidence from transcript")
