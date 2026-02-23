@@ -3,6 +3,10 @@
 Gathers all pipeline data into a context string, sends it with the user's
 question to the LLM, and returns a formatted answer.  This is a structured
 query layer over stored data — NOT re-running the pipeline per query.
+
+Two-tier context strategy:
+  Tier 1 (always): pipeline summary, all deals one-liner, divergences, team rollup
+  Tier 2 (on-demand): full assessment, agent analyses, call history for a detected deal
 """
 
 from __future__ import annotations
@@ -13,7 +17,8 @@ import anthropic
 
 from sis.config import MODEL_CHAT
 from sis.llm.client import get_client
-from sis.services.account_service import list_accounts
+from sis.services.account_service import list_accounts, get_account_detail
+from sis.services.analysis_service import get_latest_run_id, get_agent_analyses
 from sis.services.dashboard_service import (
     get_pipeline_overview,
     get_divergence_report,
@@ -35,11 +40,215 @@ Rules:
 - If asked about a specific deal, include: health score, stage, momentum, forecast, top risks.
 - For pipeline questions, summarize by health tier (Healthy 70+, At Risk 45-69, Critical <45).
 - When asked about forecast divergence, explain both AI and IC categories and the delta.
+
+When deal-specific data is available (marked with "## Deal Deep Dive"):
+- Reference specific agent findings and confidence levels when explaining assessments.
+- Cite health breakdown dimensions (e.g. "Champion Strength scored 4/10") when explaining why a score is low.
+- Reference specific risks, positive signals, and recommended actions by name.
+- Use the deal memo as the primary narrative, then supplement with agent details.
+- When explaining "why" a deal is at risk, cite the lowest-scoring health dimensions and top risks.
+- Reference call history dates and topics to give recency context.
 """
 
-def _build_context() -> str:
-    """Build a context string with all pipeline data for the LLM."""
-    accounts = list_accounts()
+
+# ── Intent detection ─────────────────────────────────────────────────
+
+
+def _detect_deal(message: str, accounts: list[dict]) -> dict | None:
+    """Detect if the user is asking about a specific deal.
+
+    Heuristic matching: checks if any account name (or all its significant
+    words) appear in the user message.  Returns the best match or None.
+    """
+    msg_lower = message.lower()
+
+    best_match = None
+    best_length = 0
+
+    for acct in accounts:
+        name = acct.get("account_name", "")
+        if not name:
+            continue
+        name_lower = name.lower()
+
+        # Full-name substring match (prefer longest)
+        if name_lower in msg_lower:
+            if len(name_lower) > best_length:
+                best_match = acct
+                best_length = len(name_lower)
+            continue
+
+        # Multi-word: all significant words (>2 chars) present in message
+        words = [w for w in name_lower.split() if len(w) > 2]
+        if words and all(w in msg_lower for w in words):
+            match_length = sum(len(w) for w in words)
+            if match_length > best_length:
+                best_match = acct
+                best_length = match_length
+
+    return best_match
+
+
+# ── Tier 2: deal deep-dive context ──────────────────────────────────
+
+
+def _build_deal_context(account_id: str) -> str:
+    """Build Tier 2 deep-dive context for a specific deal."""
+    try:
+        detail = get_account_detail(account_id)
+    except ValueError:
+        return ""
+
+    sections: list[str] = []
+    name = detail["account_name"]
+    sections.append(f"\n## Deal Deep Dive: {name}")
+
+    assessment = detail.get("assessment")
+    if not assessment:
+        sections.append("No assessment available for this deal yet.")
+        return "\n".join(sections)
+
+    # Deal Memo
+    if assessment.get("deal_memo"):
+        sections.append(f"\n### Deal Memo\n{assessment['deal_memo']}")
+
+    # Health Breakdown
+    breakdown = assessment.get("health_breakdown", [])
+    if breakdown:
+        sections.append("\n### Health Breakdown")
+        for dim in breakdown:
+            if isinstance(dim, dict):
+                dim_name = dim.get("dimension", dim.get("name", "Unknown"))
+                score = dim.get("score", "N/A")
+                weight = dim.get("weight", "")
+                rationale = dim.get("rationale", "")
+                weight_str = f" (weight: {weight})" if weight else ""
+                sections.append(
+                    f"- {dim_name}: {score}/10{weight_str} — {rationale}"
+                )
+
+    # Top Risks
+    risks = assessment.get("top_risks", [])
+    if risks:
+        sections.append("\n### Top Risks")
+        for r in risks:
+            if isinstance(r, dict):
+                sections.append(
+                    f"- {r.get('risk', r.get('description', str(r)))}"
+                )
+            else:
+                sections.append(f"- {r}")
+
+    # Positive Signals
+    signals = assessment.get("top_positive_signals", [])
+    if signals:
+        sections.append("\n### Positive Signals")
+        for s in signals:
+            if isinstance(s, dict):
+                sections.append(
+                    f"- {s.get('signal', s.get('description', str(s)))}"
+                )
+            else:
+                sections.append(f"- {s}")
+
+    # Recommended Actions
+    actions = assessment.get("recommended_actions", [])
+    if actions:
+        sections.append("\n### Recommended Actions")
+        for a in actions:
+            if isinstance(a, dict):
+                sections.append(
+                    f"- {a.get('action', a.get('description', str(a)))}"
+                )
+            else:
+                sections.append(f"- {a}")
+
+    # Key Unknowns
+    unknowns = assessment.get("key_unknowns", [])
+    if unknowns:
+        sections.append("\n### Key Unknowns")
+        for u in unknowns:
+            sections.append(f"- {u}")
+
+    # Contradictions
+    contradictions = assessment.get("contradiction_map", [])
+    if contradictions:
+        sections.append("\n### Contradictions")
+        for c in contradictions:
+            if isinstance(c, dict):
+                sections.append(
+                    f"- {c.get('description', c.get('contradiction', str(c)))}"
+                )
+            else:
+                sections.append(f"- {c}")
+
+    # Forecast
+    sections.append("\n### Forecast")
+    sections.append(
+        f"- AI Forecast: {assessment.get('ai_forecast_category', 'N/A')}"
+    )
+    if assessment.get("forecast_rationale"):
+        sections.append(f"- Rationale: {assessment['forecast_rationale']}")
+    ic = detail.get("ic_forecast_category")
+    if ic:
+        sections.append(f"- IC Forecast: {ic}")
+    if assessment.get("divergence_flag"):
+        sections.append(
+            f"- DIVERGENT: {assessment.get('divergence_explanation', 'AI and IC disagree')}"
+        )
+
+    # Agent Analyses
+    run_id = get_latest_run_id(account_id)
+    if run_id:
+        agent_outputs = get_agent_analyses(run_id)
+        if agent_outputs:
+            sections.append("\n### Agent Analyses")
+            for agent in agent_outputs:
+                conf = agent.get("confidence_overall")
+                if conf is not None:
+                    conf_str = (
+                        f" (confidence: {conf:.0f}%)"
+                        if conf > 1
+                        else f" (confidence: {conf:.0%})"
+                    )
+                else:
+                    conf_str = ""
+                agent_name = agent.get(
+                    "agent_name", agent.get("agent_id", "Unknown")
+                )
+                narrative = agent.get("narrative", "")
+                if len(narrative) > 500:
+                    narrative = narrative[:500] + "..."
+                sections.append(f"- **{agent_name}**{conf_str}: {narrative}")
+
+    # Call History (metadata only — no raw transcript text)
+    transcripts = detail.get("transcripts", [])
+    if transcripts:
+        sections.append("\n### Call History")
+        sorted_transcripts = sorted(
+            transcripts,
+            key=lambda t: t.get("call_date") or "",
+            reverse=True,
+        )
+        for t in sorted_transcripts:
+            parts: list[str] = [str(t.get("call_date", "Unknown date"))]
+            if t.get("call_title"):
+                parts.append(t["call_title"])
+            if t.get("duration_minutes"):
+                parts.append(f"{t['duration_minutes']} min")
+            participants = t.get("participants")
+            if participants and isinstance(participants, list):
+                parts.append(f"with {', '.join(str(p) for p in participants)}")
+            sections.append(f"- {' | '.join(parts)}")
+
+    return "\n".join(sections)
+
+
+# ── Tier 1: pipeline-wide context ───────────────────────────────────
+
+
+def _build_context(accounts: list[dict]) -> str:
+    """Build a Tier 1 context string with all pipeline data for the LLM."""
     overview = get_pipeline_overview()
     divergences = get_divergence_report()
     rollup = get_team_rollup()
@@ -91,6 +300,9 @@ def _build_context() -> str:
     return "\n".join(sections)
 
 
+# ── Public API ───────────────────────────────────────────────────────
+
+
 def query(user_message: str, history: list[dict] | None = None) -> str:
     """Process a natural language query about the pipeline.
 
@@ -102,11 +314,19 @@ def query(user_message: str, history: list[dict] | None = None) -> str:
     Returns:
         The LLM's answer as a string.
     """
-    context = _build_context()
+    accounts = list_accounts()
+    context = _build_context(accounts)
 
     # Early return if no pipeline data to query
     if "## All Deals\n" not in context or context.endswith("## All Deals\n"):
         return "No pipeline data available yet. Upload transcripts and run analysis first."
+
+    # Tier 2: detect if user is asking about a specific deal
+    matched = _detect_deal(user_message, accounts)
+    if matched and matched.get("id"):
+        deal_context = _build_deal_context(matched["id"])
+        if deal_context:
+            context = context + "\n" + deal_context
 
     messages: list[dict] = []
     if history:
@@ -125,7 +345,7 @@ def query(user_message: str, history: list[dict] | None = None) -> str:
         # Use streaming to avoid Riskified proxy 60s timeout (matches runner.py pattern)
         with client.messages.stream(
             model=MODEL_CHAT,
-            max_tokens=1500,
+            max_tokens=6000,
             system=SYSTEM_PROMPT,
             messages=messages,
         ) as stream:
