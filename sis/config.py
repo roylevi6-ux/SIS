@@ -83,6 +83,9 @@ SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
 SCORE_DROP_ALERT_THRESHOLD = 15
 STALE_CALL_DAYS_THRESHOLD = 30
 
+# --- Google Drive Integration ---
+GOOGLE_DRIVE_TRANSCRIPTS_PATH = os.getenv("GOOGLE_DRIVE_TRANSCRIPTS_PATH", "")
+
 
 # ---------------------------------------------------------------------------
 # Calibration config

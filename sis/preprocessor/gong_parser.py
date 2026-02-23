@@ -55,6 +55,18 @@ def load_account_calls(account_dir: str | Path) -> list[ParsedCall]:
     return calls
 
 
+def load_recent_calls(account_dir: str | Path, max_calls: int = 5) -> list[ParsedCall]:
+    """Load the N most recent Gong calls from an account directory.
+
+    Wraps load_account_calls() but returns only the most recent calls,
+    sorted by date descending.
+    """
+    all_calls = load_account_calls(account_dir)
+    # Sort by date descending and take most recent
+    all_calls.sort(key=lambda c: c.metadata.date, reverse=True)
+    return all_calls[:max_calls]
+
+
 def parse_call(metadata_path: str | Path) -> ParsedCall:
     """Parse a single Gong call from its metadata file.
 
