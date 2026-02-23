@@ -73,8 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Actions',
     items: [
-      { label: 'Upload Transcript', href: '/upload', icon: Upload },
-      { label: 'Run Analysis', href: '/analyze', icon: Play },
+      { label: 'Import & Analyze', href: '/upload', icon: Upload },
       { label: 'Chat', href: '/chat', icon: MessageSquare },
       { label: 'Meeting Prep', href: '/meeting-prep', icon: Calendar },
     ],

@@ -167,10 +167,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5 }),
       }),
-    import: (accountName: string, accountPath: string, maxCalls?: number) =>
+    import: (accountName: string, accountPath: string, maxCalls?: number, dealArgs?: any) =>
       apiFetch<any>('/api/gdrive/import', {
         method: 'POST',
-        body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5 }),
+        body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5, ...dealArgs }),
       }),
   },
 };

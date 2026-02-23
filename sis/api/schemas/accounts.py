@@ -29,6 +29,7 @@ class AccountCreate(BaseModel):
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
+    deal_type: Optional[str] = None
 
 
 class AccountUpdate(BaseModel):
@@ -37,6 +38,7 @@ class AccountUpdate(BaseModel):
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
+    deal_type: Optional[str] = None
 
 
 class ICForecastUpdate(BaseModel):

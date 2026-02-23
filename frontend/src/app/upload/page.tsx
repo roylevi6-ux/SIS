@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Upload, CheckCircle2, FolderOpen, FileText, Loader2, HardDrive } from 'lucide-react';
+import { Upload, CheckCircle2, FolderOpen, FileText, Loader2, HardDrive, Play } from 'lucide-react';
 import { useAccounts, useUploadTranscript } from '@/lib/hooks';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,6 +29,14 @@ import { Badge } from '@/components/ui/badge';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+const DEAL_TYPES = [
+  "New Logo",
+  "Expansion - Upsell",
+  "Expansion - Cross Sell",
+  "Expansion - Both",
+  "Renewal",
+];
 
 interface Account {
   id: string;
@@ -128,6 +136,12 @@ function DriveImportTab() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState('');
 
+  const [dealType, setDealType] = useState<string>('');
+  const [mrrEstimate, setMrrEstimate] = useState<string>('');
+  const [aeOwner, setAeOwner] = useState<string>('');
+  const [teamLead, setTeamLead] = useState<string>('');
+  const [teamName, setTeamName] = useState<string>('');
+
   // Load saved config on mount
   useEffect(() => {
     api.gdrive.config().then((cfg) => {
@@ -193,10 +207,24 @@ function DriveImportTab() {
     setImportResult(null);
 
     try {
-      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, 5);
+      const dealArgs = {
+        deal_type: dealType || undefined,
+        mrr_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
+        ae_owner: aeOwner || undefined,
+        team_lead: teamLead || undefined,
+        team_name: teamName || undefined,
+      };
+      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, 5, dealArgs);
+
+      // Trigger analysis pipeline immediately
+      await api.analyses.run(result.account_id);
+
       setImportResult(result);
+      setTimeout(() => {
+        window.location.href = `/analyze`;
+      }, 1500);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Import failed');
+      setImportError(err instanceof Error ? err.message : 'Import & Analysis failed');
     } finally {
       setIsImporting(false);
     }
@@ -314,6 +342,34 @@ function DriveImportTab() {
               </TableBody>
             </Table>
 
+            {/* Deal Configuration */}
+            <div className="space-y-4 py-4 border-y border-border/50 my-4">
+              <h3 className="text-sm font-semibold">Deal Configuration</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Deal Type</label>
+                  <Select value={dealType} onValueChange={setDealType}>
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      {DEAL_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">MRR Estimate ($)</label>
+                  <Input type="number" min="0" step="1000" placeholder="Optional" value={mrrEstimate} onChange={e => setMrrEstimate(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">AE Owner</label>
+                  <Input placeholder="Optional" value={aeOwner} onChange={e => setAeOwner(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Team Lead</label>
+                  <Input placeholder="Optional" value={teamLead} onChange={e => setTeamLead(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
             <Button
               onClick={handleImport}
               disabled={isImporting}
@@ -321,13 +377,13 @@ function DriveImportTab() {
             >
               {isImporting ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Importing...
+                  <Loader2 className="size-4 animate-spin mr-2" />
+                  Importing & Analyzing...
                 </>
               ) : (
                 <>
-                  <Upload className="size-4" />
-                  Import {recentCalls.length} Calls
+                  <Play className="size-4 mr-2" />
+                  Import & Run Analysis
                 </>
               )}
             </Button>
@@ -387,6 +443,12 @@ function LocalFolderTab() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState('');
 
+  const [dealType, setDealType] = useState<string>('');
+  const [mrrEstimate, setMrrEstimate] = useState<string>('');
+  const [aeOwner, setAeOwner] = useState<string>('');
+  const [teamLead, setTeamLead] = useState<string>('');
+  const [teamName, setTeamName] = useState<string>('');
+
   async function handleScanFolder() {
     if (!folderPath.trim()) return;
     setIsValidating(true);
@@ -442,10 +504,24 @@ function LocalFolderTab() {
     setImportResult(null);
 
     try {
-      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, 5);
+      const dealArgs = {
+        deal_type: dealType || undefined,
+        mrr_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
+        ae_owner: aeOwner || undefined,
+        team_lead: teamLead || undefined,
+        team_name: teamName || undefined,
+      };
+      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, 5, dealArgs);
+
+      // Trigger analysis pipeline immediately
+      await api.analyses.run(result.account_id);
+
       setImportResult(result);
+      setTimeout(() => {
+        window.location.href = `/analyze`;
+      }, 1500);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Import failed');
+      setImportError(err instanceof Error ? err.message : 'Import & Analysis failed');
     } finally {
       setIsImporting(false);
     }
@@ -553,11 +629,39 @@ function LocalFolderTab() {
               </TableBody>
             </Table>
 
+            {/* Deal Configuration */}
+            <div className="space-y-4 py-4 border-y border-border/50 my-4">
+              <h3 className="text-sm font-semibold">Deal Configuration</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Deal Type</label>
+                  <Select value={dealType} onValueChange={setDealType}>
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      {DEAL_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">MRR Estimate ($)</label>
+                  <Input type="number" min="0" step="1000" placeholder="Optional" value={mrrEstimate} onChange={e => setMrrEstimate(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">AE Owner</label>
+                  <Input placeholder="Optional" value={aeOwner} onChange={e => setAeOwner(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Team Lead</label>
+                  <Input placeholder="Optional" value={teamLead} onChange={e => setTeamLead(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
             <Button onClick={handleImport} disabled={isImporting} className="w-full">
               {isImporting ? (
-                <><Loader2 className="size-4 animate-spin" /> Importing...</>
+                <><Loader2 className="size-4 animate-spin mr-2" /> Importing & Analyzing...</>
               ) : (
-                <><Upload className="size-4" /> Import {recentCalls.length} Calls</>
+                <><Play className="size-4 mr-2" /> Import & Run Analysis</>
               )}
             </Button>
           </div>
