@@ -7,6 +7,7 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
+  Tooltip,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -287,15 +288,40 @@ function CustomAngleTick({
 }
 
 // ---------------------------------------------------------------------------
-// Native tooltip text builder — used by SVG <title> for instant hover
+// Simple hover tooltip — no animation, appears/disappears instantly
 // ---------------------------------------------------------------------------
 
-function buildTooltipText(item: RadarDataItem): string {
-  const zone = ZONE_LABEL[getZone(item.score)];
-  const parts = [`${item.dimension}: ${item.score}% (${zone})`];
-  if (item.rawScore) parts.push(`Score: ${item.rawScore}`);
-  if (item.rationale) parts.push(item.rationale);
-  return parts.join('\n');
+function SimpleTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: unknown[];
+}) {
+  if (!active || !Array.isArray(payload)) return null;
+
+  const scoreEntry = (
+    payload as Array<{ dataKey?: string; payload?: RadarDataItem }>
+  ).find((p) => p.dataKey === 'score');
+
+  const data = scoreEntry?.payload;
+  if (!data || typeof data.score !== 'number') return null;
+
+  const zone = ZONE_LABEL[getZone(data.score)];
+  const color = getZoneColor(data.score);
+
+  return (
+    <div className="rounded-md border bg-popover px-3 py-2 text-xs shadow-md max-w-[220px]">
+      <p className="font-semibold text-foreground">
+        {data.dimension}{' '}
+        <span style={{ color }} className="tabular-nums">{data.score}%</span>
+        {' '}<span className="text-muted-foreground font-normal">({zone})</span>
+      </p>
+      {data.rationale && (
+        <p className="text-muted-foreground mt-1 leading-snug">{data.rationale}</p>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -506,7 +532,7 @@ export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
                 tickLine={false}
               />
 
-              {/* Main score radar — dots carry native <title> tooltips */}
+              {/* Main score radar */}
               <Radar
                 dataKey="score"
                 stroke={radarColor}
@@ -530,13 +556,35 @@ export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
                       fill={dotColor}
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
-                      style={{ cursor: 'default' }}
-                    >
-                      <title>{buildTooltipText(item)}</title>
-                    </circle>
+                    />
                   );
                 }}
-                activeDot={false}
+                activeDot={(dotProps: {
+                  cx?: number;
+                  cy?: number;
+                  index?: number;
+                }) => {
+                  const { cx = 0, cy = 0, index = 0 } = dotProps;
+                  const item = data[index];
+                  const dotColor = item ? getZoneColor(item.score) : radarColor;
+                  return (
+                    <circle
+                      key={`adot-${index}`}
+                      cx={cx}
+                      cy={cy}
+                      r={6}
+                      fill={dotColor}
+                      stroke="hsl(var(--background))"
+                      strokeWidth={2}
+                    />
+                  );
+                }}
+              />
+
+              <Tooltip
+                content={<SimpleTooltip />}
+                cursor={false}
+                isAnimationActive={false}
               />
             </RadarChart>
           </ResponsiveContainer>
