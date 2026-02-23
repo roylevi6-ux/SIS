@@ -1,7 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // recommended_actions can be string[] or object[] — handle both
-type ActionItem = string | { text?: string; action?: string; description?: string; priority?: string; category?: string; [key: string]: unknown };
+type ActionItem = string | {
+  text?: string; action?: string; description?: string;
+  priority?: string; category?: string;
+  owner?: string; rationale?: string;
+  [key: string]: unknown;
+};
 
 interface ActionsListProps {
   actions: ActionItem[] | null | undefined;
@@ -9,14 +14,15 @@ interface ActionsListProps {
 
 function getActionText(item: ActionItem): string {
   if (typeof item === 'string') return item;
-  return item.text || item.action || item.description || JSON.stringify(item);
+  return (item.text || item.action || item.description || JSON.stringify(item)) as string;
 }
 
-function getActionMeta(item: ActionItem): { priority?: string; category?: string } | null {
+function getActionMeta(item: ActionItem): { priority?: string; owner?: string; rationale?: string } | null {
   if (typeof item === 'string') return null;
-  const meta: { priority?: string; category?: string } = {};
-  if (item.priority) meta.priority = item.priority;
-  if (item.category) meta.category = item.category;
+  const meta: { priority?: string; owner?: string; rationale?: string } = {};
+  if (item.priority) meta.priority = item.priority as string;
+  if (item.owner) meta.owner = item.owner as string;
+  if (item.rationale) meta.rationale = item.rationale as string;
   return Object.keys(meta).length > 0 ? meta : null;
 }
 
@@ -54,9 +60,15 @@ export function ActionsList({ actions }: ActionsListProps) {
                   <p>{text}</p>
                   {meta && (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {meta.priority && <span>Priority: {meta.priority}</span>}
-                      {meta.priority && meta.category && <span> / </span>}
-                      {meta.category && <span>Category: {meta.category}</span>}
+                      {[
+                        meta.priority && `${meta.priority}`,
+                        meta.owner && `Owner: ${meta.owner}`,
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                  {meta?.rationale && (
+                    <p className="text-xs text-muted-foreground mt-0.5 italic">
+                      {meta.rationale}
                     </p>
                   )}
                 </div>
