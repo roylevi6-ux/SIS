@@ -38,6 +38,8 @@ venv/
 # Database
 *.db
 *.sqlite3
+*.db-shm
+*.db-wal
 
 # Data (transcripts contain sensitive customer content)
 data/transcripts/
