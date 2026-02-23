@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
@@ -22,20 +21,30 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 
 def _run_pipeline_sync(account_id: str, run_id: str):
-    """Run pipeline in thread pool."""
+    """Run pipeline in thread pool with progress tracking."""
     import logging
     logger = logging.getLogger(__name__)
     try:
-        analysis_service.analyze_account(account_id)
+        analysis_service.analyze_account(account_id, run_id=run_id)
     except Exception:
         logger.exception("Pipeline failed for account %s", account_id)
+        # Ensure progress store shows failure even on unhandled exception
+        try:
+            from sis.orchestrator.progress_store import mark_run_completed
+            mark_run_completed(run_id, "failed")
+        except Exception:
+            pass
 
 
 @router.post("/")
 async def run_analysis(body: AnalysisRequest, user: Optional[dict] = Depends(get_optional_user)):
-    """Start analysis pipeline — returns immediately, polls via SSE."""
+    """Start analysis pipeline — returns immediately, polls via SSE.
+
+    Creates an AnalysisRun row and initializes the progress store before
+    spawning the pipeline thread. The returned run_id is real and can be
+    used immediately for SSE subscription.
+    """
     try:
-        # Validate account has transcripts before spawning thread
         from sis.services import transcript_service
 
         texts = transcript_service.get_active_transcript_texts(body.account_id)
@@ -44,10 +53,27 @@ async def run_analysis(body: AnalysisRequest, user: Optional[dict] = Depends(get
     except ValueError as e:
         raise HTTPException(404, str(e))
 
-    run_id = str(uuid.uuid4())
+    # Create the DB row immediately so SSE can reference it
+    run_id = analysis_service.create_analysis_run(body.account_id)
+
     loop = asyncio.get_event_loop()
     loop.run_in_executor(executor, _run_pipeline_sync, body.account_id, run_id)
     return {"status": "started", "account_id": body.account_id, "run_id": run_id}
+
+
+@router.get("/delta/{account_id}")
+def get_delta(account_id: str):
+    """Get assessment delta (latest vs previous) for an account."""
+    delta = analysis_service.get_assessment_delta(account_id)
+    if delta is None:
+        return {"delta": None, "message": "Need at least 2 analysis runs to compute delta"}
+    return delta
+
+
+@router.get("/timeline/{account_id}")
+def get_timeline(account_id: str):
+    """Get full assessment history timeline for an account."""
+    return analysis_service.get_assessment_timeline(account_id)
 
 
 @router.get("/history/{account_id}", response_model=List[AnalysisHistoryItem])

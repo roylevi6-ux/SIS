@@ -68,6 +68,7 @@ class Transcript(Base):
     raw_text = Column(Text, nullable=False)
     preprocessed_text = Column(Text, nullable=True)
     token_count = Column(Integer, nullable=True)
+    gong_call_id = Column(Text, nullable=True)  # Gong's unique call ID for dedup
     upload_source = Column(Text, default="manual")
     is_active = Column(Integer, default=1)  # boolean: 1=active, 0=archived
     created_at = Column(Text, nullable=False, default=_now)
@@ -77,6 +78,7 @@ class Transcript(Base):
 
     __table_args__ = (
         Index("ix_transcripts_account_date", "account_id", "call_date"),
+        UniqueConstraint("account_id", "gong_call_id", name="uq_transcript_gong_call"),
     )
 
 

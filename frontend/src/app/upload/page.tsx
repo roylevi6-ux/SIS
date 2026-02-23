@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Upload, CheckCircle2, FolderOpen, FileText, Loader2, HardDrive, Play } from 'lucide-react';
 import { useAccounts, useUploadTranscript } from '@/lib/hooks';
 import { api } from '@/lib/api';
+import { AnalysisProgressDetail } from '@/components/analysis-progress-detail';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,8 @@ interface ImportResult {
   account_id: string;
   account_name: string;
   imported_count: number;
-  calls: Array<{ date: string; title: string; token_count: number }>;
+  skipped_count: number;
+  calls: Array<{ date: string; title: string; token_count: number | null; status: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -136,6 +138,11 @@ function DriveImportTab() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState('');
 
+  const [maxCalls, setMaxCalls] = useState<number>(5);
+
+  const [analysisRunId, setAnalysisRunId] = useState<string | null>(null);
+  const [analysisAccountId, setAnalysisAccountId] = useState<string | null>(null);
+
   const [dealType, setDealType] = useState<string>('');
   const [mrrEstimate, setMrrEstimate] = useState<string>('');
   const [aeOwner, setAeOwner] = useState<string>('');
@@ -190,12 +197,33 @@ function DriveImportTab() {
     setIsLoadingCalls(true);
 
     try {
-      const calls = await api.gdrive.listCalls(account.name, account.path, 5);
+      const calls = await api.gdrive.listCalls(account.name, account.path, maxCalls);
       setRecentCalls(calls);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Failed to load calls');
     } finally {
       setIsLoadingCalls(false);
+    }
+  }
+
+  async function handleRescan() {
+    if (!drivePath.trim()) return;
+    setIsLoadingAccounts(true);
+    setSelectedAccount(null);
+    setRecentCalls([]);
+    setImportResult(null);
+    try {
+      const result = await api.gdrive.validate(drivePath.trim());
+      setPathValidated(result.is_valid);
+      setPathMessage(result.message);
+      if (result.is_valid) {
+        const accounts = await api.gdrive.listAccounts(drivePath.trim());
+        setDriveAccounts(accounts);
+      }
+    } catch (err) {
+      setPathMessage(err instanceof Error ? err.message : 'Rescan failed');
+    } finally {
+      setIsLoadingAccounts(false);
     }
   }
 
@@ -205,6 +233,8 @@ function DriveImportTab() {
     setIsImporting(true);
     setImportError('');
     setImportResult(null);
+    setAnalysisRunId(null);
+    setAnalysisAccountId(null);
 
     try {
       const dealArgs = {
@@ -214,20 +244,45 @@ function DriveImportTab() {
         team_lead: teamLead || undefined,
         team_name: teamName || undefined,
       };
-      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, 5, dealArgs);
-
-      // Trigger analysis pipeline immediately
-      await api.analyses.run(result.account_id);
-
+      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result);
-      setTimeout(() => {
-        window.location.href = `/analyze`;
-      }, 1500);
+
+      // Trigger analysis pipeline — returns real run_id immediately
+      const analysisResult = await api.analyses.run(result.account_id);
+      setAnalysisRunId(analysisResult.run_id);
+      setAnalysisAccountId(result.account_id);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import & Analysis failed');
     } finally {
       setIsImporting(false);
     }
+  }
+
+  // If analysis is running, show only the progress component
+  if (analysisRunId && analysisAccountId) {
+    return (
+      <div className="space-y-4">
+        {importResult && (
+          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                Imported {importResult.imported_count} call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
+                {importResult.skipped_count > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {' '}({importResult.skipped_count} skipped)
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+        <AnalysisProgressDetail
+          runId={analysisRunId}
+          accountId={analysisAccountId}
+        />
+      </div>
+    );
   }
 
   return (
@@ -280,7 +335,20 @@ function DriveImportTab() {
         {/* Step 2: Account selector */}
         {(isLoadingAccounts || driveAccounts.length > 0) && (
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Select Account</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Select Account</label>
+              {pathValidated && !isLoadingAccounts && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRescan}
+                  disabled={isLoadingAccounts}
+                  className="text-xs"
+                >
+                  Rescan
+                </Button>
+              )}
+            </div>
             {isLoadingAccounts ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Scanning folders...
@@ -299,6 +367,24 @@ function DriveImportTab() {
                 </SelectContent>
               </Select>
             )}
+          </div>
+        )}
+
+        {/* Max calls input */}
+        {selectedAccount && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">Max calls to import</label>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={maxCalls}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 1 && v <= 20) setMaxCalls(v);
+              }}
+              className="w-24"
+            />
           </div>
         )}
 
@@ -404,14 +490,21 @@ function DriveImportTab() {
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                  Imported {importResult.imported_count} calls for {importResult.account_name}
+                  Imported {importResult.imported_count} new call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
+                  {importResult.skipped_count > 0 && (
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {' '}({importResult.skipped_count} already imported)
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
             <div className="ml-7 space-y-1">
               {importResult.calls.map((c, i) => (
-                <p key={i} className="text-sm text-emerald-600 dark:text-emerald-400">
-                  {c.date}: {c.title} ({c.token_count.toLocaleString()} tokens)
+                <p key={i} className={`text-sm ${c.status === 'skipped' ? 'text-muted-foreground line-through' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {c.date}: {c.title}
+                  {c.status === 'imported' && c.token_count != null && ` (${c.token_count.toLocaleString()} tokens)`}
+                  {c.status === 'skipped' && ' (skipped)'}
                 </p>
               ))}
             </div>
@@ -442,6 +535,11 @@ function LocalFolderTab() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState('');
+
+  const [maxCalls, setMaxCalls] = useState<number>(5);
+
+  const [analysisRunId, setAnalysisRunId] = useState<string | null>(null);
+  const [analysisAccountId, setAnalysisAccountId] = useState<string | null>(null);
 
   const [dealType, setDealType] = useState<string>('');
   const [mrrEstimate, setMrrEstimate] = useState<string>('');
@@ -488,7 +586,7 @@ function LocalFolderTab() {
     setIsLoadingCalls(true);
 
     try {
-      const calls = await api.gdrive.listCalls(account.name, account.path, 5);
+      const calls = await api.gdrive.listCalls(account.name, account.path, maxCalls);
       setRecentCalls(calls);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Failed to load calls');
@@ -497,11 +595,34 @@ function LocalFolderTab() {
     }
   }
 
+  async function handleRescan() {
+    if (!folderPath.trim()) return;
+    setIsLoadingAccounts(true);
+    setSelectedAccount(null);
+    setRecentCalls([]);
+    setImportResult(null);
+    try {
+      const result = await api.gdrive.validate(folderPath.trim());
+      setPathValidated(result.is_valid);
+      setPathMessage(result.message);
+      if (result.is_valid) {
+        const accounts = await api.gdrive.listAccounts(folderPath.trim());
+        setDriveAccounts(accounts);
+      }
+    } catch (err) {
+      setPathMessage(err instanceof Error ? err.message : 'Rescan failed');
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  }
+
   async function handleImport() {
     if (!selectedAccount) return;
     setIsImporting(true);
     setImportError('');
     setImportResult(null);
+    setAnalysisRunId(null);
+    setAnalysisAccountId(null);
 
     try {
       const dealArgs = {
@@ -511,20 +632,45 @@ function LocalFolderTab() {
         team_lead: teamLead || undefined,
         team_name: teamName || undefined,
       };
-      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, 5, dealArgs);
-
-      // Trigger analysis pipeline immediately
-      await api.analyses.run(result.account_id);
-
+      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result);
-      setTimeout(() => {
-        window.location.href = `/analyze`;
-      }, 1500);
+
+      // Trigger analysis pipeline — returns real run_id immediately
+      const analysisResult = await api.analyses.run(result.account_id);
+      setAnalysisRunId(analysisResult.run_id);
+      setAnalysisAccountId(result.account_id);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import & Analysis failed');
     } finally {
       setIsImporting(false);
     }
+  }
+
+  // If analysis is running, show only the progress component
+  if (analysisRunId && analysisAccountId) {
+    return (
+      <div className="space-y-4">
+        {importResult && (
+          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                Imported {importResult.imported_count} call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
+                {importResult.skipped_count > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {' '}({importResult.skipped_count} skipped)
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+        <AnalysisProgressDetail
+          runId={analysisRunId}
+          accountId={analysisAccountId}
+        />
+      </div>
+    );
   }
 
   return (
@@ -571,7 +717,20 @@ function LocalFolderTab() {
 
         {(isLoadingAccounts || driveAccounts.length > 0) && (
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Select Account</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Select Account</label>
+              {pathValidated && !isLoadingAccounts && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRescan}
+                  disabled={isLoadingAccounts}
+                  className="text-xs"
+                >
+                  Rescan
+                </Button>
+              )}
+            </div>
             {isLoadingAccounts ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Scanning folders...
@@ -590,6 +749,24 @@ function LocalFolderTab() {
                 </SelectContent>
               </Select>
             )}
+          </div>
+        )}
+
+        {/* Max calls input */}
+        {selectedAccount && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">Max calls to import</label>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={maxCalls}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v) && v >= 1 && v <= 20) setMaxCalls(v);
+              }}
+              className="w-24"
+            />
           </div>
         )}
 
@@ -678,13 +855,20 @@ function LocalFolderTab() {
             <div className="flex items-start gap-2">
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
               <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                Imported {importResult.imported_count} calls for {importResult.account_name}
+                Imported {importResult.imported_count} new call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
+                {importResult.skipped_count > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {' '}({importResult.skipped_count} already imported)
+                  </span>
+                )}
               </p>
             </div>
             <div className="ml-7 space-y-1">
               {importResult.calls.map((c, i) => (
-                <p key={i} className="text-sm text-emerald-600 dark:text-emerald-400">
-                  {c.date}: {c.title} ({c.token_count.toLocaleString()} tokens)
+                <p key={i} className={`text-sm ${c.status === 'skipped' ? 'text-muted-foreground line-through' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {c.date}: {c.title}
+                  {c.status === 'imported' && c.token_count != null && ` (${c.token_count.toLocaleString()} tokens)`}
+                  {c.status === 'skipped' && ' (skipped)'}
                 </p>
               ))}
             </div>

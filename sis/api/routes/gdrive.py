@@ -64,8 +64,10 @@ def list_drive_accounts(body: DrivePathRequest):
 
 @router.post("/calls")
 def list_recent_calls(body: ImportRequest):
-    """List the most recent calls for an account folder."""
-    calls = gdrive_service.get_recent_calls_info(body.account_path, body.max_calls)
+    """List the most recent calls for an account."""
+    calls = gdrive_service.get_recent_calls_info(
+        body.account_path, body.max_calls, account_name=body.account_name
+    )
     return calls
 
 
@@ -75,7 +77,7 @@ def import_from_drive(body: ImportRequest):
     # Parse calls from local files
     try:
         parsed_calls = gdrive_service.download_and_parse_calls(
-            body.account_path, body.max_calls
+            body.account_path, body.max_calls, account_name=body.account_name
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -104,19 +106,36 @@ def import_from_drive(body: ImportRequest):
         )
         account_id = acct_obj.id
 
-    # Upload to DB
-    results = gdrive_service.upload_calls_to_db(parsed_calls, account_id)
+    # Upload to DB (with dedup)
+    upload_result = gdrive_service.upload_calls_to_db(parsed_calls, account_id)
+    imported = upload_result["imported"]
+    skipped = upload_result["skipped"]
+
+    # Build the call detail list — match imported transcripts back to parsed calls
+    imported_idx = 0
+    calls_detail = []
+    for call in parsed_calls:
+        gong_id = call.metadata.call_id
+        if gong_id and gong_id in skipped:
+            calls_detail.append({
+                "date": call.metadata.date,
+                "title": call.metadata.title[:60],
+                "token_count": None,
+                "status": "skipped",
+            })
+        elif imported_idx < len(imported):
+            calls_detail.append({
+                "date": call.metadata.date,
+                "title": call.metadata.title[:60],
+                "token_count": imported[imported_idx].token_count,
+                "status": "imported",
+            })
+            imported_idx += 1
 
     return {
         "account_id": account_id,
         "account_name": body.account_name,
-        "imported_count": len(results),
-        "calls": [
-            {
-                "date": call.metadata.date,
-                "title": call.metadata.title[:60],
-                "token_count": r.token_count,
-            }
-            for call, r in zip(parsed_calls, results)
-        ],
+        "imported_count": len(imported),
+        "skipped_count": len(skipped),
+        "calls": calls_detail,
     }

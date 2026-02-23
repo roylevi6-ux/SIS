@@ -28,31 +28,57 @@ AGENT_NAMES = {
 }
 
 
+def create_analysis_run(account_id: str) -> str:
+    """Create an AnalysisRun row immediately and return its ID.
+
+    This is called before the pipeline starts so the frontend can
+    connect to SSE with a real run_id right away.
+    """
+    from datetime import datetime, timezone as tz
+    transcript_ids = get_active_transcript_ids(account_id)
+    with get_session() as session:
+        run = AnalysisRun(
+            account_id=account_id,
+            started_at=datetime.now(tz.utc).isoformat(),
+            status="running",
+            transcript_ids=json.dumps(transcript_ids) if transcript_ids else None,
+        )
+        session.add(run)
+        session.flush()
+        return run.id
+
+
 def analyze_account(
     account_id: str,
     progress_callback=None,
+    run_id: str | None = None,
 ) -> dict:
     """Run the full 10-agent pipeline for one account.
+
+    Args:
+        account_id: Account to analyze.
+        progress_callback: Optional legacy callback.
+        run_id: Pre-created run ID for progress tracking. If None, one is
+                created after the pipeline finishes (legacy behavior).
 
     Returns:
         dict with run_id, status, deal_assessment summary, cost
     """
-    # Get transcript texts
     transcript_texts = get_active_transcript_texts(account_id)
     if not transcript_texts:
         raise ValueError(f"No active transcripts for account {account_id}")
 
-    # Run pipeline
-    pipeline = AnalysisPipeline(progress_callback=progress_callback)
+    pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
     result = pipeline.run(account_id, transcript_texts)
 
-    # Persist to DB
     transcript_ids = get_active_transcript_ids(account_id)
-    run_id = _persist_pipeline_result(account_id, result, transcript_texts, transcript_ids)
-    result.run_id = run_id
+    persisted_run_id = _persist_pipeline_result(
+        account_id, result, transcript_texts, transcript_ids, existing_run_id=run_id,
+    )
+    result.run_id = persisted_run_id
 
     return {
-        "run_id": run_id,
+        "run_id": persisted_run_id,
         "status": result.status,
         "wall_clock_seconds": round(result.wall_clock_seconds, 1),
         "total_cost_usd": round(result.cost_summary.total_cost_usd, 4),
@@ -66,21 +92,24 @@ def analyze_account(
 async def analyze_account_async(
     account_id: str,
     progress_callback=None,
+    run_id: str | None = None,
 ) -> dict:
     """Async version of analyze_account."""
     transcript_texts = get_active_transcript_texts(account_id)
     if not transcript_texts:
         raise ValueError(f"No active transcripts for account {account_id}")
 
-    pipeline = AnalysisPipeline(progress_callback=progress_callback)
+    pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
     result = await pipeline.run_async(account_id, transcript_texts)
 
     transcript_ids = get_active_transcript_ids(account_id)
-    run_id = _persist_pipeline_result(account_id, result, transcript_texts, transcript_ids)
-    result.run_id = run_id
+    persisted_run_id = _persist_pipeline_result(
+        account_id, result, transcript_texts, transcript_ids, existing_run_id=run_id,
+    )
+    result.run_id = persisted_run_id
 
     return {
-        "run_id": run_id,
+        "run_id": persisted_run_id,
         "status": result.status,
         "wall_clock_seconds": round(result.wall_clock_seconds, 1),
         "total_cost_usd": round(result.cost_summary.total_cost_usd, 4),
@@ -96,26 +125,50 @@ def _persist_pipeline_result(
     result: PipelineResult,
     transcript_texts: list[str],
     transcript_ids: list[str] | None = None,
+    existing_run_id: str | None = None,
 ) -> str:
-    """Persist pipeline results to DB. Returns run_id."""
+    """Persist pipeline results to DB. Returns run_id.
+
+    If existing_run_id is provided, updates the existing AnalysisRun row
+    rather than creating a new one.
+    """
     with get_session() as session:
-        # Create analysis run record
-        run = AnalysisRun(
-            account_id=account_id,
-            started_at=result.started_at,
-            completed_at=result.completed_at,
-            status=result.status,
-            transcript_ids=json.dumps(transcript_ids) if transcript_ids else None,
-            total_input_tokens=result.cost_summary.total_input_tokens,
-            total_output_tokens=result.cost_summary.total_output_tokens,
-            total_cost_usd=result.cost_summary.total_cost_usd,
-            model_versions=json.dumps({
-                agent_id: meta.get("model", "unknown")
-                for agent_id, meta in result.agent_metadata.items()
-            }),
-            error_log=json.dumps(result.errors) if result.errors else None,
-        )
-        session.add(run)
+        if existing_run_id:
+            # Update the pre-created run row
+            run = session.query(AnalysisRun).filter_by(id=existing_run_id).first()
+            if run:
+                run.started_at = result.started_at
+                run.completed_at = result.completed_at
+                run.status = result.status
+                run.total_input_tokens = result.cost_summary.total_input_tokens
+                run.total_output_tokens = result.cost_summary.total_output_tokens
+                run.total_cost_usd = result.cost_summary.total_cost_usd
+                run.model_versions = json.dumps({
+                    agent_id: meta.get("model", "unknown")
+                    for agent_id, meta in result.agent_metadata.items()
+                })
+                run.error_log = json.dumps(result.errors) if result.errors else None
+            else:
+                # Fallback: create new if somehow the pre-created row is gone
+                existing_run_id = None
+
+        if not existing_run_id:
+            run = AnalysisRun(
+                account_id=account_id,
+                started_at=result.started_at,
+                completed_at=result.completed_at,
+                status=result.status,
+                transcript_ids=json.dumps(transcript_ids) if transcript_ids else None,
+                total_input_tokens=result.cost_summary.total_input_tokens,
+                total_output_tokens=result.cost_summary.total_output_tokens,
+                total_cost_usd=result.cost_summary.total_cost_usd,
+                model_versions=json.dumps({
+                    agent_id: meta.get("model", "unknown")
+                    for agent_id, meta in result.agent_metadata.items()
+                }),
+                error_log=json.dumps(result.errors) if result.errors else None,
+            )
+            session.add(run)
         session.flush()
 
         # Persist individual agent analyses (agents 1-9)
@@ -227,6 +280,87 @@ def _action_similar(a: str, b: str) -> bool:
         return False
     overlap = len(words_a & words_b)
     return overlap / min(len(words_a), len(words_b)) >= 0.5
+
+
+def get_assessment_delta(account_id: str) -> dict | None:
+    """Compare the latest and previous DealAssessment for an account.
+
+    Returns a dict with field-by-field comparison, or None if fewer than 2 assessments exist.
+    Each field entry: { "previous": value, "current": value, "changed": bool }
+    """
+    with get_session() as session:
+        assessments = (
+            session.query(DealAssessment)
+            .filter_by(account_id=account_id)
+            .order_by(DealAssessment.created_at.desc())
+            .limit(2)
+            .all()
+        )
+        if len(assessments) < 2:
+            return None
+
+        current = assessments[0]
+        previous = assessments[1]
+
+    def _delta(field: str, cur_val, prev_val):
+        changed = cur_val != prev_val
+        result = {"previous": prev_val, "current": cur_val, "changed": changed}
+        # Add numeric delta for scores
+        if isinstance(cur_val, (int, float)) and isinstance(prev_val, (int, float)):
+            result["delta"] = cur_val - prev_val
+        return result
+
+    return {
+        "account_id": account_id,
+        "current_run_date": current.created_at,
+        "previous_run_date": previous.created_at,
+        "fields": {
+            "health_score": _delta("health_score", current.health_score, previous.health_score),
+            "inferred_stage": _delta("inferred_stage", current.inferred_stage, previous.inferred_stage),
+            "stage_name": _delta("stage_name", current.stage_name, previous.stage_name),
+            "momentum_direction": _delta("momentum_direction", current.momentum_direction, previous.momentum_direction),
+            "ai_forecast_category": _delta("ai_forecast_category", current.ai_forecast_category, previous.ai_forecast_category),
+            "overall_confidence": _delta("overall_confidence", current.overall_confidence, previous.overall_confidence),
+            "top_risks": _delta(
+                "top_risks",
+                json.loads(current.top_risks or "[]"),
+                json.loads(previous.top_risks or "[]"),
+            ),
+            "recommended_actions": _delta(
+                "recommended_actions",
+                json.loads(current.recommended_actions or "[]"),
+                json.loads(previous.recommended_actions or "[]"),
+            ),
+        },
+    }
+
+
+def get_assessment_timeline(account_id: str) -> list[dict]:
+    """Get all DealAssessments for an account, ordered by date ascending.
+
+    Returns a list of dicts with key metrics per assessment for timeline display.
+    """
+    with get_session() as session:
+        assessments = (
+            session.query(DealAssessment)
+            .filter_by(account_id=account_id)
+            .order_by(DealAssessment.created_at.asc())
+            .all()
+        )
+        return [
+            {
+                "id": a.id,
+                "analysis_run_id": a.analysis_run_id,
+                "created_at": a.created_at,
+                "health_score": a.health_score,
+                "inferred_stage": a.inferred_stage,
+                "stage_name": a.stage_name,
+                "momentum_direction": a.momentum_direction,
+                "ai_forecast_category": a.ai_forecast_category,
+                "overall_confidence": a.overall_confidence,
+            }
+            for a in assessments
+        ]
 
 
 def get_analysis_history(account_id: str) -> list[dict]:
