@@ -184,7 +184,7 @@ export function DealTimeline({ accountId }: { accountId: string }) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center text-sm tabular-nums">
-                      {Math.round(entry.overall_confidence)}%
+                      {Math.round(entry.overall_confidence <= 1.0 ? entry.overall_confidence * 100 : entry.overall_confidence)}%
                     </TableCell>
                   </TableRow>
                 );

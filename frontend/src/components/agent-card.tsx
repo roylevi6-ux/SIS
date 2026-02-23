@@ -31,20 +31,26 @@ interface AgentCardProps {
   analysis: AgentAnalysis;
 }
 
+/** Normalize confidence from 0.0-1.0 scale to 0-100 percentage. */
+function toPercent(value: number | null | undefined): number | null {
+  if (value == null) return null;
+  // Backend stores as 0.0-1.0; convert to 0-100
+  return value <= 1.0 ? Math.round(value * 100) : Math.round(value);
+}
+
 function getConfidenceColor(confidence: number | null | undefined): string {
-  if (confidence == null) return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
-  if (confidence >= 70) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400';
-  if (confidence >= 45) return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400';
+  const pct = toPercent(confidence);
+  if (pct == null) return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+  if (pct >= 70) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400';
+  if (pct >= 45) return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400';
   return 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400';
 }
 
 export function AgentCard({ analysis }: AgentCardProps) {
   const [open, setOpen] = useState(false);
 
-  const confidenceLabel =
-    analysis.confidence_overall != null
-      ? `${Math.round(analysis.confidence_overall)}%`
-      : 'N/A';
+  const pct = toPercent(analysis.confidence_overall);
+  const confidenceLabel = pct != null ? `${pct}%` : 'N/A';
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
