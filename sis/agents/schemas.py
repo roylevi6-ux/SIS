@@ -16,8 +16,8 @@ class EvidenceCitation(BaseModel):
     """A structured evidence citation linking a claim to transcript data."""
 
     claim_id: str = Field(
-        description="snake_case identifier matching a finding, max 30 chars",
-        max_length=30,
+        description="snake_case identifier matching a finding, max 50 chars",
+        max_length=50,
     )
     transcript_index: int = Field(
         description="Which transcript (1-indexed) this evidence comes from",
@@ -59,7 +59,7 @@ ENVELOPE_PROMPT_FRAGMENT = """\
 
 ## Evidence Citation Rules
 For every factual claim, provide evidence citations (8-12 for thorough coverage):
-- `claim_id`: snake_case, max 30 characters, matches a specific finding
+- `claim_id`: snake_case, max 50 characters, matches a specific finding
 - `transcript_index`: which transcript (1-indexed)
 - `speaker`: format as "NAME (Company -- Role)" when known
 - `quote`: verbatim text, or mark with [paraphrased] if summarizing

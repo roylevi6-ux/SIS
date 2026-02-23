@@ -110,7 +110,7 @@ If the DEAL CONTEXT section indicates an expansion deal, use the Expansion Deal 
 
 ## Evidence Rules (Agent 1 — keep it brief)
 Provide up to 3 evidence citations for your stage inference:
-- `claim_id`: snake_case, max 30 characters
+- `claim_id`: snake_case, max 50 characters
 - `transcript_index`: which transcript (1-indexed)
 - `speaker`: format as "NAME (Company -- Role)" when known
 - `quote`: verbatim text, 1-2 sentences max
