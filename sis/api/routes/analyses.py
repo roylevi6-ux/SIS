@@ -17,10 +17,12 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 def _run_pipeline_sync(account_id: str, run_id: str):
     """Run pipeline in thread pool."""
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         analysis_service.analyze_account(account_id)
     except Exception:
-        pass  # Status tracked in DB
+        logger.exception("Pipeline failed for account %s", account_id)
 
 
 @router.post("/")
