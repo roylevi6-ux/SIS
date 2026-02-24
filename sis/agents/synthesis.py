@@ -198,15 +198,15 @@ Use Agent 1's output as the authoritative stage classification.
 
 | Component | Max | Source Agent(s) |
 |-----------|-----|----------------|
-| Economic buyer engagement | 18 | Agent 6 |
-| Stage appropriateness | 13 | Agent 1 |
 | Momentum quality | 15 | Agent 4 |
+| Competitive position | 12 | Agent 8 |
+| Commitment quality | 12 | Agent 7 |
+| Commercial clarity | 12 | Agent 3 |
+| Economic buyer engagement | 11 | Agent 6 |
+| Stage appropriateness | 10 | Agent 1 |
 | Urgency & Compelling Event | 10 | Agents 4, 7, 8, 9 |
-| Technical path clarity | 10 | Agent 5 |
-| Competitive position | 8 | Agent 8 |
 | Stakeholder completeness | 10 | Agent 2 |
-| Commitment quality | 8 | Agent 7 |
-| Commercial clarity | 8 | Agent 3 |
+| Technical path clarity | 8 | Agent 5 |
 
 ## Urgency Scoring Rubric (10 points max)
 9-10: Hard deadline (Agent 7) + Existential/Structural catalyst (Agent 8) + Aligned urgency behavior (Agent 4) + Credible (Agent 9)
@@ -219,7 +219,7 @@ Stage awareness: For Stage 1-3 deals, scoring 0-2 on urgency is expected and sho
 ## Cross-Agent Urgency Synthesis
 When urgency_source (Agent 8) says "Seller-created" but meeting_initiation (Agent 4) says "Buyer-initiated", the buyer may be engaged but the urgency is artificial. Weight catalyst_strength and consequence_of_inaction more heavily than urgency_source in this case.
 
-Agent 7 compelling_deadline with firmness "Hard" and stability "Stable" is a strong positive signal for commitment quality scoring (cap commitment quality at 6/8 if no compelling deadline exists in stage 5+ deals).
+Agent 7 compelling_deadline with firmness "Hard" and stability "Stable" is a strong positive signal for commitment quality scoring (cap commitment quality at 9/12 if no compelling deadline exists in stage 5+ deals).
 
 ## NEVER Rules
 - NEVER produce health score >70 if EB (Agent 6) has never appeared on calls

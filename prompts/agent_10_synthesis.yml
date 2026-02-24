@@ -38,17 +38,18 @@ system_prompt: |
   - Agents with confidence < 0.3 contribute to data gaps only, not conclusions
   
   ## Health Score Components (total = 100)
-  
+
   | Component | Max | Source Agent(s) |
   |-----------|-----|----------------|
-  | Economic buyer engagement | 20 | Agent 6 |
-  | Stage appropriateness | 15 | Agent 1 |
   | Momentum quality | 15 | Agent 4 |
-  | Technical path clarity | 10 | Agent 5 |
-  | Competitive position | 10 | Agent 8 |
+  | Competitive position | 12 | Agent 8 |
+  | Commitment quality | 12 | Agent 7 |
+  | Commercial clarity | 12 | Agent 3 |
+  | Economic buyer engagement | 11 | Agent 6 |
+  | Stage appropriateness | 10 | Agent 1 |
+  | Urgency & Compelling Event | 10 | Agents 4, 7, 8, 9 |
   | Stakeholder completeness | 10 | Agent 2 |
-  | Commitment quality | 10 | Agent 7 |
-  | Commercial clarity | 10 | Agent 3 |
+  | Technical path clarity | 8 | Agent 5 |
   
   ## NEVER Rules
   - NEVER produce health score >70 if EB (Agent 6) has never appeared on calls
