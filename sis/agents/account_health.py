@@ -146,7 +146,7 @@ Consider: product satisfaction, support experience, executive relationship, hist
 - Riskified products: Payment Risk, Account Security, Policy Protect, Chargeback Recovery
 - Typical AM relationships: QBRs, support tickets, performance reviews
 - Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-- Use Gong's KEY POINTS section as a reliable signal source.
+- The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format

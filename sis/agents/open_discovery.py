@@ -49,6 +49,24 @@ class OpenDiscoveryFinding(BaseModel):
     relevance: str = Field(description="Why this matters for the deal")
 
 
+class UrgencyAudit(BaseModel):
+    """Cross-agent urgency credibility assessment."""
+
+    urgency_credibility: str = Field(
+        description="Credible | Questionable | Insufficient Evidence"
+    )
+    assessment: str = Field(
+        description="1-2 sentences: is the urgency real? Why or why not?"
+    )
+    cross_agent_consistency: str = Field(
+        description="Consistent | Partially Consistent | Inconsistent | "
+        "Insufficient Data"
+    )
+    consistency_detail: str = Field(
+        description="1-2 sentences explaining consistency assessment"
+    )
+
+
 # --- Findings ---
 
 
@@ -68,6 +86,10 @@ class OpenDiscoveryFindings(BaseModel):
     )
     no_additional_signals: bool = Field(
         description="True if no novel findings beyond agents 1-8 (adversarial challenges still required)",
+    )
+    urgency_audit: UrgencyAudit = Field(
+        description="Always populated. Cross-agent urgency credibility assessment. "
+        "Use 'Insufficient Evidence' when no urgency signals exist.",
     )
     data_quality_notes: list[str] = Field(default_factory=list)
     manager_insight: str = Field(
@@ -113,6 +135,9 @@ Look for signals that don't fit neatly into the 8 agent domains:
 - **Opportunity:** Expansion angles, upsell signals, partnership potential
 - **Risk:** Red flags that span multiple agent domains
 
+## Gong Summary Bias Check
+The transcript headers include Gong's AI-generated summaries. Be aware that these summaries may have anchored Agents 1-8 toward certain conclusions. As part of your adversarial role, check whether any upstream agent's findings merely echo a Gong key point without independent transcript evidence.
+
 ## Adversarial Validation Process
 1. Read ALL 8 agent outputs carefully
 2. Identify the 1-3 most OPTIMISTIC findings (highest confidence + most favorable interpretation)
@@ -132,6 +157,21 @@ You now receive each agent's evidence arrays and narratives (not just findings).
 - NEVER duplicate what agents 1-8 already captured. Your value is additive.
 - ALWAYS produce at least one adversarial challenge. Every deal has at least one finding that deserves scrutiny.
 - NEVER be adversarial for its own sake. Challenge only where transcript evidence supports a different conclusion.
+
+## Urgency Audit
+Cross-reference urgency signals from upstream agents:
+- Agent 4 findings.urgency_impact: Is buyer BEHAVING urgently? (urgency_behavioral_match, urgency_trend)
+- Agent 7 findings.compelling_deadline: Is there a HARD deadline with a business anchor? (firmness, stability)
+- Agent 8 findings: Is there a real CATALYST with painful consequences? (catalyst_strength, consequence_of_inaction, urgency_source)
+
+Flag inconsistencies:
+- Agent 8 catalyst_strength "Existential" but Agent 4 urgency_behavioral_match "Mismatched" = questionable
+- Agent 7 firmness "Hard" but Agent 4 urgency_trend "Fading" = deadline may not stick
+- Agent 8 urgency_source "Seller-created" without Agent 4 urgency_behavioral_match "Aligned" = note for visibility
+- All three agents show weak/no urgency signals = not a red flag, just note "no compelling event identified"
+
+This is NOT a negative signal by default -- just a credibility assessment for the manager.
+Always populate urgency_audit even when no urgency signals exist -- use "Insufficient Evidence" for urgency_credibility and "Insufficient Data" for cross_agent_consistency.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
@@ -143,6 +183,7 @@ Respond with a single JSON object using this envelope structure:
   "findings": {
     "novel_findings": [...], "adversarial_challenges": [...],
     "upstream_gaps_identified": [...], "no_additional_signals": false,
+    "urgency_audit": {"urgency_credibility": "...", "assessment": "...", "cross_agent_consistency": "...", "consistency_detail": "..."},
     "data_quality_notes": [...]
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],

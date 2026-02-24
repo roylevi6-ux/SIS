@@ -101,7 +101,7 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 4. Distinguish between Riskified SE-assessed feasibility and buyer self-assessment.
 5. Track platform/stack details mentioned -- they inform integration complexity.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-7. Use Gong's KEY POINTS section as a reliable signal source.
+7. The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
