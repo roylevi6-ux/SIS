@@ -202,7 +202,6 @@ def apply_confidence_penalties(
     raw_confidence: float,
     transcript_count: int,
     most_recent_transcript_age_days: Optional[int] = None,
-    key_stakeholder_absent: bool = False,
     contradicting_evidence: bool = False,
     sparse_data_flag: bool = False,
 ) -> tuple[float, list[str]]:
@@ -212,7 +211,6 @@ def apply_confidence_penalties(
         raw_confidence: The LLM-provided confidence score (0.0-1.0)
         transcript_count: Number of transcripts analyzed
         most_recent_transcript_age_days: Days since most recent transcript
-        key_stakeholder_absent: Whether a key stakeholder is absent from data
         contradicting_evidence: Whether contradicting evidence was found
         sparse_data_flag: Whether the sparse data flag is set
 
@@ -225,10 +223,6 @@ def apply_confidence_penalties(
     if transcript_count == 1:
         adjusted -= 0.15
         reasons.append("Single transcript: -0.15")
-
-    if key_stakeholder_absent:
-        adjusted -= 0.10
-        reasons.append("Key stakeholder absent: -0.10")
 
     if contradicting_evidence:
         adjusted -= 0.10

@@ -31,6 +31,7 @@ import {
   Layers,
   Target,
   Users,
+  Gauge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -45,6 +46,7 @@ const TOC_ITEMS = [
   { id: 'forecast', label: 'Forecast Categories', icon: Target },
   { id: 'agents', label: 'Active Agents & Roles', icon: Users },
   { id: 'never-rules', label: 'NEVER Rules (Hard Guardrails)', icon: ShieldAlert },
+  { id: 'confidence-penalties', label: 'Confidence Penalties', icon: Gauge },
 ];
 
 function TableOfContents() {
@@ -1042,6 +1044,93 @@ function NeverRulesSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Confidence Penalties
+// ---------------------------------------------------------------------------
+
+const CONFIDENCE_PENALTIES = [
+  {
+    condition: 'Single transcript',
+    penalty: '-15%',
+    description: 'When only one transcript is available, the agent has limited evidence to work with. Confidence is reduced by 15 percentage points to reflect this data limitation.',
+  },
+  {
+    condition: 'Contradicting evidence',
+    penalty: '-10%',
+    description: 'When the agent identifies contradicting signals across transcripts, confidence is reduced by 10 percentage points. Contradictions indicate genuine uncertainty.',
+  },
+  {
+    condition: 'Stale data (>30 days)',
+    penalty: '-5%',
+    description: 'When the most recent transcript is older than 30 days, confidence is reduced by 5 percentage points. Deal dynamics may have shifted since the last recorded interaction.',
+  },
+  {
+    condition: 'Sparse data ceiling',
+    penalty: 'Capped at 75%',
+    description: 'When fewer than 3 transcripts are available (sparse_data_flag=true), confidence is hard-capped at 75% regardless of what the AI self-reports. You cannot be highly confident about a deal with minimal evidence.',
+  },
+];
+
+function ConfidencePenaltiesSection() {
+  return (
+    <Section id="confidence-penalties" title="Confidence Penalties" icon={Gauge}>
+      <p className="text-sm text-muted-foreground">
+        After each agent produces its confidence score, the system applies automatic penalties based
+        on objective data quality signals. These adjustments prevent over-confidence when the underlying
+        data is limited, stale, or contradictory. Penalties stack and are applied before the output flows
+        to downstream agents.
+      </p>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[25%] whitespace-normal">Condition</TableHead>
+                  <TableHead className="w-[15%] whitespace-normal">Penalty</TableHead>
+                  <TableHead className="whitespace-normal">Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {CONFIDENCE_PENALTIES.map((penalty) => (
+                  <TableRow key={penalty.condition}>
+                    <TableCell className="text-xs font-medium whitespace-normal align-top break-words">{penalty.condition}</TableCell>
+                    <TableCell className="align-top">
+                      <Badge variant="secondary" className="text-xs font-mono">{penalty.penalty}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-normal align-top break-words">{penalty.description}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">How Penalties Stack</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 text-sm text-muted-foreground space-y-2">
+          <p>
+            Penalties are applied sequentially and stack. For example, a deal with a single transcript
+            (older than 30 days) would receive: raw confidence - 15% (single transcript) - 5% (stale data) =
+            adjusted confidence. The result is then capped at 0% minimum and 100% maximum.
+          </p>
+          <p>
+            The sparse data ceiling is applied last and overrides the adjusted value if it exceeds 75%.
+          </p>
+          <p className="font-medium text-foreground text-xs mt-2">
+            Example: Agent reports 88% confidence with 1 transcript, 45 days old →
+            88% - 15% - 5% = 68% (no sparse ceiling needed since already below 75%)
+          </p>
+        </CardContent>
+      </Card>
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -1064,6 +1153,7 @@ export default function MethodologyPage() {
           <ForecastSection />
           <AgentsSection />
           <NeverRulesSection />
+          <ConfidencePenaltiesSection />
         </div>
 
         {/* Sticky TOC on desktop */}

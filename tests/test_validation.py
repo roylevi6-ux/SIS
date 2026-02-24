@@ -81,13 +81,6 @@ class TestApplyConfidencePenalties:
         assert adjusted == 0.65
         assert any("-0.15" in r for r in reasons)
 
-    def test_key_stakeholder_absent(self):
-        adjusted, reasons = apply_confidence_penalties(
-            0.80, transcript_count=3, key_stakeholder_absent=True
-        )
-        assert abs(adjusted - 0.70) < 0.001
-        assert any("stakeholder" in r.lower() for r in reasons)
-
     def test_contradicting_evidence(self):
         adjusted, reasons = apply_confidence_penalties(
             0.80, transcript_count=3, contradicting_evidence=True
@@ -110,16 +103,17 @@ class TestApplyConfidencePenalties:
     def test_multiple_penalties_stack(self):
         adjusted, reasons = apply_confidence_penalties(
             0.90, transcript_count=1,
-            key_stakeholder_absent=True, contradicting_evidence=True,
+            contradicting_evidence=True,
             most_recent_transcript_age_days=45,
         )
-        # 0.90 - 0.15 - 0.10 - 0.10 - 0.05 = 0.50
-        assert adjusted == 0.50
-        assert len(reasons) == 4
+        # 0.90 - 0.15 - 0.10 - 0.05 = 0.60
+        assert adjusted == 0.60
+        assert len(reasons) == 3
 
     def test_floor_at_zero(self):
         adjusted, reasons = apply_confidence_penalties(
             0.20, transcript_count=1,
-            key_stakeholder_absent=True, contradicting_evidence=True,
+            contradicting_evidence=True,
         )
+        # 0.20 - 0.15 - 0.10 = 0.0 (floored)
         assert adjusted == 0.0
