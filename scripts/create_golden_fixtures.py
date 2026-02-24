@@ -26,17 +26,17 @@ def seed_uuid(label: str) -> str:
 FIXTURES = [
     {"key": "megashop_eu", "name": "MegaShop EU", "health": 82, "forecast": "Commit",
      "stage": 5, "confidence": 0.85, "momentum": "Improving"},
-    {"key": "luxeretail", "name": "LuxeRetail Group", "health": 76, "forecast": "Best Case",
+    {"key": "luxeretail", "name": "LuxeRetail Group", "health": 76, "forecast": "Realistic",
      "stage": 4, "confidence": 0.78, "momentum": "Improving"},
-    {"key": "fastfashion", "name": "FastFashion Online", "health": 55, "forecast": "Pipeline",
+    {"key": "fastfashion", "name": "FastFashion Online", "health": 55, "forecast": "Realistic",
      "stage": 3, "confidence": 0.62, "momentum": "Stable"},
     {"key": "homegoods", "name": "HomeGoods Direct", "health": 48, "forecast": "At Risk",
      "stage": 3, "confidence": 0.55, "momentum": "Declining"},
     {"key": "gadgetworld", "name": "GadgetWorld", "health": 35, "forecast": "At Risk",
      "stage": 1, "confidence": 0.40, "momentum": "Declining"},
-    {"key": "techmerch", "name": "TechMerch Solutions", "health": 50, "forecast": "Pipeline",
+    {"key": "techmerch", "name": "TechMerch Solutions", "health": 50, "forecast": "Realistic",
      "stage": 2, "confidence": 0.58, "momentum": "Stable"},
-    {"key": "urbanstyle", "name": "UrbanStyle Inc", "health": 62, "forecast": "Best Case",
+    {"key": "urbanstyle", "name": "UrbanStyle Inc", "health": 62, "forecast": "Realistic",
      "stage": 3, "confidence": 0.70, "momentum": "Improving"},
 ]
 

@@ -5,7 +5,7 @@
   "created_at": "2026-02-21T13:56:13.602301+00:00",
   "baseline": {
     "health_score": 50,
-    "ai_forecast_category": "Pipeline",
+    "ai_forecast_category": "Realistic",
     "inferred_stage": 2,
     "overall_confidence": 0.58,
     "momentum_direction": "Stable"

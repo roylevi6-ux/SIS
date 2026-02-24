@@ -46,7 +46,7 @@ class TestHealthScoreWithoutEB:
 
 class TestCommitWithoutCommitments:
     def test_passes_when_not_commit(self):
-        result = check_commit_without_commitments({}, {"ai_forecast_category": "Pipeline"})
+        result = check_commit_without_commitments({}, {"ai_forecast_category": "Realistic"})
         assert result is None
 
     def test_passes_when_msp_exists_high(self):

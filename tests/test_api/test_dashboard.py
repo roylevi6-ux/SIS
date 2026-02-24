@@ -174,7 +174,7 @@ class TestDealTrends:
                 "team_name": "Team Alpha",
                 "ae_owner": "AE One",
                 "data_points": [
-                    {"date": "2025-06-01", "health_score": 60, "momentum": "Improving", "forecast": "Pipeline"},
+                    {"date": "2025-06-01", "health_score": 60, "momentum": "Improving", "forecast": "Realistic"},
                     {"date": "2025-06-15", "health_score": 75, "momentum": "Improving", "forecast": "Commit"},
                 ],
                 "first_score": 60,

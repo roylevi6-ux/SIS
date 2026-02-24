@@ -312,11 +312,9 @@ def export_forecast_report(team: Optional[str] = None, format: str = "markdown")
     # Forecast category weights for weighted pipeline calculation
     category_weights = {
         "Commit": 0.90,
-        "Best Case": 0.70,
-        "Pipeline": 0.40,
-        "Upside": 0.25,
-        "At Risk": 0.15,
-        "No Decision Risk": 0.05,
+        "Realistic": 0.60,
+        "Upside": 0.30,
+        "At Risk": 0.10,
     }
 
     title = f"# Forecast Comparison Report{f' — {team}' if team else ''}"

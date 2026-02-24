@@ -70,11 +70,9 @@ function formatPipelineTotal(value: number): string {
 
 const FORECAST_CATEGORIES = [
   'Commit',
-  'Best Case',
-  'Pipeline',
+  'Realistic',
   'Upside',
   'At Risk',
-  'No Decision Risk',
 ];
 
 // ---------------------------------------------------------------------------

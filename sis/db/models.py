@@ -38,7 +38,7 @@ class Account(Base):
     id = Column(Text, primary_key=True, default=_uuid)
     account_name = Column(Text, nullable=False)
     mrr_estimate = Column(Float, nullable=True)
-    ic_forecast_category = Column(Text, nullable=True)  # Commit/Best Case/Pipeline/Upside/At Risk/No Decision Risk
+    ic_forecast_category = Column(Text, nullable=True)  # Commit/Realistic/Upside/At Risk
     team_lead = Column(Text, nullable=True)
     ae_owner = Column(Text, nullable=True)
     team_name = Column(Text, nullable=True)
@@ -186,7 +186,7 @@ class DealAssessment(Base):
     momentum_trend = Column(Text, nullable=True)
 
     # Forecast
-    ai_forecast_category = Column(Text, nullable=False)  # Commit/Best Case/Pipeline/Upside/At Risk/No Decision Risk
+    ai_forecast_category = Column(Text, nullable=False)  # Commit/Realistic/Upside/At Risk
     forecast_confidence = Column(Float, nullable=True)
     forecast_rationale = Column(Text, nullable=True)
 

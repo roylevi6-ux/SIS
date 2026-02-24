@@ -25,11 +25,9 @@ synthesis_agent_10:
   forecast_at_risk_maximum_health: 45
   forecast_categories:
     - Commit
-    - Best Case
-    - Pipeline
+    - Realistic
     - Upside
     - At Risk
-    - No Decision Risk
 
 alerts:
   score_drop_threshold: 15          # Slack alert if score drops > this

@@ -141,7 +141,7 @@ class TestMomentum:
 
 class TestForecastCategory:
     def test_valid_categories(self):
-        for cat in ["Commit", "Best Case", "Pipeline", "Upside", "At Risk", "No Decision Risk"]:
+        for cat in ["Commit", "Realistic", "Upside", "At Risk"]:
             s = _valid_synthesis()
             s["forecast_category"] = cat
             warnings = validate_synthesis_output(s)

@@ -137,7 +137,7 @@ def validate_synthesis_output(
         warnings.append(f"SYNTHESIS_INVALID_MOMENTUM: '{momentum}' not in {valid_momentum}")
 
     # Check 6: Forecast category
-    valid_forecasts = {"Commit", "Best Case", "Pipeline", "Upside", "At Risk", "No Decision Risk"}
+    valid_forecasts = {"Commit", "Realistic", "Upside", "At Risk"}
     forecast = synthesis_output.get("forecast_category")
     if forecast and forecast not in valid_forecasts:
         warnings.append(f"SYNTHESIS_INVALID_FORECAST: '{forecast}' not in {valid_forecasts}")
