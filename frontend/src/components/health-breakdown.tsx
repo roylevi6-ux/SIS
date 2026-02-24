@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 
 interface HealthBreakdownProps {
   breakdown: unknown;
+  healthScore?: number | null;
 }
 
 interface BreakdownEntry {
@@ -67,6 +68,9 @@ const COMPONENT_LABELS: Record<string, string> = {
   stakeholder_completeness: 'Stakeholders',
   commitment_quality: 'Commitment',
   commercial_clarity: 'Commercial',
+  urgency: 'Urgency',
+  urgency_compelling_event: 'Urgency',
+  account_health: 'Acct. Health',
 };
 
 function normalizeKey(key: string): string {
@@ -423,12 +427,13 @@ function ZoneLegend() {
 // Main component
 // ---------------------------------------------------------------------------
 
-export function HealthBreakdown({ breakdown }: HealthBreakdownProps) {
+export function HealthBreakdown({ breakdown, healthScore }: HealthBreakdownProps) {
   const data = toRadarData(breakdown);
 
   if (data.length === 0) return null;
 
-  const overallScore = deriveOverallScore(data);
+  const derivedScore = deriveOverallScore(data);
+  const overallScore = healthScore != null ? healthScore : derivedScore;
   const overallZone = overallScore !== null ? getZone(overallScore) : null;
   const scoreMap = new Map(data.map((d) => [d.dimension, d.score]));
 

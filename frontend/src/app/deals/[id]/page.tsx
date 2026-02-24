@@ -20,7 +20,7 @@ import { DealTimeline } from '@/components/deal-timeline';
 import { CallTimeline } from '@/components/call-timeline';
 import { DeltaBadge } from '@/components/delta-badge';
 import { WhatChangedCard } from '@/components/what-changed-card';
-import type { AgentAnalysis } from '@/components/agent-card';
+import type { AgentAnalysis, HealthBreakdownEntry } from '@/components/agent-card';
 
 // ---------------------------------------------------------------------------
 // Types for the account detail response
@@ -246,7 +246,7 @@ function SignalsList({
 // Agent analyses section
 // ---------------------------------------------------------------------------
 
-function AgentAnalysesSection({ accountId }: { accountId: string }) {
+function AgentAnalysesSection({ accountId, healthBreakdown }: { accountId: string; healthBreakdown?: unknown }) {
   const { data: history } = useAnalysisHistory(accountId);
   const runs = (history ?? []) as AnalysisRun[];
 
@@ -277,7 +277,7 @@ function AgentAnalysesSection({ accountId }: { accountId: string }) {
       ) : (
         <div className="space-y-2">
           {agentList.map((agent) => (
-            <AgentCard key={agent.agent_id} analysis={agent} />
+            <AgentCard key={agent.agent_id} analysis={agent} healthBreakdown={healthBreakdown as HealthBreakdownEntry[] | null} />
           ))}
         </div>
       )}
@@ -585,7 +585,7 @@ export default function DealDetailPage({
           <DealMemo memo={assessment.deal_memo} />
 
           {/* Health Breakdown */}
-          <HealthBreakdown breakdown={assessment.health_breakdown} />
+          <HealthBreakdown breakdown={assessment.health_breakdown} healthScore={assessment.health_score} />
 
           {/* Two-column: Actions + Risks */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -660,7 +660,7 @@ export default function DealDetailPage({
           <Separator />
 
           {/* Per-Agent Analysis */}
-          <AgentAnalysesSection accountId={id} />
+          <AgentAnalysesSection accountId={id} healthBreakdown={assessment.health_breakdown} />
         </>
       )}
 
