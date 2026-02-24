@@ -107,7 +107,7 @@ function Section({
           )}
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="pl-8 pb-6 space-y-4">{children}</div>
+          <div className="pl-4 sm:pl-8 pb-6 space-y-4 min-w-0 overflow-hidden">{children}</div>
         </CollapsibleContent>
       </Collapsible>
       <Separator />
@@ -171,23 +171,23 @@ function ResearchSection() {
           <div>
             <h3 className="font-semibold mb-1">Frameworks evaluated</h3>
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[180px]">Framework</TableHead>
-                    <TableHead className="whitespace-normal">Key Principle</TableHead>
+                    <TableHead className="w-[22%] whitespace-normal">Framework</TableHead>
+                    <TableHead className="w-[24%] whitespace-normal">Key Principle</TableHead>
                     <TableHead className="whitespace-normal">SIS Impact</TableHead>
-                    <TableHead className="w-[130px]">Role</TableHead>
+                    <TableHead className="w-[16%] whitespace-normal">Role</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {RESEARCH_FRAMEWORKS.map((fw) => (
                     <TableRow key={fw.framework}>
-                      <TableCell className="font-medium align-top">{fw.framework}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-normal align-top">{fw.keyPrinciple}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-normal align-top">{fw.sisImpact}</TableCell>
+                      <TableCell className="text-xs font-medium align-top whitespace-normal break-words">{fw.framework}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-normal align-top break-words">{fw.keyPrinciple}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-normal align-top break-words">{fw.sisImpact}</TableCell>
                       <TableCell className="align-top">
-                        <Badge variant="outline" className="text-xs">{fw.role}</Badge>
+                        <Badge variant="outline" className="text-xs whitespace-normal break-words">{fw.role}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -290,22 +290,22 @@ function HealthScoreSection() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[220px]">Component</TableHead>
-                  <TableHead className="w-[60px] text-right">Weight</TableHead>
-                  <TableHead className="w-[180px]">Source Agent(s)</TableHead>
-                  <TableHead>What it measures</TableHead>
+                  <TableHead className="w-[28%] whitespace-normal">Component</TableHead>
+                  <TableHead className="w-[7%] text-right whitespace-normal">Wt.</TableHead>
+                  <TableHead className="w-[18%] whitespace-normal">Source Agent(s)</TableHead>
+                  <TableHead className="whitespace-normal">What it measures</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {HEALTH_SCORE_COMPONENTS.map((row) => (
                   <TableRow key={row.component}>
-                    <TableCell className="font-medium text-sm">{row.component}</TableCell>
-                    <TableCell className="text-right tabular-nums font-semibold">{row.weight}%</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{row.source}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{row.description}</TableCell>
+                    <TableCell className="text-xs font-medium align-top whitespace-normal break-words">{row.component}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums font-semibold align-top">{row.weight}%</TableCell>
+                    <TableCell className="text-xs text-muted-foreground align-top whitespace-normal break-words">{row.source}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground align-top whitespace-normal break-words">{row.description}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -476,37 +476,37 @@ function StagesSection() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[140px]">Stage</TableHead>
-                  <TableHead className="w-[100px]">Duration</TableHead>
-                  <TableHead className="whitespace-normal">Objective</TableHead>
-                  <TableHead className="whitespace-normal">Exit Criteria</TableHead>
+                  <TableHead className="w-[14%] whitespace-normal">Stage</TableHead>
+                  <TableHead className="w-[9%] whitespace-normal">Dur.</TableHead>
+                  <TableHead className="w-[20%] whitespace-normal">Objective</TableHead>
+                  <TableHead className="w-[30%] whitespace-normal">Exit Criteria</TableHead>
                   <TableHead className="whitespace-normal">Key Signals</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {STAGES.map((stage) => (
                   <TableRow key={stage.number}>
-                    <TableCell className="font-medium align-top">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
+                    <TableCell className="text-xs font-medium align-top whitespace-normal">
+                      <span className="inline-flex items-start gap-1.5">
+                        <span className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0 mt-0.5">
                           {stage.number}
                         </span>
-                        {stage.name}
+                        <span className="break-words">{stage.name}</span>
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground align-top">{stage.duration}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{stage.objective}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">
+                    <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">{stage.duration}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-normal align-top break-words">{stage.objective}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-normal align-top">
                       <ul className="list-disc list-inside space-y-0.5">
                         {stage.exitCriteria.map((criterion, i) => (
-                          <li key={i}>{criterion}</li>
+                          <li key={i} className="break-words">{criterion}</li>
                         ))}
                       </ul>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{stage.keySignals}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-normal align-top break-words">{stage.keySignals}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -778,32 +778,32 @@ function AgentsSection() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px]">Agent</TableHead>
-                  <TableHead className="w-[70px]">Model</TableHead>
-                  <TableHead className="whitespace-normal">Role</TableHead>
+                  <TableHead className="w-[20%] whitespace-normal">Agent</TableHead>
+                  <TableHead className="w-[8%] whitespace-normal">Model</TableHead>
+                  <TableHead className="w-[26%] whitespace-normal">Role</TableHead>
                   <TableHead className="whitespace-normal">Focus Areas</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {AGENTS.map((agent) => (
                   <TableRow key={agent.id}>
-                    <TableCell className="font-medium align-top">
-                      <span className="flex items-center gap-2">
-                        <Badge variant="outline" className="shrink-0 font-mono text-xs">{agent.id}</Badge>
-                        <span className="text-sm">{agent.name}</span>
+                    <TableCell className="text-xs font-medium align-top whitespace-normal">
+                      <span className="flex flex-col gap-0.5">
+                        <Badge variant="outline" className="shrink-0 font-mono text-xs w-fit">{agent.id}</Badge>
+                        <span className="break-words">{agent.name}</span>
                       </span>
                     </TableCell>
                     <TableCell className="align-top">
                       <Badge variant="secondary" className="text-xs">{agent.model}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{agent.role}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">
+                    <TableCell className="text-xs text-muted-foreground whitespace-normal align-top break-words">{agent.role}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-normal align-top">
                       <ul className="list-disc list-inside space-y-0.5">
                         {agent.topics.map((topic, i) => (
-                          <li key={i}>{topic}</li>
+                          <li key={i} className="break-words">{topic}</li>
                         ))}
                       </ul>
                     </TableCell>
@@ -927,12 +927,12 @@ function NeverRulesSection() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40px]">#</TableHead>
-                  <TableHead className="whitespace-normal">Rule</TableHead>
-                  <TableHead className="w-[130px]">Applies To</TableHead>
+                  <TableHead className="w-[5%] whitespace-normal">#</TableHead>
+                  <TableHead className="w-[28%] whitespace-normal">Rule</TableHead>
+                  <TableHead className="w-[16%] whitespace-normal">Applies To</TableHead>
                   <TableHead className="whitespace-normal">Description</TableHead>
                 </TableRow>
               </TableHeader>
@@ -942,9 +942,9 @@ function NeverRulesSection() {
                     <TableCell className="align-top">
                       <Badge variant="destructive" className="text-xs">{i + 1}</Badge>
                     </TableCell>
-                    <TableCell className="font-medium text-sm whitespace-normal align-top">{rule.rule}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground align-top">{rule.agent}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{rule.description}</TableCell>
+                    <TableCell className="text-xs font-medium whitespace-normal align-top break-words">{rule.rule}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground align-top whitespace-normal break-words">{rule.agent}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-normal align-top break-words">{rule.description}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1047,7 +1047,7 @@ function NeverRulesSection() {
 
 export default function MethodologyPage() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Methodology</h1>
         <p className="text-sm text-muted-foreground">
@@ -1056,8 +1056,8 @@ export default function MethodologyPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
-        <div className="space-y-2">
+      <div className="grid gap-6 lg:grid-cols-[1fr_200px] max-w-full overflow-hidden">
+        <div className="min-w-0 overflow-hidden space-y-2">
           <ResearchSection />
           <HealthScoreSection />
           <StagesSection />

@@ -29,6 +29,53 @@ class Base(DeclarativeBase):
     pass
 
 
+# ─── users ─────────────────────────────────────────────────────────────
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    name = Column(Text, nullable=False)
+    email = Column(Text, nullable=False, unique=True)
+    role = Column(Text, nullable=False)  # admin | gm | vp | team_lead | ic
+    team_id = Column(Text, ForeignKey("teams.id"), nullable=True)
+    is_active = Column(Integer, default=1)  # boolean
+    created_at = Column(Text, nullable=False, default=_now)
+
+    # Relationships
+    team = relationship("Team", foreign_keys=[team_id], back_populates="members")
+
+    __table_args__ = (
+        Index("ix_users_email", "email"),
+        Index("ix_users_role", "role"),
+    )
+
+
+# ─── teams ─────────────────────────────────────────────────────────────
+
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    name = Column(Text, nullable=False)
+    parent_id = Column(Text, ForeignKey("teams.id"), nullable=True)
+    leader_id = Column(Text, ForeignKey("users.id", use_alter=True), nullable=True)
+    level = Column(Text, nullable=False)  # org | division | team
+    created_at = Column(Text, nullable=False, default=_now)
+
+    # Relationships
+    parent = relationship("Team", remote_side=[id], backref="children")
+    leader = relationship("User", foreign_keys=[leader_id])
+    members = relationship("User", foreign_keys=[User.team_id], back_populates="team")
+
+    __table_args__ = (
+        Index("ix_teams_parent", "parent_id"),
+        Index("ix_teams_level", "level"),
+    )
+
+
 # ─── accounts ───────────────────────────────────────────────────────────
 
 
@@ -44,10 +91,12 @@ class Account(Base):
     team_name = Column(Text, nullable=True)
     deal_type = Column(Text, nullable=False, default="new_logo")  # new_logo | expansion_upsell | expansion_cross_sell | expansion_both
     prior_contract_value = Column(Float, nullable=True)  # Existing MRR if applicable
+    owner_id = Column(Text, ForeignKey("users.id"), nullable=True)
     created_at = Column(Text, nullable=False, default=_now)
     updated_at = Column(Text, nullable=False, default=_now, onupdate=_now)
 
     # Relationships
+    owner = relationship("User", foreign_keys=[owner_id])
     transcripts = relationship("Transcript", back_populates="account", order_by="Transcript.call_date.desc()")
     analysis_runs = relationship("AnalysisRun", back_populates="account", order_by="AnalysisRun.started_at.desc()")
     deal_assessments = relationship("DealAssessment", back_populates="account", order_by="DealAssessment.created_at.desc()")

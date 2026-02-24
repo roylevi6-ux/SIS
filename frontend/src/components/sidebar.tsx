@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth';
+import { usePermissions } from '@/lib/permissions';
 
 import { cn } from '@/lib/utils';
 import {
@@ -48,10 +49,21 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 
+type Role = 'ic' | 'team_lead' | 'vp' | 'gm' | 'admin';
+
+const ROLE_RANK: Record<Role, number> = {
+  ic: 0,
+  team_lead: 1,
+  vp: 2,
+  gm: 3,
+  admin: 4,
+};
+
 interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
+  minRole?: Role;
 }
 
 interface NavGroup {
@@ -66,9 +78,9 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Pipeline Overview', href: '/pipeline', icon: LayoutDashboard },
       { label: 'Deal Detail', href: '/deals', icon: FileText },
       { label: 'Divergence', href: '/divergence', icon: GitCompare },
-      { label: 'Team Rollup', href: '/team-rollup', icon: Users },
+      { label: 'Team Rollup', href: '/team-rollup', icon: Users, minRole: 'vp' },
       { label: 'Forecast', href: '/forecast', icon: TrendingUp },
-      { label: 'Rep Scorecard', href: '/rep-scorecard', icon: Award },
+      { label: 'Rep Scorecard', href: '/rep-scorecard', icon: Award, minRole: 'team_lead' },
       { label: 'Methodology', href: '/methodology', icon: BookOpen },
     ],
   },
@@ -83,15 +95,16 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Admin',
     items: [
-      { label: 'Feedback', href: '/feedback', icon: ThumbsUp },
-      { label: 'Calibration', href: '/calibration', icon: Settings },
-      { label: 'Prompt Versions', href: '/prompts', icon: Code },
-      { label: 'Costs', href: '/costs', icon: DollarSign },
-      { label: 'Usage', href: '/usage', icon: BarChart3 },
-      { label: 'Activity Log', href: '/activity-log', icon: ClipboardList },
-      { label: 'Golden Tests', href: '/golden-tests', icon: CheckCircle },
-      { label: 'Digest', href: '/digest', icon: Mail },
-      { label: 'Seeding', href: '/seeding', icon: Database },
+      { label: 'Team Management', href: '/settings/teams', icon: Users, minRole: 'admin' },
+      { label: 'Feedback', href: '/feedback', icon: ThumbsUp, minRole: 'team_lead' },
+      { label: 'Calibration', href: '/calibration', icon: Settings, minRole: 'admin' },
+      { label: 'Prompt Versions', href: '/prompts', icon: Code, minRole: 'admin' },
+      { label: 'Costs', href: '/costs', icon: DollarSign, minRole: 'admin' },
+      { label: 'Usage', href: '/usage', icon: BarChart3, minRole: 'admin' },
+      { label: 'Activity Log', href: '/activity-log', icon: ClipboardList, minRole: 'admin' },
+      { label: 'Golden Tests', href: '/golden-tests', icon: CheckCircle, minRole: 'admin' },
+      { label: 'Digest', href: '/digest', icon: Mail, minRole: 'team_lead' },
+      { label: 'Seeding', href: '/seeding', icon: Database, minRole: 'admin' },
     ],
   },
 ];
@@ -126,6 +139,16 @@ function NavGroupSection({
   onItemClick?: () => void;
 }) {
   const [open, setOpen] = useState(true);
+  const { role } = usePermissions();
+
+  // Filter items by minimum role
+  const visibleItems = group.items.filter((item) => {
+    if (!item.minRole) return true;
+    return ROLE_RANK[role as Role] >= ROLE_RANK[item.minRole];
+  });
+
+  // Hide the entire group if no items are visible
+  if (visibleItems.length === 0) return null;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -145,7 +168,7 @@ function NavGroupSection({
       </CollapsibleTrigger>
       <CollapsibleContent>
         <nav className="flex flex-col gap-0.5 pb-2">
-          {group.items.map((item) => (
+          {visibleItems.map((item) => (
             <NavLink key={item.href} item={item} onClick={onItemClick} />
           ))}
         </nav>
@@ -177,12 +200,14 @@ function SidebarUserFooter() {
 
   if (!user) return null;
 
-  const roleLabel =
-    user.role === 'admin'
-      ? 'Admin'
-      : user.role === 'team_lead'
-        ? 'Team Lead'
-        : 'IC';
+  const roleLabels: Record<string, string> = {
+    admin: 'Admin',
+    gm: 'General Manager',
+    vp: 'VP Sales',
+    team_lead: 'Team Lead',
+    ic: 'IC',
+  };
+  const roleLabel = roleLabels[user.role] || user.role;
 
   return (
     <div className="border-t border-sidebar-border px-3 py-3">
@@ -230,7 +255,7 @@ function SidebarInner({ onItemClick }: { onItemClick?: () => void }) {
   );
 }
 
-/** Desktop fixed sidebar — hidden on mobile */
+/** Desktop fixed sidebar -- hidden on mobile */
 export function DesktopSidebar() {
   return (
     <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col lg:border-r lg:border-sidebar-border">

@@ -116,11 +116,21 @@ def set_ic_forecast(account_id: str, category: str) -> dict:
 def list_accounts(
     team: Optional[str] = None,
     sort_by: str = "account_name",
+    visible_user_ids: Optional[set[str]] = None,
 ) -> list[dict]:
-    """List accounts with latest assessment summary."""
+    """List accounts with latest assessment summary.
+
+    Args:
+        team: Legacy team name filter (optional, backward compat)
+        sort_by: Sort column
+        visible_user_ids: If provided, only return accounts where owner_id is in this set.
+                          None means no scoping (admin/gm sees all).
+    """
     with get_session() as session:
         query = session.query(Account)
-        if team:
+        if visible_user_ids is not None:
+            query = query.filter(Account.owner_id.in_(visible_user_ids))
+        elif team:
             query = query.filter_by(team_name=team)
 
         if sort_by not in SORTABLE_FIELDS:

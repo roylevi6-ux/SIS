@@ -5,35 +5,68 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
-from sis.api.deps import get_current_user
+from sis.api.deps import get_current_user, get_db
 from sis.services import dashboard_service, trend_service
+from sis.services.scoping_service import get_visible_user_ids
+from sis.db.models import User
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
+def _resolve_scoping(user: dict, db: Session) -> Optional[set[str]]:
+    """Compute visible user IDs from JWT user dict. None = no restriction."""
+    user_id = user.get("user_id") if user else None
+    if not user_id:
+        return None
+    db_user = db.query(User).filter_by(id=user_id).first()
+    if not db_user or db_user.role in ("admin", "gm"):
+        return None
+    return get_visible_user_ids(db_user, db)
+
+
 @router.get("/pipeline")
-def pipeline_overview(team: Optional[str] = None, user: dict = Depends(get_current_user)):
+def pipeline_overview(
+    team: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Aggregated pipeline view with deals grouped by health tier."""
-    return dashboard_service.get_pipeline_overview(team=team)
+    visible_ids = _resolve_scoping(user, db)
+    return dashboard_service.get_pipeline_overview(team=team, visible_user_ids=visible_ids)
 
 
 @router.get("/divergence")
-def divergence_report(team: Optional[str] = None, user: dict = Depends(get_current_user)):
+def divergence_report(
+    team: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Deals where AI and IC forecasts diverge."""
-    return dashboard_service.get_divergence_report(team=team)
+    visible_ids = _resolve_scoping(user, db)
+    return dashboard_service.get_divergence_report(team=team, visible_user_ids=visible_ids)
 
 
 @router.get("/team-rollup")
-def team_rollup(team: Optional[str] = None, user: dict = Depends(get_current_user)):
+def team_rollup(
+    team: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Aggregate health metrics per team."""
-    return dashboard_service.get_team_rollup(team=team)
+    visible_ids = _resolve_scoping(user, db)
+    return dashboard_service.get_team_rollup(team=team, visible_user_ids=visible_ids)
 
 
 @router.get("/insights")
-def pipeline_insights(user: dict = Depends(get_current_user)):
+def pipeline_insights(
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Auto-generated pipeline insights: stuck, improving, declining, etc."""
-    return dashboard_service.get_pipeline_insights()
+    visible_ids = _resolve_scoping(user, db)
+    return dashboard_service.get_pipeline_insights(visible_user_ids=visible_ids)
 
 
 @router.get("/trends/deals")

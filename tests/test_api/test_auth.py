@@ -181,6 +181,44 @@ class TestMeEndpoint:
         assert resp.status_code == 401
 
 
+class TestNewRoles:
+    """Tests for VP and GM role support."""
+
+    def test_login_vp_role(self, client):
+        """VP role should be accepted at login."""
+        res = client.post("/api/auth/login", json={"username": "VP Test", "role": "vp"})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["role"] == "vp"
+        assert "token" in data
+
+    def test_login_gm_role(self, client):
+        """GM role should be accepted at login."""
+        res = client.post("/api/auth/login", json={"username": "GM Test", "role": "gm"})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["role"] == "gm"
+
+    def test_token_roundtrip_vp(self):
+        """VP token should roundtrip through create/decode."""
+        token = create_token("vp_user", "vp")
+        payload = decode_token(token)
+        assert payload["role"] == "vp"
+        assert payload["sub"] == "vp_user"
+
+    def test_token_roundtrip_gm(self):
+        """GM token should roundtrip through create/decode."""
+        token = create_token("gm_user", "gm")
+        payload = decode_token(token)
+        assert payload["role"] == "gm"
+
+    def test_token_includes_user_id(self):
+        """Token with user_id should roundtrip."""
+        token = create_token("test_user", "admin", user_id="abc-123")
+        payload = decode_token(token)
+        assert payload["user_id"] == "abc-123"
+
+
 class TestHealthStillUnauthenticated:
     """Verify that the health endpoint is not affected by auth."""
 

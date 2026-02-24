@@ -39,13 +39,13 @@ class TestPipelineOverview:
     def test_pipeline_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_pipeline_overview.return_value = {"total_deals": 0}
         client.get("/api/dashboard/pipeline?team=Team+Alpha", headers=auth_headers)
-        mock_svc.get_pipeline_overview.assert_called_once_with(team="Team Alpha")
+        mock_svc.get_pipeline_overview.assert_called_once_with(team="Team Alpha", visible_user_ids=None)
 
     @patch("sis.api.routes.dashboard.dashboard_service")
     def test_pipeline_no_team_passes_none(self, mock_svc, client, auth_headers):
         mock_svc.get_pipeline_overview.return_value = {"total_deals": 0}
         client.get("/api/dashboard/pipeline", headers=auth_headers)
-        mock_svc.get_pipeline_overview.assert_called_once_with(team=None)
+        mock_svc.get_pipeline_overview.assert_called_once_with(team=None, visible_user_ids=None)
 
 
 # ── GET /api/dashboard/divergence ─────────────────────────────────────
@@ -78,7 +78,7 @@ class TestDivergenceReport:
     def test_divergence_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_divergence_report.return_value = []
         client.get("/api/dashboard/divergence?team=Team+Beta", headers=auth_headers)
-        mock_svc.get_divergence_report.assert_called_once_with(team="Team Beta")
+        mock_svc.get_divergence_report.assert_called_once_with(team="Team Beta", visible_user_ids=None)
 
     @patch("sis.api.routes.dashboard.dashboard_service")
     def test_divergence_empty(self, mock_svc, client, auth_headers):
@@ -119,7 +119,7 @@ class TestTeamRollup:
     def test_team_rollup_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_team_rollup.return_value = []
         client.get("/api/dashboard/team-rollup?team=Team+Alpha", headers=auth_headers)
-        mock_svc.get_team_rollup.assert_called_once_with(team="Team Alpha")
+        mock_svc.get_team_rollup.assert_called_once_with(team="Team Alpha", visible_user_ids=None)
 
 
 # ── GET /api/dashboard/insights ───────────────────────────────────────

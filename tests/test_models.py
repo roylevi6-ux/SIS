@@ -7,7 +7,58 @@ from datetime import datetime, timezone
 from sis.db.models import (
     Account, Transcript, AnalysisRun, AgentAnalysis, DealAssessment,
     ScoreFeedback, CoachingEntry, PromptVersion, ChatSession, ChatMessage, UsageEvent,
+    User, Team,
 )
+
+
+def test_user_and_team_models(session):
+    """User and Team models can be created with tree relationships."""
+    # Create root team
+    root = Team(name="Sales Org", level="org")
+    session.add(root)
+    session.flush()
+
+    # Create GM user
+    gm = User(name="Roy", email="roy@sis.com", role="admin")
+    session.add(gm)
+    session.flush()
+
+    # Set leader
+    root.leader_id = gm.id
+    session.flush()
+
+    # Create division under root
+    division = Team(name="Sales East", parent_id=root.id, level="division")
+    session.add(division)
+    session.flush()
+
+    # Create VP user on division
+    vp = User(name="Sarah", email="sarah@sis.com", role="vp", team_id=division.id)
+    session.add(vp)
+    session.flush()
+    division.leader_id = vp.id
+    session.flush()
+
+    # Create team under division
+    team = Team(name="Enterprise", parent_id=division.id, level="team")
+    session.add(team)
+    session.flush()
+
+    # Create TL and IC
+    tl = User(name="Dan", email="dan@sis.com", role="team_lead", team_id=team.id)
+    session.add(tl)
+    session.flush()
+    team.leader_id = tl.id
+
+    ic = User(name="Alice", email="alice@sis.com", role="ic", team_id=team.id)
+    session.add(ic)
+    session.flush()
+
+    assert gm.role == "admin"
+    assert vp.team_id == division.id
+    assert team.parent_id == division.id
+    assert division.parent_id == root.id
+    assert ic.team_id == team.id
 
 
 class TestAccountModel:

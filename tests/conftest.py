@@ -19,7 +19,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sis.db.models import (
     Base, Account, Transcript, AnalysisRun, AgentAnalysis, DealAssessment,
     ScoreFeedback, CoachingEntry, CalibrationLog, PromptVersion,
-    ChatSession, ChatMessage, UsageEvent,
+    ChatSession, ChatMessage, UsageEvent, User, Team,
 )
 
 
@@ -94,6 +94,7 @@ def mock_get_session(session):
         "sis.services.prompt_version_service.get_session",
         "sis.services.forecast_data_service.get_session",
         "sis.services.rep_scorecard_service.get_session",
+        "sis.services.team_service.get_session",
         "sis.alerts.engine.get_session",
         "sis.api.deps.get_session",
     ]
@@ -129,19 +130,29 @@ def seeded_db(mock_get_session):
     at_risk_id = _uuid()
     critical_id = _uuid()
 
+    # Create users matching the account owners
+    user_ae1 = User(id=_uuid(), name="AE One", email="ae_one@sis.com", role="ic")
+    user_ae2 = User(id=_uuid(), name="AE Two", email="ae_two@sis.com", role="ic")
+    user_ae3 = User(id=_uuid(), name="AE Three", email="ae_three@sis.com", role="ic")
+    session.add_all([user_ae1, user_ae2, user_ae3])
+    session.flush()
+
     accounts = [
         Account(id=healthy_id, account_name="HealthyCorp", mrr_estimate=50000.0,
                 team_lead="TL One", ae_owner="AE One", team_name="Team Alpha",
                 ic_forecast_category="Commit", deal_type="new_logo",
+                owner_id=user_ae1.id,
                 created_at=_now(30), updated_at=_now(1)),
         Account(id=at_risk_id, account_name="AtRiskCo", mrr_estimate=25000.0,
                 team_lead="TL One", ae_owner="AE Two", team_name="Team Alpha",
                 ic_forecast_category="Realistic", deal_type="expansion_upsell",
                 prior_contract_value=15000.0,
+                owner_id=user_ae2.id,
                 created_at=_now(30), updated_at=_now(1)),
         Account(id=critical_id, account_name="CriticalInc", mrr_estimate=10000.0,
                 team_lead="TL Two", ae_owner="AE Three", team_name="Team Beta",
                 ic_forecast_category="At Risk", deal_type="new_logo",
+                owner_id=user_ae3.id,
                 created_at=_now(30), updated_at=_now(1)),
     ]
     for a in accounts:
