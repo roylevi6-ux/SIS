@@ -102,7 +102,6 @@ function extractTopicWordFallback(title: string | null): string | null {
     'the', 'a', 'an', 'for', 'on', 'in', 'of', 'to', 'up', 'and', 'or',
     'with', 'catch', 'quick', 'progress',
   ]);
-  // Last word that's 4+ chars and not filler
   for (let i = words.length - 1; i >= 0; i--) {
     const w = words[i].toLowerCase().replace(/[^a-z]/g, '');
     if (w.length >= 4 && !fillers.has(w)) {
@@ -123,7 +122,6 @@ function getTopicLabel(call: CallEntry): TopicLabel | null {
     };
   }
 
-  // Fallback to title keyword
   const fallback = extractTopicWordFallback(call.call_title);
   return fallback ? { primary: fallback } : null;
 }
@@ -145,7 +143,6 @@ function getAxisTicks(
   let ticks: { label: string; pct: number }[] = [];
 
   if (rangeDays < 90) {
-    // Short range: show each unique call date
     const seen = new Set<string>();
     for (const call of sorted) {
       if (seen.has(call.call_date)) continue;
@@ -155,7 +152,6 @@ function getAxisTicks(
       ticks.push({ label: formatShortDate(parseDate(call.call_date)), pct });
     }
   } else {
-    // Longer range: month boundary ticks
     const start = new Date(axisStart);
     let cursor = new Date(start.getFullYear(), start.getMonth() + 1, 1);
     while (cursor.getTime() <= axisStart + axisRange) {
@@ -167,7 +163,6 @@ function getAxisTicks(
       cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
     }
 
-    // Always add first and last call dates
     const firstMs = parseDate(sorted[0].call_date).getTime();
     const lastMs = parseDate(sorted[sorted.length - 1].call_date).getTime();
     ticks.unshift({
@@ -180,7 +175,6 @@ function getAxisTicks(
     });
   }
 
-  // Remove ticks that overlap (within 8% of each other), keep first occurrence
   ticks.sort((a, b) => a.pct - b.pct);
   const filtered: typeof ticks = [];
   for (const t of ticks) {
@@ -195,7 +189,6 @@ function getAxisTicks(
 // Collision detection
 // ---------------------------------------------------------------------------
 
-/** Returns a set of indices where the secondary topic should be suppressed. */
 function getDenseIndices(pcts: number[], threshold: number = 10): Set<number> {
   const dense = new Set<number>();
   for (let i = 1; i < pcts.length; i++) {
@@ -213,19 +206,16 @@ function getDenseIndices(pcts: number[], threshold: number = 10): Set<number> {
 export function CallTimeline({ transcripts }: CallTimelineProps) {
   if (!transcripts || transcripts.length === 0) return null;
 
-  // Sort chronologically (oldest first for left-to-right)
   const sorted = [...transcripts].sort(
     (a, b) => a.call_date.localeCompare(b.call_date),
   );
 
   const analyzedCount = sorted.filter((t) => t.analyzed).length;
 
-  // Compute time range with padding
   const dates = sorted.map((t) => parseDate(t.call_date).getTime());
   const minDate = Math.min(...dates);
   const maxDate = Math.max(...dates);
   const range = maxDate - minDate || 1;
-  // Add 5% padding on each side
   const padMs = range * 0.05;
   const axisStart = minDate - padMs;
   const axisEnd = maxDate + padMs;
@@ -233,14 +223,12 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
 
   const axisTicks = getAxisTicks(sorted, axisStart, axisRange);
 
-  // Precompute pct positions for collision detection
   const pcts = sorted.map((t) => {
     const ms = parseDate(t.call_date).getTime();
     return ((ms - axisStart) / axisRange) * 100;
   });
   const denseIndices = getDenseIndices(pcts);
 
-  // Today marker
   const today = Date.now();
   const todayPct = ((today - axisStart) / axisRange) * 100;
   const showToday = todayPct >= 0 && todayPct <= 100;
@@ -268,7 +256,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
 
         {/* Timeline */}
         <TooltipProvider delayDuration={100}>
-          <div className="relative h-24">
+          <div className="relative h-20 mt-10">
             {/* Horizontal axis line */}
             <div className="absolute left-0 right-0 top-1/2 -translate-y-px h-px bg-border" />
 
@@ -284,18 +272,14 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
               </div>
             )}
 
-            {/* Call dots — labels alternate above/below the line */}
+            {/* Call dots — all aligned on the line, labels always above */}
             {sorted.map((call, idx) => {
               const pct = pcts[idx];
               const d = parseDate(call.call_date);
-              const labelAbove = idx % 2 === 0;
 
-              // Build topic label
               const topicLabel = getTopicLabel(call);
-              // Suppress secondary topic when calls are too close
               const suppressSecondary = denseIndices.has(idx);
 
-              // Build tooltip — topics first, then date, then participants
               const external = getExternalNames(call.participants);
               const internal = getInternalNames(call.participants);
 
@@ -317,40 +301,37 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
               return (
                 <Tooltip key={call.id}>
                   <TooltipTrigger asChild>
-                    {/* Flex column: label-above → dot → label-below. No absolute positioning on labels. */}
+                    {/*
+                      Zero-size anchor pinned at (pct%, 50%) on the axis line.
+                      Only translateX(-50%) to center horizontally.
+                      The dot centers itself vertically with its own translateY.
+                      Labels are absolutely positioned above — never affect dot position.
+                    */}
                     <div
-                      className="absolute flex flex-col items-center cursor-default"
-                      style={{ left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)' }}
+                      className="absolute cursor-default"
+                      style={{ left: `${pct}%`, top: '50%', transform: 'translateX(-50%)' }}
                     >
-                      {/* Label ABOVE */}
-                      {labelAbove && topicLabel && (
-                        <div className="mb-1 text-center pointer-events-none">
-                          <span className="text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap">
-                            {topicLabel.primary}
-                          </span>
-                          {topicLabel.secondary && !suppressSecondary && (
-                            <>
-                              <br />
-                              <span className="text-[10px] leading-tight text-muted-foreground whitespace-nowrap">
-                                {topicLabel.secondary}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Dot */}
+                      {/* Dot — centered on the axis line */}
                       {call.analyzed ? (
-                        <div className="flex items-center justify-center size-7 rounded-full bg-violet-500 shadow-sm shadow-violet-200 dark:shadow-violet-900 transition-transform hover:scale-110">
+                        <div
+                          className="flex items-center justify-center size-7 rounded-full bg-violet-500 shadow-sm shadow-violet-200 dark:shadow-violet-900 transition-transform hover:scale-110"
+                          style={{ transform: 'translateY(-50%)' }}
+                        >
                           <Phone className="size-3 text-white" />
                         </div>
                       ) : (
-                        <div className="size-5 rounded-full border-2 border-muted-foreground/30 bg-transparent transition-transform hover:scale-125 hover:border-muted-foreground/50" />
+                        <div
+                          className="size-5 rounded-full border-2 border-muted-foreground/30 bg-transparent transition-transform hover:scale-125 hover:border-muted-foreground/50"
+                          style={{ transform: 'translateY(-50%)' }}
+                        />
                       )}
 
-                      {/* Label BELOW */}
-                      {!labelAbove && topicLabel && (
-                        <div className="mt-1 text-center pointer-events-none">
+                      {/* Label — always above, absolutely positioned so it never shifts the dot */}
+                      {topicLabel && (
+                        <div
+                          className="absolute left-1/2 text-center pointer-events-none"
+                          style={{ bottom: call.analyzed ? '18px' : '14px', transform: 'translateX(-50%)' }}
+                        >
                           <span className="text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap">
                             {topicLabel.primary}
                           </span>
@@ -366,7 +347,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
                       )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side={labelAbove ? 'bottom' : 'top'} className="max-w-xs">
+                  <TooltipContent side="bottom" className="max-w-xs">
                     {tooltipLines.map((line, i) => (
                       <p key={i} className={i === 0 ? 'font-medium' : 'text-muted-foreground'}>
                         {line}
