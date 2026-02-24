@@ -145,8 +145,10 @@ class AnalysisPipeline:
         )
         from sis.validation import validate_agent_output
 
-        deal_type = deal_context.get("deal_type", "new_logo") if deal_context else "new_logo"
-        is_expansion = deal_type.startswith("expansion")
+        from sis.constants import normalize_deal_type, is_expansion_deal
+        raw_deal_type = deal_context.get("deal_type", "new_logo") if deal_context else "new_logo"
+        deal_type = normalize_deal_type(raw_deal_type)
+        is_expansion = is_expansion_deal(deal_type)
         budget = RunBudget()
 
         result = PipelineResult(

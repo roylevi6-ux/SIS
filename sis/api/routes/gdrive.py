@@ -97,9 +97,10 @@ def import_from_drive(body: ImportRequest, user: dict = Depends(get_current_user
             break
 
     if not account_id:
+        from sis.constants import normalize_deal_type
         acct_obj = create_account(
             name=body.account_name,
-            deal_type=body.deal_type,
+            deal_type=normalize_deal_type(body.deal_type),
             mrr=body.mrr_estimate,
             ae_owner=body.ae_owner,
             team_lead=body.team_lead,
