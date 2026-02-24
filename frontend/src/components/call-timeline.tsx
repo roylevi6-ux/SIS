@@ -34,11 +34,6 @@ interface CallTimelineProps {
   transcripts: CallEntry[];
 }
 
-interface TopicLabel {
-  primary: string;
-  secondary?: string;
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -88,42 +83,11 @@ function getInternalNames(participants: Participant[] | null): string {
     .join(', ');
 }
 
-/** Fallback: extract a topic word from call title when no AI topics available. */
-function extractTopicWordFallback(title: string | null): string | null {
-  if (!title) return null;
-  const cleaned = title
-    .replace(/\/\//g, ' ')
-    .replace(/<>/g, ' ')
-    .replace(/[–—-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const words = cleaned.split(' ');
-  const fillers = new Set([
-    'the', 'a', 'an', 'for', 'on', 'in', 'of', 'to', 'up', 'and', 'or',
-    'with', 'catch', 'quick', 'progress',
-  ]);
-  for (let i = words.length - 1; i >= 0; i--) {
-    const w = words[i].toLowerCase().replace(/[^a-z]/g, '');
-    if (w.length >= 4 && !fillers.has(w)) {
-      return w.charAt(0).toUpperCase() + w.slice(1);
-    }
-  }
-  return null;
-}
-
-/** Build topic label from AI topics, falling back to title keyword. */
-function getTopicLabel(call: CallEntry): TopicLabel | null {
-  if (!call.analyzed) return null;
-
+function getTopicStrings(call: CallEntry): string[] {
   if (call.call_topics && call.call_topics.length > 0) {
-    return {
-      primary: call.call_topics[0].name,
-      secondary: call.call_topics[1]?.name,
-    };
+    return call.call_topics.map((t) => t.name);
   }
-
-  const fallback = extractTopicWordFallback(call.call_title);
-  return fallback ? { primary: fallback } : null;
+  return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -186,20 +150,6 @@ function getAxisTicks(
 }
 
 // ---------------------------------------------------------------------------
-// Collision detection
-// ---------------------------------------------------------------------------
-
-function getDenseIndices(pcts: number[], threshold: number = 10): Set<number> {
-  const dense = new Set<number>();
-  for (let i = 1; i < pcts.length; i++) {
-    if (pcts[i] - pcts[i - 1] < threshold) {
-      dense.add(i);
-    }
-  }
-  return dense;
-}
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -227,7 +177,6 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
     const ms = parseDate(t.call_date).getTime();
     return ((ms - axisStart) / axisRange) * 100;
   });
-  const denseIndices = getDenseIndices(pcts);
 
   const today = Date.now();
   const todayPct = ((today - axisStart) / axisRange) * 100;
@@ -254,9 +203,9 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
           </div>
         </div>
 
-        {/* Timeline */}
+        {/* Timeline — Gong-style: clean dots on line, details in tooltip */}
         <TooltipProvider delayDuration={100}>
-          <div className="relative h-20 mt-10">
+          <div className="relative h-10">
             {/* Horizontal axis line */}
             <div className="absolute left-0 right-0 top-1/2 -translate-y-px h-px bg-border" />
 
@@ -272,87 +221,55 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
               </div>
             )}
 
-            {/* Call dots — all aligned on the line, labels always above */}
+            {/* Call dots — all centered on the line, no inline labels */}
             {sorted.map((call, idx) => {
               const pct = pcts[idx];
               const d = parseDate(call.call_date);
-
-              const topicLabel = getTopicLabel(call);
-              const suppressSecondary = denseIndices.has(idx);
+              const topics = getTopicStrings(call);
 
               const external = getExternalNames(call.participants);
               const internal = getInternalNames(call.participants);
 
-              const tooltipLines: string[] = [];
-              if (topicLabel) {
-                const topicStr = topicLabel.secondary
-                  ? `${topicLabel.primary}, ${topicLabel.secondary}`
-                  : topicLabel.primary;
-                tooltipLines.push(topicStr);
-              } else if (call.call_title) {
-                tooltipLines.push(call.call_title);
-              }
-              tooltipLines.push(formatFullDate(d));
-              if (call.duration_minutes) tooltipLines.push(formatDuration(call.duration_minutes));
-              if (external) tooltipLines.push(`With: ${external}`);
-              if (internal) tooltipLines.push(`Internal: ${internal}`);
-              if (call.analyzed) tooltipLines.push('Included in analysis');
-
               return (
                 <Tooltip key={call.id}>
                   <TooltipTrigger asChild>
-                    {/*
-                      Zero-size anchor pinned at (pct%, 50%) on the axis line.
-                      Only translateX(-50%) to center horizontally.
-                      The dot centers itself vertically with its own translateY.
-                      Labels are absolutely positioned above — never affect dot position.
-                    */}
                     <div
-                      className="absolute cursor-default"
-                      style={{ left: `${pct}%`, top: '50%', transform: 'translateX(-50%)' }}
+                      className="absolute top-1/2 cursor-default"
+                      style={{ left: `${pct}%`, transform: 'translate(-50%, -50%)' }}
                     >
-                      {/* Dot — centered on the axis line */}
                       {call.analyzed ? (
-                        <div
-                          className="flex items-center justify-center size-7 rounded-full bg-violet-500 shadow-sm shadow-violet-200 dark:shadow-violet-900 transition-transform hover:scale-110"
-                          style={{ transform: 'translateY(-50%)' }}
-                        >
+                        <div className="flex items-center justify-center size-7 rounded-full bg-violet-500 shadow-sm shadow-violet-200 dark:shadow-violet-900 transition-transform hover:scale-110">
                           <Phone className="size-3 text-white" />
                         </div>
                       ) : (
-                        <div
-                          className="size-5 rounded-full border-2 border-muted-foreground/30 bg-transparent transition-transform hover:scale-125 hover:border-muted-foreground/50"
-                          style={{ transform: 'translateY(-50%)' }}
-                        />
-                      )}
-
-                      {/* Label — always above, absolutely positioned so it never shifts the dot */}
-                      {topicLabel && (
-                        <div
-                          className="absolute left-1/2 text-center pointer-events-none"
-                          style={{ bottom: call.analyzed ? '18px' : '14px', transform: 'translateX(-50%)' }}
-                        >
-                          <span className="text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap">
-                            {topicLabel.primary}
-                          </span>
-                          {topicLabel.secondary && !suppressSecondary && (
-                            <>
-                              <br />
-                              <span className="text-[10px] leading-tight text-muted-foreground whitespace-nowrap">
-                                {topicLabel.secondary}
-                              </span>
-                            </>
-                          )}
-                        </div>
+                        <div className="size-5 rounded-full border-2 border-muted-foreground/30 bg-transparent transition-transform hover:scale-125 hover:border-muted-foreground/50" />
                       )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs">
-                    {tooltipLines.map((line, i) => (
-                      <p key={i} className={i === 0 ? 'font-medium' : 'text-muted-foreground'}>
-                        {line}
-                      </p>
-                    ))}
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    {/* Topics — bold at top */}
+                    {topics.length > 0 && (
+                      <p className="font-semibold">{topics.join(' · ')}</p>
+                    )}
+                    {/* Title if no topics */}
+                    {topics.length === 0 && call.call_title && (
+                      <p className="font-semibold">{call.call_title}</p>
+                    )}
+                    {/* Date + duration */}
+                    <p className="text-muted-foreground">
+                      {formatFullDate(d)}
+                      {call.duration_minutes ? ` · ${formatDuration(call.duration_minutes)}` : ''}
+                    </p>
+                    {/* Participants */}
+                    {external && (
+                      <p className="text-muted-foreground">With: {external}</p>
+                    )}
+                    {internal && (
+                      <p className="text-muted-foreground">Internal: {internal}</p>
+                    )}
+                    {call.analyzed && (
+                      <p className="text-violet-400 mt-0.5">Included in analysis</p>
+                    )}
                   </TooltipContent>
                 </Tooltip>
               );
@@ -360,7 +277,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
           </div>
 
           {/* Date axis labels */}
-          <div className="relative h-4 mt-0.5">
+          <div className="relative h-4 mt-1">
             {axisTicks.map((tick, i) => (
               <span
                 key={i}
