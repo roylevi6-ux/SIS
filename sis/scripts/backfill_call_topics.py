@@ -1,16 +1,17 @@
-"""Backfill call_topics for existing transcripts.
+"""Backfill call_topics for existing transcripts using AI extraction.
 
-Parses the "TOPICS:" line from preprocessed_text (written by gong_parser),
-extracts topic names and durations, normalizes for display, and stores as JSON.
+Uses the Haiku topic extractor to generate business-relevant topic labels
+from the stored preprocessed_text. Replaces the old Gong-based topics.
 
 Usage:
-    python3 -m sis.scripts.backfill_call_topics
+    python3 -m sis.scripts.backfill_call_topics           # Only fill NULLs
+    python3 -m sis.scripts.backfill_call_topics --force    # Re-extract ALL
 """
 
 from __future__ import annotations
 
 import json
-import re
+import sys
 import logging
 
 from sqlalchemy import text as sa_text
@@ -18,23 +19,16 @@ from sqlalchemy import text as sa_text
 from sis.db.engine import init_db, get_engine
 from sis.db.session import get_session
 from sis.db.models import Transcript
-from sis.services.transcript_service import normalize_topic_name
+from sis.preprocessor.topic_extractor import extract_business_topics
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-# Matches: "Pricing (120s), Integration (90s)"
-_TOPIC_ENTRY_RE = re.compile(r"([^,(]+?)\s*\((\d+)s\)")
-
-# Matches the full TOPICS line in preprocessed_text
-_TOPICS_LINE_RE = re.compile(r"TOPICS:\s*(.+)")
 
 
 def _ensure_column_exists() -> None:
     """Add call_topics column if it doesn't exist (SQLite ALTER TABLE)."""
     engine = get_engine()
     with engine.connect() as conn:
-        # Check if column exists
         result = conn.execute(sa_text("PRAGMA table_info(transcripts)"))
         columns = {row[1] for row in result}
         if "call_topics" not in columns:
@@ -43,14 +37,11 @@ def _ensure_column_exists() -> None:
             logger.info("Added call_topics column to transcripts table")
 
 
-def _parse_topics_line(line: str) -> list[dict]:
-    """Parse 'Pricing (120s), Integration (90s)' into [{"name": ..., "duration": ...}]."""
-    entries = _TOPIC_ENTRY_RE.findall(line)
-    return [{"name": name.strip(), "duration": int(dur)} for name, dur in entries]
+def backfill(force: bool = False) -> int:
+    """Backfill call_topics using AI topic extraction.
 
-
-def backfill() -> int:
-    """Backfill call_topics from preprocessed_text TOPICS lines.
+    Args:
+        force: If True, re-extract topics for ALL transcripts (not just NULLs).
 
     Returns the number of transcripts updated.
     """
@@ -58,43 +49,50 @@ def backfill() -> int:
     init_db()
 
     updated = 0
+    failed = 0
+
     with get_session() as session:
-        # Find transcripts with no call_topics but with preprocessed_text
-        transcripts = (
-            session.query(Transcript)
-            .filter(
-                Transcript.call_topics.is_(None),
-                Transcript.preprocessed_text.isnot(None),
-            )
-            .all()
+        query = session.query(Transcript).filter(
+            Transcript.preprocessed_text.isnot(None),
         )
+        if not force:
+            query = query.filter(Transcript.call_topics.is_(None))
 
-        logger.info("Found %d transcripts to check for TOPICS lines", len(transcripts))
+        transcripts = query.all()
+        total = len(transcripts)
+        logger.info("Found %d transcripts to process (force=%s)", total, force)
 
-        for t in transcripts:
-            match = _TOPICS_LINE_RE.search(t.preprocessed_text)
-            if not match:
-                continue
+        for i, t in enumerate(transcripts):
+            logger.info(
+                "[%d/%d] Extracting topics for %s (%s)...",
+                i + 1, total,
+                (t.call_title or "untitled")[:40],
+                t.call_date,
+            )
 
-            raw_topics = _parse_topics_line(match.group(1))
-            if not raw_topics:
-                continue
+            topics = extract_business_topics(
+                t.preprocessed_text,
+                call_title=t.call_title,
+            )
 
-            # Take top 2 by duration, normalize names
-            top_topics = sorted(raw_topics, key=lambda x: -x["duration"])[:2]
-            normalized = [
-                {"name": normalize_topic_name(entry["name"]), "duration": entry["duration"]}
-                for entry in top_topics
-            ]
-
-            t.call_topics = json.dumps(normalized)
-            updated += 1
+            if topics:
+                t.call_topics = json.dumps(topics)
+                updated += 1
+                names = [tp["name"] for tp in topics]
+                logger.info("  → %s", names)
+            else:
+                failed += 1
+                logger.warning("  → extraction failed, skipping")
 
         session.flush()
 
-    logger.info("Backfilled call_topics for %d transcripts", updated)
+    logger.info(
+        "Done: %d updated, %d failed, %d total",
+        updated, failed, total,
+    )
     return updated
 
 
 if __name__ == "__main__":
-    backfill()
+    force_flag = "--force" in sys.argv
+    backfill(force=force_flag)
