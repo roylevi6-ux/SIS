@@ -306,7 +306,7 @@ class TestLogAction:
             "account_name": "TestCorp",
             "page_name": "Account Detail",
             "session_id": "sess-123",
-            "metadata": {"old_value": "Pipeline"},
+            "metadata": {"old_value": "Realistic"},
         }, headers=auth_headers)
         mock_svc.log_action.assert_called_once_with(
             action_type="ic_forecast_set",
@@ -316,7 +316,7 @@ class TestLogAction:
             account_name="TestCorp",
             page_name="Account Detail",
             session_id="sess-123",
-            metadata={"old_value": "Pipeline"},
+            metadata={"old_value": "Realistic"},
         )
 
 
@@ -767,7 +767,7 @@ class TestForecastData:
                 "team_name": "Team Alpha",
                 "ae_owner": "AE One",
                 "ai_forecast": "Commit",
-                "ic_forecast": "Best Case",
+                "ic_forecast": "Realistic",
                 "health_score": 80,
                 "momentum": "Improving",
                 "divergence": True,

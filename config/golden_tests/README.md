@@ -12,7 +12,7 @@ Each `.json` file in this directory is a golden test fixture — a snapshot of a
   "created_at": "2026-02-21T00:00:00+00:00",
   "baseline": {
     "health_score": 72,
-    "ai_forecast_category": "Best Case",
+    "ai_forecast_category": "Realistic",
     "inferred_stage": 3,
     "overall_confidence": 0.78,
     "momentum_direction": "Improving"

@@ -47,13 +47,13 @@ class TestLogAction:
         log_action(
             ACTION_IC_FORECAST,
             action_detail="Set forecast",
-            metadata={"old": "Pipeline", "new": "Commit"},
+            metadata={"old": "Realistic", "new": "Commit"},
         )
         session.flush()
         rows = session.query(UserActionLog).all()
         assert len(rows) == 1
         meta = json.loads(rows[0].metadata_json)
-        assert meta["old"] == "Pipeline"
+        assert meta["old"] == "Realistic"
         assert meta["new"] == "Commit"
 
     def test_log_action_with_page_and_name(self, action_log_session):

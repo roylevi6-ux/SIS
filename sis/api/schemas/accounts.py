@@ -12,11 +12,9 @@ from .transcripts import TranscriptItem
 
 IC_FORECAST_CATEGORIES = {
     "Commit",
-    "Best Case",
-    "Pipeline",
+    "Realistic",
     "Upside",
     "At Risk",
-    "No Decision Risk",
 }
 
 

@@ -247,7 +247,7 @@ def _persist_pipeline_result(
                 key_unknowns=json.dumps(syn.get("confidence_interval", {}).get("key_unknowns", [])),
                 momentum_direction=syn.get("momentum_direction", "Unknown"),
                 momentum_trend=syn.get("momentum_trend"),
-                ai_forecast_category=syn.get("forecast_category", "Pipeline"),
+                ai_forecast_category=syn.get("forecast_category", "Realistic"),
                 forecast_confidence=None,
                 forecast_rationale=syn.get("forecast_rationale"),
                 top_positive_signals=json.dumps(syn.get("top_positive_signals", [])),
@@ -662,7 +662,7 @@ def resynthesize(run_id: str) -> dict:
             existing.key_unknowns = json.dumps(syn.get("confidence_interval", {}).get("key_unknowns", []))
             existing.momentum_direction = syn.get("momentum_direction", "Unknown")
             existing.momentum_trend = syn.get("momentum_trend")
-            existing.ai_forecast_category = syn.get("forecast_category", "Pipeline")
+            existing.ai_forecast_category = syn.get("forecast_category", "Realistic")
             existing.forecast_rationale = syn.get("forecast_rationale")
             existing.top_positive_signals = json.dumps(syn.get("top_positive_signals", []))
             existing.top_risks = json.dumps(syn.get("top_risks", []))

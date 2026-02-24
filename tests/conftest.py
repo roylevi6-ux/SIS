@@ -136,7 +136,7 @@ def seeded_db(mock_get_session):
                 created_at=_now(30), updated_at=_now(1)),
         Account(id=at_risk_id, account_name="AtRiskCo", mrr_estimate=25000.0,
                 team_lead="TL One", ae_owner="AE Two", team_name="Team Alpha",
-                ic_forecast_category="Pipeline", deal_type="expansion_upsell",
+                ic_forecast_category="Realistic", deal_type="expansion_upsell",
                 prior_contract_value=15000.0,
                 created_at=_now(30), updated_at=_now(1)),
         Account(id=critical_id, account_name="CriticalInc", mrr_estimate=10000.0,
@@ -209,7 +209,7 @@ def seeded_db(mock_get_session):
     # Deal assessments
     assessment_ids = {}
     health_scores = {healthy_id: 82, at_risk_id: 55, critical_id: 35}
-    forecasts = {healthy_id: "Commit", at_risk_id: "Pipeline", critical_id: "At Risk"}
+    forecasts = {healthy_id: "Commit", at_risk_id: "Realistic", critical_id: "At Risk"}
     momenta = {healthy_id: "Improving", at_risk_id: "Stable", critical_id: "Declining"}
 
     for acct_id in [healthy_id, at_risk_id, critical_id]:

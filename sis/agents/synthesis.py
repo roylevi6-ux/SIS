@@ -126,7 +126,7 @@ class SynthesisOutput(BaseModel):
     momentum_trend: str = Field(description="Brief trend description")
 
     forecast_category: str = Field(
-        description="Commit, Best Case, Pipeline, Upside, At Risk, or No Decision Risk",
+        description="Commit, Realistic, Upside, or At Risk",
     )
     forecast_rationale: str = Field(description="1-2 sentence forecast justification")
 
@@ -216,12 +216,13 @@ Use Agent 1's output as the authoritative stage classification.
 
 | Category | Criteria |
 |----------|----------|
-| Commit | Health >=75, MSP exists, EB engaged, strong commitments |
-| Best Case | Health 60-74, positive momentum, some gaps but on track |
-| Pipeline | Health 45-59, active deal but significant unknowns |
-| Upside | Health 45-59, deal could accelerate with right actions |
-| At Risk | Health <45, declining momentum or major blockers |
-| No Decision Risk | High no-decision risk (Agent 8), weak catalyst, buyer inertia |
+| Commit | Health >=75, verbal/pricing agreement secured, MSP exists, EB engaged, strong commitments. Deal would close even if the AE left tomorrow. |
+| Realistic | Health 55-74, positive or stable momentum, deal progressing through stages, manageable gaps. No one would be surprised if this closes. |
+| Upside | Health 45-54, active deal but significant unknowns, could accelerate with right actions. Long shot — no one would be surprised if we lose this. |
+| At Risk | Health <45, OR any of: deal gone dark / no response in 3+ weeks, champion departed or reorganized, budget frozen or redirected, stuck in same stage 2+ quarters, competitor emerged in late stage, integration/legal blocked with no clear path, OR high no-decision risk (Agent 8 no_decision_risk=High with catalyst_strength=Cosmetic/None). |
+
+## No-Decision Risk Override
+If Agent 8 reports high no-decision risk (no_decision_risk=High AND catalyst_strength is "Cosmetic" or "None Identified"), classify as "At Risk" regardless of health score. A deal with health 65 but high no-decision risk is NOT "Realistic" — the buyer may never act.
 
 ## Output Format
 Respond with a single JSON object matching the schema. Respond with ONLY the JSON object."""

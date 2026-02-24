@@ -214,6 +214,50 @@ def check_adversarial_challenges_exist(
     return None
 
 
+def check_no_decision_risk_override(
+    agent_outputs: dict, synthesis_output: dict
+) -> NeverRuleViolation | None:
+    """Rule 6: High no-decision risk must not be Commit or Realistic.
+
+    If Agent 8 reports no_decision_risk=High AND catalyst_strength is
+    "Cosmetic" or "None Identified", the forecast must be "At Risk".
+    Commit and Realistic are forbidden in this scenario.
+    """
+    agent8 = agent_outputs.get("agent_8", {})
+    findings = agent8.get("findings", {})
+
+    no_decision_risk = findings.get("no_decision_risk")
+    catalyst_strength = findings.get("catalyst_strength", "")
+
+    # Normalize: bool True or string "High" both trigger
+    is_high_risk = (
+        no_decision_risk is True
+        or (isinstance(no_decision_risk, str) and no_decision_risk.lower() == "high")
+    )
+    is_weak_catalyst = catalyst_strength in ("Cosmetic", "None Identified", "None", "")
+
+    if not (is_high_risk and is_weak_catalyst):
+        return None
+
+    forecast = synthesis_output.get("forecast_category", "")
+    if forecast in ("Commit", "Realistic"):
+        return NeverRuleViolation(
+            rule_id="NEVER_NO_DECISION_RISK_OVERRIDE",
+            agent_id="agent_10",
+            severity="error",
+            description=(
+                f"Forecast is '{forecast}' but Agent 8 reports high no-decision risk "
+                f"with catalyst_strength='{catalyst_strength}'. Must be 'At Risk'."
+            ),
+            context={
+                "forecast": forecast,
+                "no_decision_risk": no_decision_risk,
+                "catalyst_strength": catalyst_strength,
+            },
+        )
+    return None
+
+
 # --- Expansion-specific rules ---
 
 
@@ -283,6 +327,7 @@ _COMMON_RULE_CHECKERS = [
     check_unresolved_contradictions,
     check_inferred_pricing,
     check_adversarial_challenges_exist,
+    check_no_decision_risk_override,
 ]
 
 # Deal-type-specific rules
@@ -305,6 +350,7 @@ _RULE_CHECKERS = [
     check_unresolved_contradictions,
     check_inferred_pricing,
     check_adversarial_challenges_exist,
+    check_no_decision_risk_override,
 ]
 
 

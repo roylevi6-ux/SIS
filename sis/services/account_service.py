@@ -75,7 +75,7 @@ def set_ic_forecast(account_id: str, category: str) -> dict:
     Returns:
         dict with divergence_flag and explanation
     """
-    valid_categories = {"Commit", "Best Case", "Pipeline", "Upside", "At Risk", "No Decision Risk"}
+    valid_categories = {"Commit", "Realistic", "Upside", "At Risk"}
     if category not in valid_categories:
         raise ValueError(f"Invalid category: {category}. Must be one of {valid_categories}")
 
