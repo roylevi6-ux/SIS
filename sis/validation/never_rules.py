@@ -1,6 +1,6 @@
 """NEVER rules engine — hard guardrails per PRD Section 7.3.
 
-8 rules that catch outputs violating absolute constraints.
+10 rules that catch outputs violating absolute constraints.
 Standalone module — does not modify sis/validation/__init__.py.
 Pipeline can optionally call check_all_never_rules() after synthesis.
 """
