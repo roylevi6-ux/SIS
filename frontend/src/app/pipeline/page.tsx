@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DealTable } from '@/components/deal-table';
+import { PipelineMovers } from '@/components/pipeline-movers';
 import type { PipelineOverviewResponse } from '@/lib/pipeline-types';
 
 // ---------------------------------------------------------------------------
@@ -231,6 +232,9 @@ export default function PipelinePage() {
               accentBorder="border-l-4 border-l-muted"
             />
           </div>
+
+          {/* Pipeline movements */}
+          <PipelineMovers />
 
           {/* Tabbed deal table */}
           <Tabs

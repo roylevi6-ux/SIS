@@ -151,10 +151,41 @@ export interface TeamRollup {
   divergent_count: number;
 }
 
+export interface PipelineInsight {
+  account_id: string;
+  account_name: string;
+  health_score: number | null;
+  description: string;
+  mrr_estimate?: number | null;
+  team_name?: string | null;
+  ae_owner?: string | null;
+  momentum_direction?: string | null;
+  ai_forecast_category?: string | null;
+  inferred_stage?: number | null;
+  stage_name?: string | null;
+  previous_health_score?: number | null;
+  delta?: number | null;
+  previous_forecast?: string | null;
+  current_forecast?: string | null;
+  last_call_date?: string | null;
+  days_since_call?: number | null;
+}
+
 export interface InsightsResponse {
-  at_risk_deals: Account[];
-  improving_deals: Account[];
-  declining_deals: Account[];
+  stuck: PipelineInsight[];
+  improving: PipelineInsight[];
+  declining: PipelineInsight[];
+  new_risks: PipelineInsight[];
+  stale: PipelineInsight[];
+  forecast_flips: PipelineInsight[];
+}
+
+export interface CarryForwardAction {
+  action: string;
+  priority: string;
+  owner?: string;
+  rationale?: string;
+  status: 'unfollowed';
 }
 
 export interface DealTrend {

@@ -114,6 +114,12 @@ def rerun_agent(run_id: str, agent_id: str, user: dict = Depends(get_current_use
         )
 
 
+@router.get("/carry-forward/{account_id}")
+def get_carry_forward_actions(account_id: str, user: dict = Depends(get_current_user)):
+    """Get unfollowed actions from prior run that weren't addressed in latest."""
+    return analysis_service.get_carry_forward_actions(account_id)
+
+
 @router.post("/{run_id}/resynthesize")
 def resynthesize(run_id: str, user: dict = Depends(get_current_user)):
     """Re-run synthesis (Agent 10) for an existing analysis run."""

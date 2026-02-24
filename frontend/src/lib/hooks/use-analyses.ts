@@ -57,3 +57,11 @@ export function useAssessmentTimeline(accountId: string) {
     enabled: !!accountId,
   });
 }
+
+export function useCarryForwardActions(accountId: string) {
+  return useQuery({
+    queryKey: ['analyses', 'carry-forward', accountId],
+    queryFn: () => api.analyses.carryForwardActions(accountId),
+    enabled: !!accountId,
+  });
+}

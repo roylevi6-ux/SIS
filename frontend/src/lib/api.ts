@@ -6,6 +6,7 @@ import type {
   AnalysisHistoryItem,
   AnalysisRunResponse,
   CalibrationSnapshot,
+  CarryForwardAction,
   ChatMessage,
   ChatResponse,
   CoachingNote,
@@ -114,6 +115,8 @@ export const api = {
       apiFetch<DeltaResponse>(`/api/analyses/delta/${accountId}`),
     timeline: (accountId: string) =>
       apiFetch<TimelineEntry[]>(`/api/analyses/timeline/${accountId}`),
+    carryForwardActions: (accountId: string) =>
+      apiFetch<CarryForwardAction[]>(`/api/analyses/carry-forward/${accountId}`),
   },
   dashboard: {
     pipeline: (team?: string) =>
