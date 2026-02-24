@@ -70,7 +70,7 @@ def analyze_account(
     if not transcript_texts:
         raise ValueError(f"No active transcripts for account {account_id}")
 
-    # Fetch deal context from account
+    # Fetch deal context from account + transcript age
     with get_session() as session:
         account = session.query(Account).filter_by(id=account_id).one_or_none()
         if not account:
@@ -79,9 +79,27 @@ def analyze_account(
         deal_type = normalize_deal_type(account.deal_type)
         prior_contract_value = account.prior_contract_value
 
+        # Compute days since most recent transcript for confidence penalties
+        from sis.db.models import Transcript
+        from sqlalchemy import func
+        latest_date_str = (
+            session.query(func.max(Transcript.call_date))
+            .filter_by(account_id=account_id, is_active=1)
+            .scalar()
+        )
+        transcript_age_days = None
+        if latest_date_str:
+            from datetime import date
+            try:
+                latest_date = date.fromisoformat(latest_date_str)
+                transcript_age_days = (date.today() - latest_date).days
+            except (ValueError, TypeError):
+                pass
+
     deal_context = {
         "deal_type": deal_type,
         "prior_contract_value": prior_contract_value,
+        "most_recent_transcript_age_days": transcript_age_days,
     }
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
@@ -116,7 +134,7 @@ async def analyze_account_async(
     if not transcript_texts:
         raise ValueError(f"No active transcripts for account {account_id}")
 
-    # Fetch deal context from account
+    # Fetch deal context from account + transcript age
     with get_session() as session:
         account = session.query(Account).filter_by(id=account_id).one_or_none()
         if not account:
@@ -125,9 +143,26 @@ async def analyze_account_async(
         deal_type = normalize_deal_type(account.deal_type)
         prior_contract_value = account.prior_contract_value
 
+        from sis.db.models import Transcript
+        from sqlalchemy import func
+        latest_date_str = (
+            session.query(func.max(Transcript.call_date))
+            .filter_by(account_id=account_id, is_active=1)
+            .scalar()
+        )
+        transcript_age_days = None
+        if latest_date_str:
+            from datetime import date
+            try:
+                latest_date = date.fromisoformat(latest_date_str)
+                transcript_age_days = (date.today() - latest_date).days
+            except (ValueError, TypeError):
+                pass
+
     deal_context = {
         "deal_type": deal_type,
         "prior_contract_value": prior_contract_value,
+        "most_recent_transcript_age_days": transcript_age_days,
     }
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)

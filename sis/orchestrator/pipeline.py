@@ -37,6 +37,42 @@ from .cost_tracker import RunCostSummary
 logger = logging.getLogger(__name__)
 
 
+def _penalize_confidence(
+    output_dict: dict,
+    transcript_count: int,
+    most_recent_age_days: int | None = None,
+) -> list[str]:
+    """Apply confidence penalties to an agent output dict in place.
+
+    Returns list of warning strings for any penalties applied.
+    """
+    from sis.validation import apply_confidence_penalties
+
+    conf = output_dict.get("confidence", {})
+    raw = conf.get("overall")
+    if not isinstance(raw, (int, float)):
+        return []
+
+    sparse = output_dict.get("sparse_data_flag", False)
+
+    adjusted, reasons = apply_confidence_penalties(
+        raw_confidence=raw,
+        transcript_count=transcript_count,
+        most_recent_transcript_age_days=most_recent_age_days,
+        sparse_data_flag=sparse,
+    )
+
+    if reasons:
+        conf["overall"] = round(adjusted, 2)
+        conf["penalties_applied"] = reasons
+        logger.info(
+            "Confidence adjusted %.2f -> %.2f: %s",
+            raw, adjusted, "; ".join(reasons),
+        )
+
+    return [f"CONFIDENCE_PENALTY: {r}" for r in reasons]
+
+
 class _CancelledError(Exception):
     """Internal signal that the pipeline was cancelled by the user."""
 
@@ -159,6 +195,7 @@ class AnalysisPipeline:
         )
         pipeline_start = time.time()
         num_transcripts = len(transcript_texts)
+        transcript_age_days = deal_context.get("most_recent_transcript_age_days") if deal_context else None
 
         # Initialize progress store if run_id provided
         if self._run_id:
@@ -213,6 +250,10 @@ class AnalysisPipeline:
                 warnings = validate_agent_output(agent1_output)
                 result.validation_warnings.extend(
                     [f"[agent_1] {w}" for w in warnings]
+                )
+                penalty_warnings = _penalize_confidence(agent1_output, num_transcripts, transcript_age_days)
+                result.validation_warnings.extend(
+                    [f"[agent_1] {w}" for w in penalty_warnings]
                 )
 
                 # Extract stage context for all downstream agents
@@ -329,6 +370,10 @@ class AnalysisPipeline:
                 result.validation_warnings.extend(
                     [f"[{agent_id}] {w}" for w in warnings]
                 )
+                penalty_warnings = _penalize_confidence(output_dict, num_transcripts, transcript_age_days)
+                result.validation_warnings.extend(
+                    [f"[{agent_id}] {w}" for w in penalty_warnings]
+                )
 
             # ── Cancellation check before Step 3 ──
             if self._run_id and is_cancelled(self._run_id):
@@ -379,6 +424,10 @@ class AnalysisPipeline:
                         agent9_result.elapsed_seconds, agent9_result.model,
                         agent9_result.attempts, prep_seconds=total_prep,
                     )
+                penalty_warnings = _penalize_confidence(agent9_output, num_transcripts, transcript_age_days)
+                result.validation_warnings.extend(
+                    [f"[agent_9] {w}" for w in penalty_warnings]
+                )
             except Exception as exc:
                 result.errors.append(f"[agent_9] {exc}")
                 logger.error("Agent 9 (Open Discovery) failed: %s", exc)
