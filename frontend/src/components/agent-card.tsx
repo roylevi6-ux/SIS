@@ -43,8 +43,8 @@ interface AgentCardProps {
 const AGENT_TO_COMPONENT: Record<string, string> = {
   agent_0e_account_health: 'account_health',
   agent_1_stage_progress: 'stage_appropriateness',
-  agent_2_relationship: 'stakeholder_completeness',
-  agent_3_commercial_risk: 'commercial_clarity',
+  agent_2_relationship: 'champion_strength',
+  agent_3_commercial_risk: 'buyer_validated_pain_commercial_clarity',
   agent_4_momentum: 'momentum_quality',
   agent_5_technical: 'technical_path_clarity',
   agent_6_economic_buyer: 'economic_buyer_engagement',

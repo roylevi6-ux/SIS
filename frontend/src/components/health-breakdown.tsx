@@ -56,21 +56,29 @@ const COLOR_CRITICAL = '#dc2626';
 // ---------------------------------------------------------------------------
 
 const COMPONENT_LABELS: Record<string, string> = {
-  economic_buyer: 'Econ. Buyer',
-  economic_buyer_engagement: 'Econ. Buyer',
-  stage: 'Stage',
-  stage_appropriateness: 'Stage',
-  momentum: 'Momentum',
+  buyer_validated_pain_commercial_clarity: 'Pain & Comm.',
+  buyer_validated_pain_&_commercial_clarity: 'Pain & Comm.',
   momentum_quality: 'Momentum',
-  technical_path: 'Tech. Path',
-  technical_path_clarity: 'Tech. Path',
-  competitive_position: 'Competitive',
-  stakeholder_completeness: 'Stakeholders',
+  momentum: 'Momentum',
+  champion_strength: 'Champion',
   commitment_quality: 'Commitment',
-  commercial_clarity: 'Commercial',
-  urgency: 'Urgency',
+  economic_buyer_engagement: 'Econ. Buyer',
+  economic_buyer: 'Econ. Buyer',
   urgency_compelling_event: 'Urgency',
+  urgency_&_compelling_event: 'Urgency',
+  urgency: 'Urgency',
+  stage_appropriateness: 'Stage',
+  stage: 'Stage',
+  multithreading_stakeholder_coverage: 'Multi-thread',
+  multithreading_&_stakeholder_coverage: 'Multi-thread',
+  multi_threading_&_stakeholder_coverage: 'Multi-thread',
+  competitive_position: 'Competitive',
+  technical_path_clarity: 'Tech. Path',
+  technical_path: 'Tech. Path',
   account_health: 'Acct. Health',
+  // Legacy keys (backward compat with old data)
+  stakeholder_completeness: 'Stakeholders',
+  commercial_clarity: 'Commercial',
 };
 
 function normalizeKey(key: string): string {

@@ -41,18 +41,20 @@ system_prompt: |
 
   | Component | Max | Source Agent(s) |
   |-----------|-----|----------------|
-  | Momentum quality | 15 | Agent 4 |
-  | Competitive position | 12 | Agent 8 |
-  | Commitment quality | 12 | Agent 7 |
-  | Commercial clarity | 12 | Agent 3 |
+  | Buyer-validated pain & commercial clarity | 14 | Agent 3, Agent 9 |
+  | Momentum quality | 13 | Agent 4 |
+  | Champion strength | 12 | Agent 2 |
+  | Commitment quality | 11 | Agent 7 |
   | Economic buyer engagement | 11 | Agent 6 |
-  | Stage appropriateness | 10 | Agent 1 |
   | Urgency & Compelling Event | 10 | Agents 4, 7, 8, 9 |
-  | Stakeholder completeness | 10 | Agent 2 |
-  | Technical path clarity | 8 | Agent 5 |
-  
+  | Stage appropriateness | 9 | Agent 1 |
+  | Multi-threading & stakeholder coverage | 7 | Agent 2 |
+  | Competitive position | 7 | Agent 8 |
+  | Technical path clarity | 6 | Agent 5 |
+
   ## NEVER Rules
   - NEVER produce health score >70 if EB (Agent 6) has never appeared on calls
+  - NEVER produce health score >65 if no champion has been identified (Agent 2 champion.identified=false). A deal without a champion is unforecastable.
   - NEVER produce Commit forecast without Level 3+ commitments (Agent 7) and MSP
   - NEVER leave contradictions unresolved. Every contradiction must have a resolution.
   - NEVER ignore Agent 9's adversarial challenges. Address each one in your deal memo.

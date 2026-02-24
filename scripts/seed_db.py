@@ -253,14 +253,16 @@ def _make_agent_analysis(acct: dict, agent_id: str, run_id: str) -> dict:
 def _make_health_breakdown(health: int) -> list:
     """Generate health score breakdown matching synthesis output format."""
     weights = [
-        ("economic_buyer_engagement", 20),
-        ("stage_appropriateness", 15),
-        ("momentum_quality", 15),
-        ("technical_path_clarity", 10),
-        ("competitive_position", 10),
-        ("stakeholder_completeness", 10),
-        ("commitment_quality", 10),
-        ("commercial_clarity", 10),
+        ("buyer_validated_pain_commercial_clarity", 14),
+        ("momentum_quality", 13),
+        ("champion_strength", 12),
+        ("commitment_quality", 11),
+        ("economic_buyer_engagement", 11),
+        ("urgency_compelling_event", 10),
+        ("stage_appropriateness", 9),
+        ("multithreading_stakeholder_coverage", 7),
+        ("competitive_position", 7),
+        ("technical_path_clarity", 6),
     ]
     breakdown = []
     for dim, max_weight in weights:
@@ -485,9 +487,9 @@ def seed():
         coaching_data = [
             ("megashop_eu", "David Levi", "economic_buyer_engagement",
              "Strong EB engagement. Continue direct communication with VP Fraud Ops."),
-            ("luxeretail", "Rachel Stern", "stakeholder_completeness",
+            ("luxeretail", "Rachel Stern", "multithreading_stakeholder_coverage",
              "Need to multithread deeper. Identify additional technical stakeholders."),
-            ("fastfashion", "David Levi", "commercial_clarity",
+            ("fastfashion", "David Levi", "buyer_validated_pain_commercial_clarity",
              "ROI narrative needs strengthening. Prepare quantified business case."),
             ("homegoods", "Rachel Stern", "momentum_quality",
              "Momentum declining. Re-engage with discovery questions to revive interest."),
@@ -497,8 +499,8 @@ def seed():
              "Very early stage. Focus on getting concrete next steps after each call."),
             ("markethub", "Priya Sharma", "technical_path_clarity",
              "Technical path is clear. Push for POC start date commitment."),
-            ("ecomtrend", "Li Wei", "momentum_quality",
-             "Engagement dropping. Schedule face-to-face meeting to re-establish rapport."),
+            ("ecomtrend", "Li Wei", "champion_strength",
+             "No clear champion identified. Need to find and develop an internal advocate."),
         ]
         for i, (acct_key, rep, dimension, text) in enumerate(coaching_data):
             ce_id = seed_uuid(f"coaching-{i}")

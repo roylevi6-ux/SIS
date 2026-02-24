@@ -1,8 +1,9 @@
-"""Test NEVER rules engine — all 5 rules + check_all_never_rules()."""
+"""Test NEVER rules engine — all 8 rules + check_all_never_rules()."""
 
 from sis.validation.never_rules import (
     NeverRuleViolation,
     check_health_score_without_eb,
+    check_health_score_without_champion,
     check_commit_without_commitments,
     check_unresolved_contradictions,
     check_inferred_pricing,
@@ -42,6 +43,55 @@ class TestHealthScoreWithoutEB:
 
     def test_fails_when_agent6_missing(self):
         result = check_health_score_without_eb({}, {"health_score": 80})
+        assert result is not None
+
+
+class TestHealthScoreWithoutChampion:
+    def test_passes_when_health_low(self):
+        result = check_health_score_without_champion({}, {"health_score": 60})
+        assert result is None
+
+    def test_passes_when_champion_identified_nested(self):
+        agent_outputs = {
+            "agent_2": {"findings": {"champion": {"identified": True, "name": "Jane Doe"}}},
+        }
+        result = check_health_score_without_champion(agent_outputs, {"health_score": 80})
+        assert result is None
+
+    def test_passes_when_champion_identified_flat(self):
+        agent_outputs = {
+            "agent_2": {"findings": {"champion_identified": True}},
+        }
+        result = check_health_score_without_champion(agent_outputs, {"health_score": 80})
+        assert result is None
+
+    def test_fails_when_no_champion_nested(self):
+        agent_outputs = {
+            "agent_2": {"findings": {"champion": {"identified": False}}},
+        }
+        result = check_health_score_without_champion(agent_outputs, {"health_score": 70})
+        assert result is not None
+        assert result.rule_id == "NEVER_HEALTH_WITHOUT_CHAMPION"
+        assert result.severity == "error"
+
+    def test_fails_when_no_champion_flat(self):
+        agent_outputs = {
+            "agent_2": {"findings": {"champion_identified": False}},
+        }
+        result = check_health_score_without_champion(agent_outputs, {"health_score": 75})
+        assert result is not None
+        assert result.rule_id == "NEVER_HEALTH_WITHOUT_CHAMPION"
+
+    def test_fails_when_agent2_missing(self):
+        result = check_health_score_without_champion({}, {"health_score": 80})
+        assert result is not None
+
+    def test_at_boundary_65_passes(self):
+        result = check_health_score_without_champion({}, {"health_score": 65})
+        assert result is None
+
+    def test_at_boundary_66_fails(self):
+        result = check_health_score_without_champion({}, {"health_score": 66})
         assert result is not None
 
 
@@ -219,6 +269,7 @@ class TestCommitWithoutCompellingEvent:
 class TestCheckAllNeverRules:
     def test_all_pass(self):
         agent_outputs = {
+            "agent_2": {"findings": {"champion": {"identified": True, "name": "Jane Doe"}}},
             "agent_3": {"narrative": "No pricing.", "evidence": []},
             "agent_6": {"findings": {"eb_identified": True, "eb_directly_engaged": True}},
             "agent_7": {"findings": {"msp_exists": True, "next_step_specificity": "High"}},
@@ -234,6 +285,7 @@ class TestCheckAllNeverRules:
 
     def test_multiple_violations(self):
         agent_outputs = {
+            "agent_2": {"findings": {"champion": {"identified": False}}},
             "agent_3": {"narrative": "Price is $100K.", "evidence": []},
             "agent_6": {"findings": {"eb_identified": False}},
             "agent_7": {"findings": {"msp_exists": False, "next_step_specificity": "Low"}},
@@ -245,7 +297,8 @@ class TestCheckAllNeverRules:
             "contradiction_map": [{"issue": "X", "resolution": ""}],
         }
         violations = check_all_never_rules(agent_outputs, synthesis)
-        assert len(violations) >= 4  # EB, commit, contradictions, adversarial, pricing
+        assert len(violations) >= 5  # EB, champion, commit, contradictions, adversarial, pricing
         rule_ids = {v.rule_id for v in violations}
         assert "NEVER_HEALTH_WITHOUT_EB" in rule_ids
+        assert "NEVER_HEALTH_WITHOUT_CHAMPION" in rule_ids
         assert "NEVER_NO_ADVERSARIAL_CHALLENGES" in rule_ids

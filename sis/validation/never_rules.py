@@ -1,6 +1,6 @@
 """NEVER rules engine — hard guardrails per PRD Section 7.3.
 
-5 rules that catch outputs violating absolute constraints.
+8 rules that catch outputs violating absolute constraints.
 Standalone module — does not modify sis/validation/__init__.py.
 Pipeline can optionally call check_all_never_rules() after synthesis.
 """
@@ -54,6 +54,45 @@ def check_health_score_without_eb(
                 "health_score": health_score,
                 "eb_identified": eb_identified,
                 "eb_engaged": eb_engaged,
+            },
+        )
+    return None
+
+
+def check_health_score_without_champion(
+    agent_outputs: dict, synthesis_output: dict
+) -> NeverRuleViolation | None:
+    """Rule 8: Health > 65 requires Agent 2 champion identified.
+
+    If synthesis health_score exceeds 65, Agent 2 must show a champion
+    has been identified. A deal without a champion is unforecastable.
+    """
+    health_score = synthesis_output.get("health_score", 0)
+    if health_score <= 65:
+        return None
+
+    agent2 = agent_outputs.get("agent_2", {})
+    findings = agent2.get("findings", {})
+
+    # Check for champion identification — handle both nested dict and flat field
+    champion = findings.get("champion")
+    if isinstance(champion, dict) and champion:
+        champion_identified = champion.get("identified", False)
+    else:
+        champion_identified = findings.get("champion_identified", False)
+
+    if not champion_identified:
+        return NeverRuleViolation(
+            rule_id="NEVER_HEALTH_WITHOUT_CHAMPION",
+            agent_id="agent_10",
+            severity="error",
+            description=(
+                f"Health score {health_score} exceeds 65 but Agent 2 shows no "
+                f"champion identified. A deal without a champion is unforecastable."
+            ),
+            context={
+                "health_score": health_score,
+                "champion_identified": champion_identified,
             },
         )
     return None
@@ -371,11 +410,13 @@ _COMMON_RULE_CHECKERS = [
 # Deal-type-specific rules
 _NEW_LOGO_RULE_CHECKERS = [
     check_health_score_without_eb,
+    check_health_score_without_champion,
     check_commit_without_commitments,
 ]
 
 _EXPANSION_RULE_CHECKERS = [
     check_health_score_without_eb,
+    check_health_score_without_champion,
     check_commit_without_commitments,
     check_expansion_account_health_cap,
     check_expansion_commit_relationship,
@@ -384,6 +425,7 @@ _EXPANSION_RULE_CHECKERS = [
 # Legacy flat list (backward compat with existing tests)
 _RULE_CHECKERS = [
     check_health_score_without_eb,
+    check_health_score_without_champion,
     check_commit_without_commitments,
     check_unresolved_contradictions,
     check_inferred_pricing,

@@ -40,7 +40,7 @@ class ContradictionEntry(BaseModel):
 
 
 class HealthScoreComponent(BaseModel):
-    """One component of the 8-dimensional health score."""
+    """One component of the 10-dimensional health score."""
 
     component: str = Field(description="Component name")
     score: int = Field(ge=0, description="Score for this component")
@@ -117,9 +117,9 @@ class SynthesisOutput(BaseModel):
     inferred_stage_name: str = Field(description="Stage name")
     inferred_stage_confidence: float = Field(ge=0.0, le=1.0)
 
-    health_score: int = Field(ge=0, le=100, description="Overall deal health score (sum of 9 components)")
+    health_score: int = Field(ge=0, le=100, description="Overall deal health score (sum of 10 components)")
     health_score_breakdown: list[HealthScoreComponent] = Field(
-        description="9-component health score breakdown",
+        description="10-component health score breakdown",
     )
 
     momentum_direction: str = Field(description="Improving, Stable, or Declining")
@@ -198,15 +198,33 @@ Use Agent 1's output as the authoritative stage classification.
 
 | Component | Max | Source Agent(s) |
 |-----------|-----|----------------|
-| Momentum quality | 15 | Agent 4 |
-| Competitive position | 12 | Agent 8 |
-| Commitment quality | 12 | Agent 7 |
-| Commercial clarity | 12 | Agent 3 |
+| Buyer-validated pain & commercial clarity | 14 | Agent 3, Agent 9 |
+| Momentum quality | 13 | Agent 4 |
+| Champion strength | 12 | Agent 2 |
+| Commitment quality | 11 | Agent 7 |
 | Economic buyer engagement | 11 | Agent 6 |
-| Stage appropriateness | 10 | Agent 1 |
 | Urgency & Compelling Event | 10 | Agents 4, 7, 8, 9 |
-| Stakeholder completeness | 10 | Agent 2 |
-| Technical path clarity | 8 | Agent 5 |
+| Stage appropriateness | 9 | Agent 1 |
+| Multi-threading & stakeholder coverage | 7 | Agent 2 |
+| Competitive position | 7 | Agent 8 |
+| Technical path clarity | 6 | Agent 5 |
+
+### Champion Strength Scoring (12 points max)
+10-12: Named champion who has actively sold internally, shared internal docs/politics, coached you on objections, introduced you to EB
+7-9:   Identified champion with influence, has advocated but hasn't driven internal action yet
+4-6:   Friendly contact who likes your solution but hasn't demonstrated power or willingness to spend political capital
+1-3:   No champion identified, or "champion" is actually a coach/guide with no decision influence
+
+### Multi-threading & Stakeholder Coverage Scoring (7 points max)
+6-7: 3+ departments engaged, multiple levels of seniority, relationships survive if one contact leaves
+4-5: 2 departments, primary + secondary contacts, some breadth
+1-3: Single-threaded to one contact or one department
+
+### Buyer-validated Pain & Commercial Clarity Scoring (14 points max)
+12-14: Buyer has articulated and quantified their own pain in financial terms, ROI framework buyer-confirmed, pricing path clear
+8-11:  Pain acknowledged by buyer with some quantification, commercial discussions active, pricing discussed
+4-7:   Pain stated at surface level without quantification, commercial mechanics unclear
+1-3:   No buyer-validated pain, ROI not discussed, pricing not explored
 
 ## Urgency Scoring Rubric (10 points max)
 9-10: Hard deadline (Agent 7) + Existential/Structural catalyst (Agent 8) + Aligned urgency behavior (Agent 4) + Credible (Agent 9)
@@ -219,10 +237,11 @@ Stage awareness: For Stage 1-3 deals, scoring 0-2 on urgency is expected and sho
 ## Cross-Agent Urgency Synthesis
 When urgency_source (Agent 8) says "Seller-created" but meeting_initiation (Agent 4) says "Buyer-initiated", the buyer may be engaged but the urgency is artificial. Weight catalyst_strength and consequence_of_inaction more heavily than urgency_source in this case.
 
-Agent 7 compelling_deadline with firmness "Hard" and stability "Stable" is a strong positive signal for commitment quality scoring (cap commitment quality at 9/12 if no compelling deadline exists in stage 5+ deals).
+Agent 7 compelling_deadline with firmness "Hard" and stability "Stable" is a strong positive signal for commitment quality scoring (cap commitment quality at 9/11 if no compelling deadline exists in stage 5+ deals).
 
 ## NEVER Rules
 - NEVER produce health score >70 if EB (Agent 6) has never appeared on calls
+- NEVER produce health score >65 if no champion has been identified (Agent 2 champion.identified=false). A deal without a champion is unforecastable regardless of other signals.
 - NEVER produce Commit forecast without Level 3+ commitments (Agent 7) and MSP
 - NEVER leave contradictions unresolved. Every contradiction must have a resolution.
 - NEVER ignore Agent 9's adversarial challenges. Address each one in your deal memo.
