@@ -10,7 +10,7 @@ def _valid_synthesis() -> dict:
     return {
         "deal_memo": "A" * 150,  # > 100 chars
         "inferred_stage": 3,
-        "inferred_stage_name": "Evaluation",
+        "inferred_stage_name": "Scope",
         "health_score": 72,
         "health_score_breakdown": [{"dimension": "eb", "score": 70}],
         "momentum_direction": "Improving",

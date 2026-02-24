@@ -46,7 +46,7 @@ def iso_now(days_ago: int = 0) -> str:
 ACCOUNTS = [
     {"key": "megashop_eu", "name": "MegaShop EU", "team": "Enterprise EMEA",
      "tl": "Sarah Cohen", "ae": "David Levi", "mrr": 85000.0, "ic_forecast": "Commit",
-     "health": 82, "forecast": "Commit", "momentum": "Improving", "stage": 5,
+     "health": 82, "forecast": "Commit", "momentum": "Improving", "stage": 6,
      "confidence": 0.85, "divergent": False},
     {"key": "luxeretail", "name": "LuxeRetail Group", "team": "Enterprise EMEA",
      "tl": "Sarah Cohen", "ae": "Rachel Stern", "mrr": 62000.0, "ic_forecast": "Realistic",
@@ -77,8 +77,8 @@ ACCOUNTS = [
      "health": 52, "forecast": "Realistic", "momentum": "Stable", "stage": 2,
      "confidence": 0.60, "divergent": False},
     {"key": "markethub", "name": "MarketHub APAC", "team": "Growth APAC",
-     "tl": "Yuki Tanaka", "ae": "Priya Sharma", "mrr": 30000.0, "ic_forecast": "Upside",
-     "health": 72, "forecast": "Upside", "momentum": "Improving", "stage": 4,
+     "tl": "Yuki Tanaka", "ae": "Priya Sharma", "mrr": 30000.0, "ic_forecast": "Commit",
+     "health": 72, "forecast": "Commit", "momentum": "Improving", "stage": 7,
      "confidence": 0.75, "divergent": False},
     {"key": "ecomtrend", "name": "EcomTrend Japan", "team": "Growth APAC",
      "tl": "Yuki Tanaka", "ae": "Li Wei", "mrr": 16000.0, "ic_forecast": "Realistic",
@@ -86,7 +86,10 @@ ACCOUNTS = [
      "confidence": 0.48, "divergent": True},
 ]
 
-STAGE_NAMES = {1: "Qualification", 2: "Discovery", 3: "Evaluation", 4: "Proposal", 5: "Closing"}
+STAGE_NAMES = {
+    1: "Qualify", 2: "Establish Business Case", 3: "Scope",
+    4: "Proposal", 5: "Negotiate", 6: "Contract", 7: "Implement",
+}
 
 AGENT_NAMES = {
     "agent_1": "Stage & Progress", "agent_2": "Relationship & Power Map",

@@ -221,8 +221,8 @@ def seeded_db(mock_get_session):
                 {"agents": ["agent_2", "agent_4"], "issue": "Engagement mismatch",
                  "resolution": "Async communication explains lower cadence"}
             ]),
-            inferred_stage=3, stage_name="Evaluation", stage_confidence=0.80,
-            stage_reasoning="Transcript signals align with Evaluation stage.",
+            inferred_stage=3, stage_name="Scope", stage_confidence=0.80,
+            stage_reasoning="Transcript signals align with Scope stage.",
             health_score=health_scores[acct_id],
             health_breakdown=json.dumps([
                 {"dimension": "economic_buyer_engagement", "score": 70, "weight": 20, "weighted_contribution": 14.0},
