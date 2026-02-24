@@ -23,6 +23,7 @@ import {
   CheckCircle,
   Mail,
   Database,
+  BookOpen,
   ChevronDown,
   ChevronRight,
   Menu,
@@ -68,6 +69,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Team Rollup', href: '/team-rollup', icon: Users },
       { label: 'Forecast', href: '/forecast', icon: TrendingUp },
       { label: 'Rep Scorecard', href: '/rep-scorecard', icon: Award },
+      { label: 'Methodology', href: '/methodology', icon: BookOpen },
     ],
   },
   {

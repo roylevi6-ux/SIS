@@ -173,6 +173,7 @@ class TestNeverRulesIntegration:
         s = _valid_synthesis()
         s["health_score"] = 85
         agent_outputs = {
+            "agent_2": {"findings": {"champion": {"identified": False}}},
             "agent_6": {"findings": {"eb_identified": False}},
             "agent_9": {"findings": {"adversarial_challenges": [{"c": "test"}]}},
         }

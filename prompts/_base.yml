@@ -1,3 +1,6 @@
+# STALE SNAPSHOT — the authoritative shared fragment is ENVELOPE_PROMPT_FRAGMENT
+# in sis/agents/schemas.py. This YAML has outdated citation counts and limits.
+#
 # Shared prompt preamble appended to Agents 1-9
 # Per Technical Architecture Appendix A
 # Contains: anti-sycophancy rules, evidence citation format, confidence scale
