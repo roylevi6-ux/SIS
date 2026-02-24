@@ -13,14 +13,17 @@ agent_6_economic_buyer:
 
 synthesis_agent_10:
   health_score_weights:
-    economic_buyer_engagement: 20   # highest weight
-    stage_appropriateness: 15
-    momentum_quality: 15
-    technical_path_clarity: 10
-    competitive_position: 10
-    stakeholder_completeness: 10
-    commitment_quality: 10
-    commercial_clarity: 10
+    buyer_validated_pain_commercial_clarity: 14  # expanded: buyer-articulated pain + ROI + pricing
+    momentum_quality: 13
+    champion_strength: 12            # split from stakeholder_completeness — #1 predictor
+    commitment_quality: 11
+    economic_buyer_engagement: 11
+    urgency_compelling_event: 10     # Agents 4, 7, 8, 9
+    stage_appropriateness: 9
+    multithreading_stakeholder_coverage: 7  # split from stakeholder_completeness
+    competitive_position: 7
+    technical_path_clarity: 6
+  champion_absence_health_ceiling: 65  # max health score if no champion identified
   forecast_commit_minimum_health: 75
   forecast_at_risk_maximum_health: 45
   forecast_categories:

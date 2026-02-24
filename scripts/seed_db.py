@@ -58,7 +58,7 @@ ACCOUNTS = [
      "confidence": 0.62, "divergent": False},
     {"key": "homegoods", "name": "HomeGoods Direct", "team": "Enterprise EMEA",
      "tl": "Sarah Cohen", "ae": "Rachel Stern", "mrr": 28000.0, "ic_forecast": "Commit",
-     "health": 48, "forecast": "At Risk", "momentum": "Declining", "stage": 3,
+     "health": 38, "forecast": "At Risk", "momentum": "Declining", "stage": 3,
      "confidence": 0.55, "divergent": True},
     {"key": "urbanstyle", "name": "UrbanStyle Inc", "team": "Mid-Market NA",
      "tl": "Mike Torres", "ae": "Jenny Park", "mrr": 18000.0, "ic_forecast": "Realistic",
@@ -82,7 +82,7 @@ ACCOUNTS = [
      "confidence": 0.75, "divergent": False},
     {"key": "ecomtrend", "name": "EcomTrend Japan", "team": "Growth APAC",
      "tl": "Yuki Tanaka", "ae": "Li Wei", "mrr": 16000.0, "ic_forecast": "Realistic",
-     "health": 45, "forecast": "At Risk", "momentum": "Declining", "stage": 2,
+     "health": 42, "forecast": "At Risk", "momentum": "Declining", "stage": 2,
      "confidence": 0.48, "divergent": True},
 ]
 
@@ -251,26 +251,33 @@ def _make_agent_analysis(acct: dict, agent_id: str, run_id: str) -> dict:
 
 
 def _make_health_breakdown(health: int) -> list:
-    """Generate health score breakdown matching synthesis output format."""
+    """Generate health score breakdown matching HealthScoreComponent schema.
+
+    Output format: {component, score, max_score, rationale}
+    Score is 0..max_score (integer points), not 0-100 percentage.
+    """
     weights = [
-        ("economic_buyer_engagement", 20),
-        ("stage_appropriateness", 15),
-        ("momentum_quality", 15),
-        ("technical_path_clarity", 10),
-        ("competitive_position", 10),
-        ("stakeholder_completeness", 10),
-        ("commitment_quality", 10),
-        ("commercial_clarity", 10),
+        ("Buyer-Validated Pain & Commercial Clarity", 14),
+        ("Momentum Quality", 13),
+        ("Champion Strength", 12),
+        ("Commitment Quality", 11),
+        ("Economic Buyer Engagement", 11),
+        ("Urgency & Compelling Event", 10),
+        ("Stage Appropriateness", 9),
+        ("Multi-threading & Stakeholder Coverage", 7),
+        ("Competitive Position", 7),
+        ("Technical Path Clarity", 6),
     ]
     breakdown = []
-    for dim, max_weight in weights:
-        score = min(100, max(10, health + (hash(dim) % 20) - 10))
-        weighted = round(score * max_weight / 100, 1)
+    for component_name, max_score in weights:
+        # Generate a plausible score (0..max_score) based on overall health
+        pct = min(100, max(10, health + (hash(component_name) % 20) - 10))
+        score = round(pct * max_score / 100)
         breakdown.append({
-            "dimension": dim,
+            "component": component_name,
             "score": score,
-            "weight": max_weight,
-            "weighted_contribution": weighted,
+            "max_score": max_score,
+            "rationale": f"Scored {score}/{max_score} based on transcript evidence.",
         })
     return breakdown
 
@@ -485,9 +492,9 @@ def seed():
         coaching_data = [
             ("megashop_eu", "David Levi", "economic_buyer_engagement",
              "Strong EB engagement. Continue direct communication with VP Fraud Ops."),
-            ("luxeretail", "Rachel Stern", "stakeholder_completeness",
+            ("luxeretail", "Rachel Stern", "multithreading_stakeholder_coverage",
              "Need to multithread deeper. Identify additional technical stakeholders."),
-            ("fastfashion", "David Levi", "commercial_clarity",
+            ("fastfashion", "David Levi", "buyer_validated_pain_commercial_clarity",
              "ROI narrative needs strengthening. Prepare quantified business case."),
             ("homegoods", "Rachel Stern", "momentum_quality",
              "Momentum declining. Re-engage with discovery questions to revive interest."),
@@ -497,8 +504,8 @@ def seed():
              "Very early stage. Focus on getting concrete next steps after each call."),
             ("markethub", "Priya Sharma", "technical_path_clarity",
              "Technical path is clear. Push for POC start date commitment."),
-            ("ecomtrend", "Li Wei", "momentum_quality",
-             "Engagement dropping. Schedule face-to-face meeting to re-establish rapport."),
+            ("ecomtrend", "Li Wei", "champion_strength",
+             "No clear champion identified. Need to find and develop an internal advocate."),
         ]
         for i, (acct_key, rep, dimension, text) in enumerate(coaching_data):
             ce_id = seed_uuid(f"coaching-{i}")

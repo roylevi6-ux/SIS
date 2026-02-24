@@ -152,6 +152,44 @@ def validate_synthesis_output(
         except Exception as e:
             logger.warning("Failed to run NEVER rules: %s", e)
 
+    # Check 7b: Enforce health score ceilings (champion=65, EB=70)
+    health = synthesis_output.get("health_score")
+    if health is not None and isinstance(health, (int, float)) and agent_outputs:
+        original_health = health
+
+        # Champion ceiling: no champion -> cap at 65
+        agent2 = agent_outputs.get("agent_2", {})
+        a2_findings = agent2.get("findings", {})
+        champion = a2_findings.get("champion")
+        if isinstance(champion, dict):
+            champion_ok = champion.get("identified", False)
+        else:
+            champion_ok = a2_findings.get("champion_identified", False)
+
+        if not champion_ok and health > 65:
+            synthesis_output["health_score"] = 65
+            health = 65
+            warnings.append(
+                f"CEILING_CHAMPION: Health capped {original_health} -> 65 "
+                f"(no champion identified)"
+            )
+
+        # EB ceiling: no direct EB engagement -> cap at 70
+        agent6 = agent_outputs.get("agent_6", {})
+        a6_findings = agent6.get("findings", {})
+        eb_confirmed = a6_findings.get("eb_confirmed", a6_findings.get("eb_identified", False))
+        eb_engagement = a6_findings.get("eb_engagement", "")
+        eb_engaged = eb_engagement == "Direct" if eb_engagement else a6_findings.get(
+            "eb_directly_engaged", False
+        )
+
+        if (not eb_confirmed or not eb_engaged) and health > 70:
+            synthesis_output["health_score"] = 70
+            warnings.append(
+                f"CEILING_EB: Health capped {health} -> 70 "
+                f"(no direct EB engagement)"
+            )
+
     # Check 8: Deal memo minimum length
     memo = synthesis_output.get("deal_memo", "")
     if isinstance(memo, str) and len(memo) < 100:

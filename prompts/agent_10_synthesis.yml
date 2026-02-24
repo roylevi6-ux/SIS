@@ -1,4 +1,11 @@
-# Auto-extracted from sis/agents/synthesis.py
+# STALE SNAPSHOT — DO NOT USE AS SOURCE OF TRUTH
+# The authoritative prompt is in sis/agents/synthesis.py (SYSTEM_PROMPT string).
+# This YAML is a historical snapshot from initial extraction and is missing:
+# - Manager Brief, Champion/Multi-threading/Pain/Urgency scoring rubrics
+# - Forecast Override Rules, Pipeline Notes, Expansion support
+# Re-extraction is tracked as a separate task.
+#
+# Original: Auto-extracted from sis/agents/synthesis.py
 # Per Technical Architecture Appendix A
 metadata:
   agent_id: "agent_10_synthesis"
@@ -38,20 +45,23 @@ system_prompt: |
   - Agents with confidence < 0.3 contribute to data gaps only, not conclusions
   
   ## Health Score Components (total = 100)
-  
+
   | Component | Max | Source Agent(s) |
   |-----------|-----|----------------|
-  | Economic buyer engagement | 20 | Agent 6 |
-  | Stage appropriateness | 15 | Agent 1 |
-  | Momentum quality | 15 | Agent 4 |
-  | Technical path clarity | 10 | Agent 5 |
-  | Competitive position | 10 | Agent 8 |
-  | Stakeholder completeness | 10 | Agent 2 |
-  | Commitment quality | 10 | Agent 7 |
-  | Commercial clarity | 10 | Agent 3 |
-  
+  | Buyer-validated pain & commercial clarity | 14 | Agent 3, Agent 9 |
+  | Momentum quality | 13 | Agent 4 |
+  | Champion strength | 12 | Agent 2 |
+  | Commitment quality | 11 | Agent 7 |
+  | Economic buyer engagement | 11 | Agent 6 |
+  | Urgency & Compelling Event | 10 | Agents 4, 7, 8, 9 |
+  | Stage appropriateness | 9 | Agent 1 |
+  | Multi-threading & stakeholder coverage | 7 | Agent 2 |
+  | Competitive position | 7 | Agent 8 |
+  | Technical path clarity | 6 | Agent 5 |
+
   ## NEVER Rules
   - NEVER produce health score >70 if EB (Agent 6) has never appeared on calls
+  - NEVER produce health score >65 if no champion has been identified (Agent 2 champion.identified=false). A deal without a champion is unforecastable.
   - NEVER produce Commit forecast without Level 3+ commitments (Agent 7) and MSP
   - NEVER leave contradictions unresolved. Every contradiction must have a resolution.
   - NEVER ignore Agent 9's adversarial challenges. Address each one in your deal memo.

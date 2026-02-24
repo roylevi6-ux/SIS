@@ -2,34 +2,60 @@
 ## Per PRD Section 7.9 — separated from prompt logic.
 ## TLs tune thresholds here; prompts define WHAT to analyze.
 ## Changes logged in CalibrationLog with before/after values.
+##
+## Structure: nested by deal type to match _default_calibration_config()
+## in sis/config.py. Keys: global, new_logo, expansion, alerts.
 
 global:
   confidence_ceiling_sparse_data: 0.60
   sparse_data_threshold: 3          # transcripts below this = sparse flag
   stale_signal_days: 30
 
-agent_6_economic_buyer:
-  eb_absence_health_ceiling: 70     # max health score if EB never appeared
-  secondhand_mention_counts_as_engaged: false
+new_logo:
+  agent_6_economic_buyer:
+    eb_absence_health_ceiling: 70     # max health score if EB never appeared
+    secondhand_mention_counts_as_engaged: false
 
-synthesis_agent_10:
-  health_score_weights:
-    economic_buyer_engagement: 18   # highest weight — per Section 7.11
-    stage_appropriateness: 13
-    momentum_quality: 15
-    urgency_compelling_event: 10    # new — Agents 4, 7, 8, 9
-    technical_path_clarity: 10
-    competitive_position: 8
-    stakeholder_completeness: 10
-    commitment_quality: 8
-    commercial_clarity: 8
-  forecast_commit_minimum_health: 75
-  forecast_at_risk_maximum_health: 45
-  forecast_categories:
-    - Commit
-    - Realistic
-    - Upside
-    - At Risk
+  synthesis_agent_10:
+    health_score_weights:
+      buyer_validated_pain_commercial_clarity: 14  # expanded: buyer-articulated pain + ROI + pricing
+      momentum_quality: 13
+      champion_strength: 12            # split from stakeholder_completeness — #1 predictor
+      commitment_quality: 11
+      economic_buyer_engagement: 11
+      urgency_compelling_event: 10     # Agents 4, 7, 8, 9
+      stage_appropriateness: 9
+      multithreading_stakeholder_coverage: 7  # split from stakeholder_completeness
+      competitive_position: 7
+      technical_path_clarity: 6
+    champion_absence_health_ceiling: 65
+    forecast_commit_minimum_health: 75
+    forecast_at_risk_maximum_health: 45
+
+expansion:
+  agent_0e_account_health:
+    relationship_health_weight_in_score: 15
+
+  agent_6_economic_buyer:
+    eb_absence_health_ceiling: 85     # expansion: EB less critical (existing relationship)
+    secondhand_mention_counts_as_engaged: false
+
+  synthesis_agent_10:
+    health_score_weights:
+      account_relationship_health: 13   # expansion-only dimension
+      buyer_validated_pain_commercial_clarity: 12
+      momentum_quality: 11
+      champion_strength: 10
+      commitment_quality: 9
+      economic_buyer_engagement: 9
+      urgency_compelling_event: 8
+      stage_appropriateness: 8
+      multithreading_stakeholder_coverage: 7
+      competitive_position: 4
+      technical_path_clarity: 9
+    champion_absence_health_ceiling: 65
+    forecast_commit_minimum_health: 65
+    forecast_at_risk_maximum_health: 40
 
 alerts:
   score_drop_threshold: 15          # Slack alert if score drops > this
