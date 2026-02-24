@@ -10,7 +10,7 @@ from sis.db.session import get_session
 from sis.db.models import Account, AnalysisRun, AgentAnalysis, DealAssessment
 from sis.orchestrator.pipeline import AnalysisPipeline, PipelineResult
 from sis.services.transcript_service import get_active_transcript_texts, get_active_transcript_ids
-from sis.constants import is_expansion_deal
+from sis.constants import is_expansion_deal, normalize_deal_type
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,8 @@ def analyze_account(
         account = session.query(Account).filter_by(id=account_id).one_or_none()
         if not account:
             raise ValueError(f"Account not found: {account_id}")
-        deal_type = account.deal_type or "new_logo"
+        from sis.constants import normalize_deal_type
+        deal_type = normalize_deal_type(account.deal_type)
         prior_contract_value = account.prior_contract_value
 
     deal_context = {
@@ -120,7 +121,8 @@ async def analyze_account_async(
         account = session.query(Account).filter_by(id=account_id).one_or_none()
         if not account:
             raise ValueError(f"Account not found: {account_id}")
-        deal_type = account.deal_type or "new_logo"
+        from sis.constants import normalize_deal_type
+        deal_type = normalize_deal_type(account.deal_type)
         prior_contract_value = account.prior_contract_value
 
     deal_context = {
@@ -234,7 +236,7 @@ def _persist_pipeline_result(
                 analysis_run_id=run.id,
                 account_id=account_id,
                 deal_type=result.deal_type,
-                stage_model="expansion_7stage" if result.deal_type.startswith("expansion") else "new_logo_7stage",
+                stage_model="expansion_7stage" if is_expansion_deal(result.deal_type) else "new_logo_7stage",
                 deal_memo=syn.get("deal_memo", ""),
                 contradiction_map=json.dumps(syn.get("contradiction_map", [])),
                 inferred_stage=syn.get("inferred_stage", 0),
@@ -534,7 +536,7 @@ def rerun_agent(run_id: str, agent_id: str) -> dict:
         with get_session() as session:
             acct = session.query(Account).filter_by(id=account_id).one_or_none()
         deal_context = {
-            "deal_type": acct.deal_type if acct else "new_logo",
+            "deal_type": normalize_deal_type(acct.deal_type) if acct else "new_logo",
             "prior_contract_value": acct.prior_contract_value if acct else None,
         }
         call_kwargs = builder(transcript_texts, None, deal_context)
