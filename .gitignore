@@ -27,6 +27,13 @@ wheels/
 venv/
 .venv/
 
+# Next.js
+.next/
+frontend/.next/
+
+# Node
+node_modules/
+
 # IDE
 .vscode/
 .idea/

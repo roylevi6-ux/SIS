@@ -19,6 +19,7 @@ import { ActionsList } from '@/components/actions-list';
 import { DealTimeline } from '@/components/deal-timeline';
 import { CallTimeline } from '@/components/call-timeline';
 import { DeltaBadge } from '@/components/delta-badge';
+import { WhatChangedCard } from '@/components/what-changed-card';
 import type { AgentAnalysis } from '@/components/agent-card';
 
 // ---------------------------------------------------------------------------
@@ -567,6 +568,9 @@ export default function DealDetailPage({
       {account.transcripts && account.transcripts.length > 0 && (
         <CallTimeline transcripts={account.transcripts} />
       )}
+
+      {/* ---- What Changed (only renders with 2+ runs) ---- */}
+      <WhatChangedCard accountId={id} />
 
       {/* ---- No assessment state ---- */}
       {!assessment && (
