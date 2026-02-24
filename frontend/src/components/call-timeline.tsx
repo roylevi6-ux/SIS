@@ -178,6 +178,29 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
     return ((ms - axisStart) / axisRange) * 100;
   });
 
+  // Compute max label width per call (as %) so labels in the same row don't overlap.
+  // Labels in the "above" row are odd-indexed, "below" row are even-indexed.
+  // For each label, the available width is the gap to the next label in the same row.
+  const labelMaxWidths: (number | null)[] = sorted.map(() => null);
+  const aboveIndices = sorted.map((_, i) => i).filter((i) => i % 2 !== 0);
+  const belowIndices = sorted.map((_, i) => i).filter((i) => i % 2 === 0);
+  for (const group of [aboveIndices, belowIndices]) {
+    for (let g = 0; g < group.length; g++) {
+      const idx = group[g];
+      const nextIdx = group[g + 1];
+      if (nextIdx !== undefined) {
+        // Available space = gap between this and next label center, leave 2% breathing room
+        const gap = pcts[nextIdx] - pcts[idx] - 2;
+        labelMaxWidths[idx] = Math.max(gap, 5); // at least 5%
+      }
+      // Last label in group: cap at distance to right edge
+      else {
+        const gap = 100 - pcts[idx];
+        labelMaxWidths[idx] = Math.max(gap * 2, 5); // *2 because label is centered
+      }
+    }
+  }
+
   const today = Date.now();
   const todayPct = ((today - axisStart) / axisRange) * 100;
   const showToday = todayPct >= 0 && todayPct <= 100;
@@ -221,15 +244,15 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
           {/* Topic labels ABOVE the line (odd-indexed calls) */}
           <div className="relative h-5 overflow-hidden">
             {sorted.map((call, idx) => {
-              if (idx % 2 === 0) return null; // even = below
+              if (idx % 2 === 0) return null;
               if (!call.analyzed) return null;
               const topics = getTopicStrings(call);
               if (topics.length === 0) return null;
               return (
                 <span
                   key={call.id}
-                  className="absolute bottom-0 text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap -translate-x-1/2 pointer-events-none"
-                  style={{ left: `${pcts[idx]}%` }}
+                  className="absolute bottom-0 text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap -translate-x-1/2 pointer-events-none overflow-hidden text-ellipsis text-center"
+                  style={{ left: `${pcts[idx]}%`, maxWidth: `${labelMaxWidths[idx] ?? 20}%` }}
                 >
                   {topics[0]}
                 </span>
@@ -307,15 +330,15 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
           {/* Topic labels BELOW the line (even-indexed calls) */}
           <div className="relative h-5 overflow-hidden">
             {sorted.map((call, idx) => {
-              if (idx % 2 !== 0) return null; // odd = above
+              if (idx % 2 !== 0) return null;
               if (!call.analyzed) return null;
               const topics = getTopicStrings(call);
               if (topics.length === 0) return null;
               return (
                 <span
                   key={call.id}
-                  className="absolute top-0 text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap -translate-x-1/2 pointer-events-none"
-                  style={{ left: `${pcts[idx]}%` }}
+                  className="absolute top-0 text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap -translate-x-1/2 pointer-events-none overflow-hidden text-ellipsis text-center"
+                  style={{ left: `${pcts[idx]}%`, maxWidth: `${labelMaxWidths[idx] ?? 20}%` }}
                 >
                   {topics[0]}
                 </span>
