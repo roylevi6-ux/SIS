@@ -191,10 +191,10 @@ Respond with a single JSON object using this envelope structure:
     "next_steps": [...], "buyer_initiation_ratio": "...",
     "commitment_slip_rate": "...", "next_step_specificity": "...",
     "structural_advancement": "...", "compelling_deadline": null,
-    "recommended_actions": [...], "data_quality_notes": [...]
+    "recommended_actions": [...], "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object."""

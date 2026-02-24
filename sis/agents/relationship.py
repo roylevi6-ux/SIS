@@ -128,10 +128,10 @@ Respond with a single JSON object using this envelope structure:
   "findings": {
     "stakeholders": [...], "champion": {...}, "multithreading_depth": "...",
     "departments_engaged": [...], "political_risk_flags": [...],
-    "decision_maker_engagement": "...", "data_quality_notes": [...]
+    "decision_maker_engagement": "...", "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object."""

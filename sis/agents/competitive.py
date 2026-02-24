@@ -168,10 +168,10 @@ Respond with a single JSON object using this envelope structure:
     "competitor_mentions": [...], "no_decision_risk": "...",
     "no_decision_evidence": [...], "recommended_catalyst_actions": [...],
     "consequence_of_inaction": "...", "catalyst_time_horizon": "...",
-    "urgency_source": "...", "data_quality_notes": [...]
+    "urgency_source": "...", "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object."""

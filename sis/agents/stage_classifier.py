@@ -138,7 +138,7 @@ Respond with a single JSON object using this envelope structure:
     "stage_risk_signals": [max 3], "data_quality_notes": [max 3]
   },
   "evidence": [up to 3 citations],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object. No preamble, no explanation outside the JSON."""

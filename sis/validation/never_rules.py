@@ -181,8 +181,8 @@ def check_inferred_pricing(
 ) -> NeverRuleViolation | None:
     """Rule 4: Pricing numbers in Agent 3 narrative must appear in verbatim evidence.
 
-    Any dollar amounts mentioned in the Commercial agent's narrative must be
-    traceable to verbatim transcript evidence.
+    Any dollar amounts or percentage-based pricing mentioned in the Commercial
+    agent's narrative must be traceable to verbatim transcript evidence.
     """
     import re
 
@@ -195,7 +195,9 @@ def check_inferred_pricing(
 
     # Extract dollar amounts from narrative
     price_pattern = re.compile(r"\$[\d,]+(?:\.\d{1,2})?(?:\s*[KkMmBb])?")
-    narrative_prices = set(price_pattern.findall(narrative))
+    # Extract percentage-based pricing (e.g., "0.35%", "45 basis points", "12 bps")
+    pct_pattern = re.compile(r"\d+\.?\d*\s*(?:%|percent|basis\s*points?|bps)\b", re.IGNORECASE)
+    narrative_prices = set(price_pattern.findall(narrative)) | set(pct_pattern.findall(narrative))
     if not narrative_prices:
         return None
 
