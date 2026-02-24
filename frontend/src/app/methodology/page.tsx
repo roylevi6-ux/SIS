@@ -41,10 +41,10 @@ import { cn } from '@/lib/utils';
 const TOC_ITEMS = [
   { id: 'research', label: 'Sales Methodology Research', icon: BookOpen },
   { id: 'health-score', label: 'Health Score System', icon: Brain },
-  { id: 'never-rules', label: 'NEVER Rules (Hard Guardrails)', icon: ShieldAlert },
   { id: 'stages', label: 'Deal Stages, Exit Criteria & Objectives', icon: Layers },
   { id: 'forecast', label: 'Forecast Categories', icon: Target },
   { id: 'agents', label: 'Active Agents & Roles', icon: Users },
+  { id: 'never-rules', label: 'NEVER Rules (Hard Guardrails)', icon: ShieldAlert },
 ];
 
 function TableOfContents() {
@@ -120,6 +120,39 @@ function Section({
 // Section 1 — Sales Methodology Research
 // ---------------------------------------------------------------------------
 
+const RESEARCH_FRAMEWORKS = [
+  {
+    framework: 'MEDDIC / MEDDPICC',
+    keyPrinciple: 'Metrics, Economic Buyer, Decision Criteria, Decision Process, Identify Pain, Champion, Competition.',
+    sisImpact: 'Core pillars adopted — Economic Buyer engagement (Agent 6), Champion identification (Agent 2), Decision Process mapping (Agent 7 MSP). MEDDPICC adds Paper Process and Competition, both captured.',
+    role: 'Primary influence',
+  },
+  {
+    framework: 'SPICED (Winning by Design)',
+    keyPrinciple: 'Situation, Pain, Impact, Critical Event, Decision.',
+    sisImpact: 'Informed emphasis on buyer-validated pain (weighted highest at 14%) and compelling events / urgency (10%). "Critical Event" maps to catalyst analysis in Agent 8.',
+    role: 'Secondary influence',
+  },
+  {
+    framework: 'Challenger Sale',
+    keyPrinciple: 'Teach-Tailor-Take Control.',
+    sisImpact: 'Influenced momentum analysis: we measure whether the buyer is driving the deal forward (positive) vs. the seller doing all the pushing (negative). Agent 4 distinguishes buyer-initiated vs. seller-initiated engagement.',
+    role: 'Behavioral influence',
+  },
+  {
+    framework: 'Force Management / Command of the Message',
+    keyPrinciple: 'Required Business Capabilities, Positive Business Outcomes, Required Capabilities.',
+    sisImpact: 'Reinforced that pain must be buyer-articulated, not seller-projected. Agent 3 (Commercial) checks whether ROI and value narratives originate from buyer statements vs. seller pitches.',
+    role: 'Validation principle',
+  },
+  {
+    framework: 'Sandler Selling System',
+    keyPrinciple: 'Pain, Budget, Decision.',
+    sisImpact: 'Contributed the idea that budget authority must be verified through behavior, not assumed from title. Agent 6 (Economic Buyer) requires direct engagement evidence — secondhand mentions do not count.',
+    role: 'Verification principle',
+  },
+];
+
 function ResearchSection() {
   return (
     <Section id="research" title="Sales Methodology Research" icon={BookOpen}>
@@ -137,59 +170,29 @@ function ResearchSection() {
 
           <div>
             <h3 className="font-semibold mb-1">Frameworks evaluated</h3>
-            <div className="space-y-3">
-              <div className="border rounded-md p-3">
-                <p className="font-medium">MEDDIC / MEDDPICC</p>
-                <p className="text-muted-foreground mt-1">
-                  Metrics, Economic Buyer, Decision Criteria, Decision Process, Identify Pain, Champion, Competition.
-                  The gold standard for enterprise sales qualification. Our system adopts its core pillars &mdash;
-                  especially <strong>Economic Buyer engagement</strong> (Agent 6), <strong>Champion identification</strong> (Agent 2),
-                  and <strong>Decision Process mapping</strong> (Agent 7 MSP). MEDDPICC adds Paper Process and Competition,
-                  both captured by our agents.
-                </p>
-                <Badge variant="outline" className="mt-2">Primary influence</Badge>
-              </div>
-
-              <div className="border rounded-md p-3">
-                <p className="font-medium">SPICED (Winning by Design)</p>
-                <p className="text-muted-foreground mt-1">
-                  Situation, Pain, Impact, Critical Event, Decision. Informed our emphasis on
-                  <strong> buyer-validated pain</strong> (weighted highest at 14%) and <strong>compelling events / urgency</strong> (10%).
-                  SPICED&apos;s &quot;Critical Event&quot; maps directly to our catalyst analysis in Agent 8.
-                </p>
-                <Badge variant="outline" className="mt-2">Secondary influence</Badge>
-              </div>
-
-              <div className="border rounded-md p-3">
-                <p className="font-medium">Challenger Sale</p>
-                <p className="text-muted-foreground mt-1">
-                  Teach-Tailor-Take Control. Influenced our momentum analysis: we measure whether the
-                  <em> buyer</em> is driving the deal forward (positive signal) vs. the seller doing all the pushing
-                  (negative signal). Agent 4 explicitly distinguishes buyer-initiated vs. seller-initiated engagement.
-                </p>
-                <Badge variant="outline" className="mt-2">Behavioral influence</Badge>
-              </div>
-
-              <div className="border rounded-md p-3">
-                <p className="font-medium">Force Management / Command of the Message</p>
-                <p className="text-muted-foreground mt-1">
-                  Required Business Capabilities, Positive Business Outcomes, Required Capabilities.
-                  Reinforced our principle that <strong>pain must be buyer-articulated, not seller-projected</strong>.
-                  Agent 3 (Commercial) explicitly checks whether ROI and value narratives originate from
-                  buyer statements vs. seller pitches.
-                </p>
-                <Badge variant="outline" className="mt-2">Validation principle</Badge>
-              </div>
-
-              <div className="border rounded-md p-3">
-                <p className="font-medium">Sandler Selling System</p>
-                <p className="text-muted-foreground mt-1">
-                  Pain, Budget, Decision. Contributed the idea that budget authority must be verified through
-                  behavior, not assumed from title. Agent 6 (Economic Buyer) requires <strong>direct engagement
-                  evidence</strong> on calls &mdash; secondhand mentions (&quot;my CFO likes this&quot;) do not count.
-                </p>
-                <Badge variant="outline" className="mt-2">Verification principle</Badge>
-              </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[180px]">Framework</TableHead>
+                    <TableHead className="whitespace-normal">Key Principle</TableHead>
+                    <TableHead className="whitespace-normal">SIS Impact</TableHead>
+                    <TableHead className="w-[130px]">Role</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {RESEARCH_FRAMEWORKS.map((fw) => (
+                    <TableRow key={fw.framework}>
+                      <TableCell className="font-medium align-top">{fw.framework}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-normal align-top">{fw.keyPrinciple}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-normal align-top">{fw.sisImpact}</TableCell>
+                      <TableCell className="align-top">
+                        <Badge variant="outline" className="text-xs">{fw.role}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
@@ -360,206 +363,7 @@ function HealthScoreSection() {
 }
 
 // ---------------------------------------------------------------------------
-// Section 3 — NEVER Rules
-// ---------------------------------------------------------------------------
-
-const NEVER_RULES = [
-  {
-    id: 'NEVER_HEALTH_WITHOUT_EB',
-    rule: 'Health > 70 requires direct Economic Buyer engagement',
-    description: 'If the synthesis health score exceeds 70, Agent 6 must show direct EB engagement (not just secondhand mentions like "my CFO likes this"). The EB must have appeared on at least one call.',
-    agent: 'Agent 6 / Agent 10',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_HEALTH_WITHOUT_CHAMPION',
-    rule: 'Health > 65 requires a champion identified',
-    description: 'If the synthesis health score exceeds 65, Agent 2 must confirm a champion is identified with advocacy behavior evidence. A deal without a champion is unforecastable.',
-    agent: 'Agent 2 / Agent 10',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_COMMIT_WITHOUT_MSP',
-    rule: 'Commit forecast requires MSP + High specificity next steps',
-    description: 'A "Commit" forecast must be backed by a mutual success plan with high next-step specificity from Agent 7. Buyer-confirmed milestones with dates and owners are required.',
-    agent: 'Agent 7 / Agent 10',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_UNRESOLVED_CONTRADICTIONS',
-    rule: 'All contradictions must have resolutions',
-    description: 'Agent 10\'s contradiction map entries must each include a resolution field. Unexplained contradictions between agent findings are a quality failure.',
-    agent: 'Agent 10',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_INFERRED_PRICING',
-    rule: 'Pricing numbers must appear in verbatim evidence',
-    description: 'Any dollar amounts mentioned in Agent 3\'s (Commercial) narrative must be traceable to verbatim transcript evidence. No inferred or hallucinated pricing figures.',
-    agent: 'Agent 3',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_NO_ADVERSARIAL_CHALLENGES',
-    rule: 'Agent 9 must produce at least 1 adversarial challenge',
-    description: 'The Open Discovery / Adversarial Validator must raise at least one challenge to upstream agent conclusions. Every deal has at least one finding that deserves scrutiny.',
-    agent: 'Agent 9',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_NO_DECISION_RISK_OVERRIDE',
-    rule: 'High no-decision risk blocks Commit and Realistic forecasts',
-    description: 'If Agent 8 reports no_decision_risk=High AND catalyst_strength is "Cosmetic" or "None Identified", the forecast must be "At Risk". A deal with health 65 but high no-decision risk is NOT "Realistic" — the buyer may never act.',
-    agent: 'Agent 8 / Agent 10',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_COMMIT_WITHOUT_COMPELLING_EVENT',
-    rule: 'Commit requires a catalyst + consequence of inaction',
-    description: 'A "Commit" forecast is blocked if Agent 8 reports no consequence of inaction AND no catalyst strength. A deal with no pain of inaction and no catalyst is not committable.',
-    agent: 'Agent 8 / Agent 10',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_EXPANSION_HEALTH_CAP',
-    rule: 'Strained/Critical relationship caps expansion health at 60',
-    description: 'For expansion deals, if Agent 0E reports account relationship as "Strained" or "Critical", the health score must not exceed 60 regardless of other signals.',
-    agent: 'Agent 0E / Agent 10',
-    severity: 'error' as const,
-  },
-  {
-    id: 'NEVER_EXPANSION_COMMIT_WITHOUT_RELATIONSHIP',
-    rule: 'Expansion Commit requires Strong or Adequate relationship',
-    description: 'For expansion deals, a "Commit" forecast requires Agent 0E to confirm the account relationship is "Strong" or "Adequate". You cannot commit an expansion deal with a damaged customer relationship.',
-    agent: 'Agent 0E / Agent 10',
-    severity: 'error' as const,
-  },
-];
-
-function NeverRulesSection() {
-  return (
-    <Section id="never-rules" title="NEVER Rules (Hard Guardrails)" icon={ShieldAlert}>
-      <p className="text-sm text-muted-foreground">
-        NEVER rules are hard constraints that override any scoring or forecasting logic. They fire
-        automatically after synthesis and produce violations that must be addressed. The system will not
-        produce output that violates these rules.
-      </p>
-
-      <div className="space-y-3">
-        {NEVER_RULES.map((rule, i) => (
-          <Card key={rule.id}>
-            <CardContent className="pt-4 pb-4 space-y-2">
-              <div className="flex items-start gap-3">
-                <Badge
-                  variant="destructive"
-                  className="shrink-0 mt-0.5 text-xs"
-                >
-                  Rule {i + 1}
-                </Badge>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{rule.rule}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{rule.description}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="outline" className="text-xs">{rule.id}</Badge>
-                    <span className="text-xs text-muted-foreground">{rule.agent}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm font-medium">Per-Agent NEVER Rules</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 text-sm text-muted-foreground space-y-3">
-          <p>In addition to the system-level NEVER rules above, each agent enforces its own constraints:</p>
-          <div className="space-y-2">
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 2 — Relationship</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER call someone a &quot;champion&quot; based solely on friendliness or question-asking. Require ADVOCACY behavior evidence.</li>
-                <li>NEVER count someone as &quot;engaged&quot; if they were only mentioned by others. Engagement requires call presence.</li>
-                <li>NEVER infer seniority or role without transcript evidence.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 3 — Commercial</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER output a specific pricing number derived from inference rather than explicit transcript statement.</li>
-                <li>NEVER speculate about budget authority unless explicitly stated by a speaker.</li>
-                <li>NEVER assume an objection is resolved just because the seller addressed it. Look for buyer acknowledgment.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 4 — Momentum</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER count seller-side engagement metrics as buyer momentum signals. Measure the BUYER.</li>
-                <li>NEVER treat call frequency alone as a momentum indicator &mdash; quality matters more than quantity.</li>
-                <li>NEVER assume &quot;busy&quot; explanations from the buyer indicate maintained interest.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 5 — Technical</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER classify a technical topic as &quot;validated&quot; when it was raised but deferred to follow-up.</li>
-                <li>NEVER assume technical feasibility without evidence of technical stakeholder assessment.</li>
-                <li>NEVER ignore mentions of existing fraud tools &mdash; they are competitive and integration factors.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 6 — Economic Buyer</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER count secondhand EB mentions as EB engagement. &quot;My CFO likes this&quot; without CFO on a call = EB NOT engaged.</li>
-                <li>NEVER assume budget approval from enthusiastic champion language.</li>
-                <li>NEVER infer budget authority from job title alone &mdash; verify through behavior and language.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 7 — MSP & Next Steps</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER log a next step as &quot;committed&quot; unless the BUYER explicitly confirmed it. Seller proposing ≠ buyer committing.</li>
-                <li>NEVER treat seller&apos;s recap of next steps as buyer confirmation unless the buyer explicitly agreed.</li>
-                <li>NEVER assume actions were completed unless confirmed in a subsequent call.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 8 — Competitive</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER name a specific competitor&apos;s pricing or contract details inferred from context.</li>
-                <li>NEVER assume the buyer is dissatisfied with their current solution without evidence.</li>
-                <li>NEVER underestimate &quot;no decision&quot; risk &mdash; it kills more deals than competitors do.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 9 — Open Discovery / Adversarial</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER pad findings when nothing new is found. Empty novel_findings is valid output.</li>
-                <li>NEVER duplicate what agents 1-8 already captured. Value is additive only.</li>
-                <li>ALWAYS produce at least one adversarial challenge. Every deal has findings that deserve scrutiny.</li>
-              </ul>
-            </div>
-            <div className="border rounded-md p-3">
-              <p className="font-medium text-foreground">Agent 10 — Synthesis</p>
-              <ul className="list-disc list-inside mt-1 space-y-0.5">
-                <li>NEVER produce health score &gt;70 if EB has never appeared on calls.</li>
-                <li>NEVER produce health score &gt;65 if no champion identified.</li>
-                <li>NEVER produce Commit forecast without Level 3+ commitments and MSP.</li>
-                <li>NEVER leave contradictions unresolved.</li>
-                <li>NEVER ignore Agent 9&apos;s adversarial challenges.</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section 4 — Deal Stages
+// Section 3 — Deal Stages
 // ---------------------------------------------------------------------------
 
 const STAGES = [
@@ -669,47 +473,53 @@ function StagesSection() {
         (Contract & Implement) can run in parallel at Riskified.
       </p>
 
-      <div className="space-y-4">
-        {STAGES.map((stage) => (
-          <Card key={stage.number}>
-            <CardHeader className="pb-2 pt-4 px-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">
-                  {stage.number}
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold">{stage.name}</CardTitle>
-                  <p className="text-xs text-muted-foreground">Typical duration: {stage.duration}</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-3">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Objective</p>
-                <p className="text-sm">{stage.objective}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Exit Criteria</p>
-                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
-                  {stage.exitCriteria.map((criterion, i) => (
-                    <li key={i}>{criterion}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Key Transcript Signals</p>
-                <p className="text-sm text-muted-foreground">{stage.keySignals}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[140px]">Stage</TableHead>
+                  <TableHead className="w-[100px]">Duration</TableHead>
+                  <TableHead className="whitespace-normal">Objective</TableHead>
+                  <TableHead className="whitespace-normal">Exit Criteria</TableHead>
+                  <TableHead className="whitespace-normal">Key Signals</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {STAGES.map((stage) => (
+                  <TableRow key={stage.number}>
+                    <TableCell className="font-medium align-top">
+                      <span className="inline-flex items-center gap-2">
+                        <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
+                          {stage.number}
+                        </span>
+                        {stage.name}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground align-top">{stage.duration}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{stage.objective}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {stage.exitCriteria.map((criterion, i) => (
+                          <li key={i}>{criterion}</li>
+                        ))}
+                      </ul>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{stage.keySignals}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </Section>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Section 5 — Forecast Categories
+// Section 4 — Forecast Categories
 // ---------------------------------------------------------------------------
 
 const FORECAST_CATEGORIES = [
@@ -820,7 +630,7 @@ function ForecastSection() {
 }
 
 // ---------------------------------------------------------------------------
-// Section 6 — Active Agents
+// Section 5 — Active Agents
 // ---------------------------------------------------------------------------
 
 const AGENTS = [
@@ -965,32 +775,45 @@ function AgentsSection() {
         All agents include anti-sycophancy rules and measure the <em>buyer</em>, not the seller.
       </p>
 
-      <div className="space-y-4">
-        {AGENTS.map((agent) => (
-          <Card key={agent.id}>
-            <CardHeader className="pb-2 pt-4 px-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="shrink-0 font-mono text-xs">{agent.id}</Badge>
-                  <CardTitle className="text-sm font-semibold">{agent.name}</CardTitle>
-                </div>
-                <Badge variant="secondary" className="text-xs shrink-0">{agent.model}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-3">
-              <p className="text-sm text-muted-foreground">{agent.role}</p>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">5 Key Topics</p>
-                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-                  {agent.topics.map((topic, i) => (
-                    <li key={i}>{topic}</li>
-                  ))}
-                </ol>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[120px]">Agent</TableHead>
+                  <TableHead className="w-[70px]">Model</TableHead>
+                  <TableHead className="whitespace-normal">Role</TableHead>
+                  <TableHead className="whitespace-normal">Focus Areas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {AGENTS.map((agent) => (
+                  <TableRow key={agent.id}>
+                    <TableCell className="font-medium align-top">
+                      <span className="flex items-center gap-2">
+                        <Badge variant="outline" className="shrink-0 font-mono text-xs">{agent.id}</Badge>
+                        <span className="text-sm">{agent.name}</span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <Badge variant="secondary" className="text-xs">{agent.model}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{agent.role}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {agent.topics.map((topic, i) => (
+                          <li key={i}>{topic}</li>
+                        ))}
+                      </ul>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
@@ -1026,6 +849,199 @@ function AgentsSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Section 6 — NEVER Rules (moved to last position)
+// ---------------------------------------------------------------------------
+
+const NEVER_RULES = [
+  {
+    id: 'NEVER_HEALTH_WITHOUT_EB',
+    rule: 'Health > 70 requires direct Economic Buyer engagement',
+    description: 'If the synthesis health score exceeds 70, Agent 6 must show direct EB engagement (not just secondhand mentions like "my CFO likes this"). The EB must have appeared on at least one call.',
+    agent: 'Agent 6 / Agent 10',
+  },
+  {
+    id: 'NEVER_HEALTH_WITHOUT_CHAMPION',
+    rule: 'Health > 65 requires a champion identified',
+    description: 'If the synthesis health score exceeds 65, Agent 2 must confirm a champion is identified with advocacy behavior evidence. A deal without a champion is unforecastable.',
+    agent: 'Agent 2 / Agent 10',
+  },
+  {
+    id: 'NEVER_COMMIT_WITHOUT_MSP',
+    rule: 'Commit forecast requires MSP + High specificity next steps',
+    description: 'A "Commit" forecast must be backed by a mutual success plan with high next-step specificity from Agent 7. Buyer-confirmed milestones with dates and owners are required.',
+    agent: 'Agent 7 / Agent 10',
+  },
+  {
+    id: 'NEVER_UNRESOLVED_CONTRADICTIONS',
+    rule: 'All contradictions must have resolutions',
+    description: 'Agent 10\'s contradiction map entries must each include a resolution field. Unexplained contradictions between agent findings are a quality failure.',
+    agent: 'Agent 10',
+  },
+  {
+    id: 'NEVER_INFERRED_PRICING',
+    rule: 'Pricing numbers must appear in verbatim evidence',
+    description: 'Any dollar amounts mentioned in Agent 3\'s (Commercial) narrative must be traceable to verbatim transcript evidence. No inferred or hallucinated pricing figures.',
+    agent: 'Agent 3',
+  },
+  {
+    id: 'NEVER_NO_ADVERSARIAL_CHALLENGES',
+    rule: 'Agent 9 must produce at least 1 adversarial challenge',
+    description: 'The Open Discovery / Adversarial Validator must raise at least one challenge to upstream agent conclusions. Every deal has at least one finding that deserves scrutiny.',
+    agent: 'Agent 9',
+  },
+  {
+    id: 'NEVER_NO_DECISION_RISK_OVERRIDE',
+    rule: 'High no-decision risk blocks Commit and Realistic forecasts',
+    description: 'If Agent 8 reports no_decision_risk=High AND catalyst_strength is "Cosmetic" or "None Identified", the forecast must be "At Risk". A deal with health 65 but high no-decision risk is NOT "Realistic" — the buyer may never act.',
+    agent: 'Agent 8 / Agent 10',
+  },
+  {
+    id: 'NEVER_COMMIT_WITHOUT_COMPELLING_EVENT',
+    rule: 'Commit requires a catalyst + consequence of inaction',
+    description: 'A "Commit" forecast is blocked if Agent 8 reports no consequence of inaction AND no catalyst strength. A deal with no pain of inaction and no catalyst is not committable.',
+    agent: 'Agent 8 / Agent 10',
+  },
+  {
+    id: 'NEVER_EXPANSION_HEALTH_CAP',
+    rule: 'Strained/Critical relationship caps expansion health at 60',
+    description: 'For expansion deals, if Agent 0E reports account relationship as "Strained" or "Critical", the health score must not exceed 60 regardless of other signals.',
+    agent: 'Agent 0E / Agent 10',
+  },
+  {
+    id: 'NEVER_EXPANSION_COMMIT_WITHOUT_RELATIONSHIP',
+    rule: 'Expansion Commit requires Strong or Adequate relationship',
+    description: 'For expansion deals, a "Commit" forecast requires Agent 0E to confirm the account relationship is "Strong" or "Adequate". You cannot commit an expansion deal with a damaged customer relationship.',
+    agent: 'Agent 0E / Agent 10',
+  },
+];
+
+function NeverRulesSection() {
+  return (
+    <Section id="never-rules" title="NEVER Rules (Hard Guardrails)" icon={ShieldAlert}>
+      <p className="text-sm text-muted-foreground">
+        NEVER rules are hard constraints that override any scoring or forecasting logic. They fire
+        automatically after synthesis and produce violations that must be addressed. The system will not
+        produce output that violates these rules.
+      </p>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]">#</TableHead>
+                  <TableHead className="whitespace-normal">Rule</TableHead>
+                  <TableHead className="w-[130px]">Applies To</TableHead>
+                  <TableHead className="whitespace-normal">Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {NEVER_RULES.map((rule, i) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="align-top">
+                      <Badge variant="destructive" className="text-xs">{i + 1}</Badge>
+                    </TableCell>
+                    <TableCell className="font-medium text-sm whitespace-normal align-top">{rule.rule}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground align-top">{rule.agent}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-normal align-top">{rule.description}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Per-Agent NEVER Rules</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 text-sm text-muted-foreground space-y-2">
+          <p>In addition to the system-level NEVER rules above, each agent enforces its own constraints:</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 2 — Relationship</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER call someone a &quot;champion&quot; based solely on friendliness or question-asking. Require ADVOCACY behavior evidence.</li>
+                <li>NEVER count someone as &quot;engaged&quot; if they were only mentioned by others. Engagement requires call presence.</li>
+                <li>NEVER infer seniority or role without transcript evidence.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 3 — Commercial</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER output a specific pricing number derived from inference rather than explicit transcript statement.</li>
+                <li>NEVER speculate about budget authority unless explicitly stated by a speaker.</li>
+                <li>NEVER assume an objection is resolved just because the seller addressed it. Look for buyer acknowledgment.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 4 — Momentum</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER count seller-side engagement metrics as buyer momentum signals. Measure the BUYER.</li>
+                <li>NEVER treat call frequency alone as a momentum indicator &mdash; quality matters more than quantity.</li>
+                <li>NEVER assume &quot;busy&quot; explanations from the buyer indicate maintained interest.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 5 — Technical</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER classify a technical topic as &quot;validated&quot; when it was raised but deferred to follow-up.</li>
+                <li>NEVER assume technical feasibility without evidence of technical stakeholder assessment.</li>
+                <li>NEVER ignore mentions of existing fraud tools &mdash; they are competitive and integration factors.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 6 — Economic Buyer</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER count secondhand EB mentions as EB engagement. &quot;My CFO likes this&quot; without CFO on a call = EB NOT engaged.</li>
+                <li>NEVER assume budget approval from enthusiastic champion language.</li>
+                <li>NEVER infer budget authority from job title alone &mdash; verify through behavior and language.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 7 — MSP & Next Steps</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER log a next step as &quot;committed&quot; unless the BUYER explicitly confirmed it. Seller proposing ≠ buyer committing.</li>
+                <li>NEVER treat seller&apos;s recap of next steps as buyer confirmation unless the buyer explicitly agreed.</li>
+                <li>NEVER assume actions were completed unless confirmed in a subsequent call.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 8 — Competitive</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER name a specific competitor&apos;s pricing or contract details inferred from context.</li>
+                <li>NEVER assume the buyer is dissatisfied with their current solution without evidence.</li>
+                <li>NEVER underestimate &quot;no decision&quot; risk &mdash; it kills more deals than competitors do.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2">
+              <p className="font-medium text-foreground text-xs">Agent 9 — Open Discovery / Adversarial</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER pad findings when nothing new is found. Empty novel_findings is valid output.</li>
+                <li>NEVER duplicate what agents 1-8 already captured. Value is additive only.</li>
+                <li>ALWAYS produce at least one adversarial challenge. Every deal has findings that deserve scrutiny.</li>
+              </ul>
+            </div>
+            <div className="border rounded-md p-2 sm:col-span-2">
+              <p className="font-medium text-foreground text-xs">Agent 10 — Synthesis</p>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>NEVER produce health score &gt;70 if EB has never appeared on calls.</li>
+                <li>NEVER produce health score &gt;65 if no champion identified.</li>
+                <li>NEVER produce Commit forecast without Level 3+ commitments and MSP.</li>
+                <li>NEVER leave contradictions unresolved.</li>
+                <li>NEVER ignore Agent 9&apos;s adversarial challenges.</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -1044,10 +1060,10 @@ export default function MethodologyPage() {
         <div className="space-y-2">
           <ResearchSection />
           <HealthScoreSection />
-          <NeverRulesSection />
           <StagesSection />
           <ForecastSection />
           <AgentsSection />
+          <NeverRulesSection />
         </div>
 
         {/* Sticky TOC on desktop */}
