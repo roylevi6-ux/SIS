@@ -115,10 +115,10 @@ Respond with a single JSON object using this envelope structure:
     "technical_champion_name": "...", "technical_stakeholders_on_calls": 2,
     "platform_details": "...", "integration_type": "...",
     "poc_status": "...", "test_mode_results": "...",
-    "blockers": [...], "recommended_se_actions": [...], "data_quality_notes": [...]
+    "blockers": [...], "recommended_se_actions": [...], "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object."""

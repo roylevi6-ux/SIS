@@ -164,10 +164,10 @@ Respond with a single JSON object using this envelope structure:
     "momentum_direction": "...", "call_cadence_assessment": "...",
     "meeting_initiation": "...", "buyer_engagement_quality": "...",
     "topic_evolution": "...", "engagement_signals": [...],
-    "leading_indicators": [...], "stall_risk": "...", "data_quality_notes": [...]
+    "leading_indicators": [...], "stall_risk": "...", "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object."""

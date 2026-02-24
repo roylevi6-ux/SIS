@@ -117,10 +117,10 @@ Respond with a single JSON object using this envelope structure:
     "eb_engagement": "...", "eb_last_appearance": "...", "eb_access_risk": "...",
     "budget_language": [...], "budget_status": "...", "eb_references": [...],
     "executive_escalation_recommended": false, "escalation_rationale": "...",
-    "data_quality_notes": [...]
+    "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object."""

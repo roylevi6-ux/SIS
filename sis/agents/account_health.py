@@ -168,10 +168,10 @@ Respond with a single JSON object using this envelope structure:
     "relationship_health_rationale": "...",
     "cross_sell_vs_upsell_inferred": "...",
     "existing_product_usage_signals": [...],
-    "data_quality_notes": [...]
+    "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.65, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object. No preamble, no explanation outside the JSON."""

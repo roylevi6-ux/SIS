@@ -139,6 +139,7 @@ Look for signals that don't fit neatly into the 8 agent domains:
 The transcript headers include Gong's AI-generated summaries. Be aware that these summaries may have anchored Agents 1-8 toward certain conclusions. As part of your adversarial role, check whether any upstream agent's findings merely echo a Gong key point without independent transcript evidence.
 
 ## Adversarial Validation Process
+0. **Stage Sanity Check**: Before anything else, verify Agent 1's stage inference against your own reading of the transcripts. If you would have inferred a materially different stage (2+ stages apart), include this as an adversarial challenge — stage misclassification cascades to all downstream agents.
 1. Read ALL 8 agent outputs carefully
 2. Identify the 1-3 most OPTIMISTIC findings (highest confidence + most favorable interpretation)
 3. For each: search the transcripts for counter-evidence, missing context, or alternative interpretations
@@ -184,10 +185,10 @@ Respond with a single JSON object using this envelope structure:
     "novel_findings": [...], "adversarial_challenges": [...],
     "upstream_gaps_identified": [...], "no_additional_signals": false,
     "urgency_audit": {"urgency_credibility": "...", "assessment": "...", "cross_agent_consistency": "...", "consistency_detail": "..."},
-    "data_quality_notes": [...]
+    "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
-  "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
+  "confidence": {"overall": "<CALIBRATE: see Confidence Assessment Rules>", "rationale": "...", "data_gaps": [...]},
   "sparse_data_flag": false
 }
 Respond with ONLY the JSON object."""
@@ -225,6 +226,7 @@ def build_call(
         "agent_6": "Agent 6: Economic Buyer",
         "agent_7": "Agent 7: MSP & Next Steps",
         "agent_8": "Agent 8: Competitive Displacement",
+        "agent_0e": "Agent 0E: Account Health & Sentiment",
     }
     for agent_id in sorted(upstream_outputs.keys()):
         label = agent_labels.get(agent_id, agent_id)
