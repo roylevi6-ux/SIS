@@ -27,8 +27,47 @@ export interface AgentAnalysis {
   [key: string]: unknown;
 }
 
+export interface HealthBreakdownEntry {
+  component: string;
+  score: number;
+  max_score: number;
+  rationale?: string;
+}
+
 interface AgentCardProps {
   analysis: AgentAnalysis;
+  healthBreakdown?: HealthBreakdownEntry[] | null;
+}
+
+// Map agent_id → health component name (primary component per agent)
+const AGENT_TO_COMPONENT: Record<string, string> = {
+  agent_0e_account_health: 'account_health',
+  agent_1_stage_progress: 'stage_appropriateness',
+  agent_2_relationship: 'stakeholder_completeness',
+  agent_3_commercial_risk: 'commercial_clarity',
+  agent_4_momentum: 'momentum_quality',
+  agent_5_technical: 'technical_path_clarity',
+  agent_6_economic_buyer: 'economic_buyer_engagement',
+  agent_7_msp_next_steps: 'commitment_quality',
+  agent_8_competitive: 'competitive_position',
+};
+
+function findBreakdownEntry(
+  agentId: string | undefined,
+  breakdown: HealthBreakdownEntry[],
+): HealthBreakdownEntry | null {
+  if (!breakdown.length || !agentId) return null;
+  const componentName = AGENT_TO_COMPONENT[agentId];
+  if (!componentName) return null;
+  const norm = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '_');
+  return breakdown.find((e) => norm(e.component) === componentName) ?? null;
+}
+
+function getScoreColor(score: number, maxScore: number): string {
+  const pct = maxScore > 0 ? (score / maxScore) * 100 : score;
+  if (pct >= 70) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400';
+  if (pct >= 45) return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400';
+  return 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400';
 }
 
 /** Normalize confidence from 0.0-1.0 scale to 0-100 percentage. */
@@ -46,11 +85,15 @@ function getConfidenceColor(confidence: number | null | undefined): string {
   return 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400';
 }
 
-export function AgentCard({ analysis }: AgentCardProps) {
+export function AgentCard({ analysis, healthBreakdown }: AgentCardProps) {
   const [open, setOpen] = useState(false);
 
   const pct = toPercent(analysis.confidence_overall);
   const confidenceLabel = pct != null ? `${pct}%` : 'N/A';
+  const matchedComponent = findBreakdownEntry(
+    analysis.agent_id,
+    Array.isArray(healthBreakdown) ? healthBreakdown : [],
+  );
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -69,15 +112,29 @@ export function AgentCard({ analysis }: AgentCardProps) {
                 <AlertTriangle className="size-3.5 text-amber-500" />
               )}
             </div>
-            <Badge
-              variant="outline"
-              className={cn(
-                'border-transparent text-xs',
-                getConfidenceColor(analysis.confidence_overall),
+            <div className="flex items-center gap-2">
+              {matchedComponent && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'border-transparent text-xs tabular-nums',
+                    getScoreColor(matchedComponent.score, matchedComponent.max_score),
+                  )}
+                  title={`Health: ${matchedComponent.component}`}
+                >
+                  {matchedComponent.score}/{matchedComponent.max_score}
+                </Badge>
               )}
-            >
-              {confidenceLabel}
-            </Badge>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'border-transparent text-xs',
+                  getConfidenceColor(analysis.confidence_overall),
+                )}
+              >
+                {confidenceLabel}
+              </Badge>
+            </div>
           </div>
         </CollapsibleTrigger>
 
