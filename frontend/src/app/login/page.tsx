@@ -22,6 +22,8 @@ import {
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
+  { value: 'gm', label: 'General Manager' },
+  { value: 'vp', label: 'VP Sales' },
   { value: 'team_lead', label: 'Team Lead' },
   { value: 'ic', label: 'Individual Contributor' },
 ] as const;
@@ -112,7 +114,7 @@ export default function LoginPage() {
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
-              POC authentication — Salesforce SSO will replace this
+              POC authentication -- Salesforce SSO will replace this
             </p>
           </form>
         </CardContent>

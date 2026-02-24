@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { usePipeline } from '@/lib/hooks/use-dashboard';
+import { usePermissions } from '@/lib/permissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -13,7 +14,9 @@ import {
 } from '@/components/ui/select';
 import { DealTable } from '@/components/deal-table';
 import { PipelineMovers } from '@/components/pipeline-movers';
+import { TeamRollupCards } from '@/components/team-rollup-cards';
 import type { PipelineOverviewResponse } from '@/lib/pipeline-types';
+import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,6 +135,35 @@ function deriveTeams(data: PipelineOverviewResponse): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// VP/GM Roll-up section
+// ---------------------------------------------------------------------------
+
+function RollupSection({ onTeamFilter }: { onTeamFilter: (team: string | undefined) => void }) {
+  const [rollup, setRollup] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch team rollup data on mount
+  useState(() => {
+    api.dashboard.teamRollup()
+      .then((data) => setRollup(data))
+      .catch(() => setRollup(null))
+      .finally(() => setLoading(false));
+  });
+
+  if (loading || !rollup || rollup.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-semibold">Team Overview</h2>
+      <TeamRollupCards
+        rollup={rollup}
+        onTeamClick={(teamName) => onTeamFilter(teamName)}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -140,6 +172,7 @@ type TabValue = 'all' | 'healthy' | 'at_risk' | 'critical' | 'unscored';
 export default function PipelinePage() {
   const [team, setTeam] = useState<string | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<TabValue>('all');
+  const { canSeeRollup } = usePermissions();
 
   const { data, isLoading, isError, error } = usePipeline(team);
   const pipeline = data as PipelineOverviewResponse | undefined;
@@ -181,6 +214,11 @@ export default function PipelinePage() {
           </Select>
         )}
       </div>
+
+      {/* VP/GM Roll-up cards */}
+      {canSeeRollup && (
+        <RollupSection onTeamFilter={(t) => setTeam(t)} />
+      )}
 
       {/* Loading state */}
       {isLoading && <LoadingSkeleton />}

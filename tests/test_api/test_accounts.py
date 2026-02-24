@@ -50,7 +50,7 @@ class TestListAccounts:
         mock_svc.list_accounts.return_value = []
         client.get("/api/accounts/?sort_by=mrr_estimate&team=Team+Alpha", headers=auth_headers)
         mock_svc.list_accounts.assert_called_once_with(
-            team="Team Alpha", sort_by="mrr_estimate"
+            team="Team Alpha", sort_by="mrr_estimate", visible_user_ids=None
         )
 
     @patch("sis.api.routes.accounts.account_service")
@@ -58,7 +58,7 @@ class TestListAccounts:
         mock_svc.list_accounts.return_value = []
         client.get("/api/accounts/", headers=auth_headers)
         mock_svc.list_accounts.assert_called_once_with(
-            team=None, sort_by="account_name"
+            team=None, sort_by="account_name", visible_user_ids=None
         )
 
 

@@ -33,18 +33,19 @@ if JWT_SECRET == _DEFAULT_SECRET and _environment == "production":
     )
 
 # Valid roles for POC (will map to SF permission sets later)
-VALID_ROLES = {"admin", "team_lead", "ic"}
+VALID_ROLES = {"admin", "gm", "vp", "team_lead", "ic"}
 
 
 # ── Token helpers ────────────────────────────────────────────────────
 
 
-def create_token(username: str, role: str) -> str:
+def create_token(username: str, role: str, user_id: Optional[str] = None) -> str:
     """Create a signed JWT for the given user.
 
     Args:
         username: Display name / identifier (e.g. "AE One").
-        role: One of "admin", "team_lead", "ic".
+        role: One of "admin", "gm", "vp", "team_lead", "ic".
+        user_id: Optional DB user ID to embed in the token.
 
     Returns:
         Encoded JWT string.
@@ -59,6 +60,7 @@ def create_token(username: str, role: str) -> str:
     payload = {
         "sub": username,
         "role": role,
+        "user_id": user_id,
         "exp": now + timedelta(hours=JWT_EXPIRY_HOURS),
         "iat": now,
     }
@@ -90,4 +92,4 @@ def decode_token(token: str) -> dict:
     if not role or role not in VALID_ROLES:
         raise ValueError(f"Token has invalid role: {role}")
 
-    return {"sub": sub, "role": role}
+    return {"sub": sub, "role": role, "user_id": payload.get("user_id")}

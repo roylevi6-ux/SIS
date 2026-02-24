@@ -11,15 +11,25 @@ from sis.db.models import Account, DealAssessment, AnalysisRun, Transcript
 from sis.config import STALE_CALL_DAYS_THRESHOLD
 
 
-def get_pipeline_overview(team: Optional[str] = None) -> dict:
+def get_pipeline_overview(
+    team: Optional[str] = None,
+    visible_user_ids: Optional[set[str]] = None,
+) -> dict:
     """Aggregated pipeline view with deals grouped by health tier.
+
+    Args:
+        team: Legacy team name filter (optional, backward compat)
+        visible_user_ids: If provided, only return accounts where owner_id is in this set.
+                          None means no scoping (admin/gm sees all).
 
     Returns:
         dict with tiers (healthy/at_risk/critical), deals per tier, and aggregates
     """
     with get_session() as session:
         query = session.query(Account)
-        if team:
+        if visible_user_ids is not None:
+            query = query.filter(Account.owner_id.in_(visible_user_ids))
+        elif team:
             query = query.filter_by(team_name=team)
         accounts = query.all()
 
@@ -100,7 +110,10 @@ def get_pipeline_overview(team: Optional[str] = None) -> dict:
         }
 
 
-def get_divergence_report(team: Optional[str] = None) -> list[dict]:
+def get_divergence_report(
+    team: Optional[str] = None,
+    visible_user_ids: Optional[set[str]] = None,
+) -> list[dict]:
     """Deals where AI and IC forecasts differ, sorted by value impact."""
     with get_session() as session:
         query = (
@@ -108,7 +121,9 @@ def get_divergence_report(team: Optional[str] = None) -> list[dict]:
             .join(Account, DealAssessment.account_id == Account.id)
             .filter(DealAssessment.divergence_flag == 1)
         )
-        if team:
+        if visible_user_ids is not None:
+            query = query.filter(Account.owner_id.in_(visible_user_ids))
+        elif team:
             query = query.filter(Account.team_name == team)
 
         # Get only latest assessment per account
@@ -137,15 +152,21 @@ def get_divergence_report(team: Optional[str] = None) -> list[dict]:
         return divergent
 
 
-def get_team_rollup(team: Optional[str] = None) -> list[dict]:
+def get_team_rollup(
+    team: Optional[str] = None,
+    visible_user_ids: Optional[set[str]] = None,
+) -> list[dict]:
     """Aggregate health metrics per team."""
     with get_session() as session:
-        accounts = session.query(Account).all()
+        query = session.query(Account)
+        if visible_user_ids is not None:
+            query = query.filter(Account.owner_id.in_(visible_user_ids))
+        accounts = query.all()
 
         # Group by team
         teams: dict[str, list] = {}
         for acct in accounts:
-            t = acct.team_lead or acct.team_name or "Unassigned"
+            t = acct.team_name or acct.team_lead or "Unassigned"
             if team and t != team:
                 continue
             if t not in teams:
@@ -185,14 +206,17 @@ def get_team_rollup(team: Optional[str] = None) -> list[dict]:
         return rollup
 
 
-def get_pipeline_insights() -> dict:
+def get_pipeline_insights(visible_user_ids: Optional[set[str]] = None) -> dict:
     """Auto-generated pipeline insights: stuck, improving, declining, new risks, stale, forecast flips.
 
     Compares latest vs previous DealAssessment per account to detect changes.
     Per PRD P0-20.
     """
     with get_session() as session:
-        accounts = session.query(Account).all()
+        query = session.query(Account)
+        if visible_user_ids is not None:
+            query = query.filter(Account.owner_id.in_(visible_user_ids))
+        accounts = query.all()
 
         stuck = []
         improving = []
