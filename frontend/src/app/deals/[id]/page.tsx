@@ -41,6 +41,7 @@ interface Transcript {
   created_at: string;
   participants: Participant[] | null;
   call_title: string | null;
+  call_topics?: Array<{ name: string; duration: number }> | null;
   analyzed: boolean;
 }
 

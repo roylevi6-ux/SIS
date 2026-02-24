@@ -48,6 +48,7 @@ export interface Transcript {
   account_id: string;
   gong_call_id: string | null;
   call_title: string | null;
+  call_topics?: Array<{ name: string; duration: number }> | null;
   call_date: string | null;
   is_active: boolean;
   created_at: string;
