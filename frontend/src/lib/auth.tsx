@@ -9,11 +9,12 @@ import {
   type ReactNode,
 } from 'react';
 
-// ── Types ──────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 export interface AuthUser {
   username: string;
-  role: 'admin' | 'team_lead' | 'ic';
+  role: 'admin' | 'gm' | 'vp' | 'team_lead' | 'ic';
+  userId?: string;
 }
 
 interface AuthContextValue {
@@ -24,19 +25,34 @@ interface AuthContextValue {
   isLoading: boolean;
 }
 
-// ── Constants ──────────────────────────────────────────────────────
+// -- Logout listener (used by apiFetch to auto-logout on 401) ---------------
+
+let _logoutFn: (() => void) | null = null;
+
+/** Called by apiFetch when a 401 response is received. */
+export function triggerLogout() {
+  _logoutFn?.();
+}
+
+// -- Constants --------------------------------------------------------------
 
 const TOKEN_KEY = 'sis_auth_token';
 const USER_KEY = 'sis_auth_user';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// ── Context ────────────────────────────────────────────────────────
+// -- Context ----------------------------------------------------------------
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ── Provider ───────────────────────────────────────────────────────
+// -- Provider ---------------------------------------------------------------
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  children,
+  onLogout,
+}: {
+  children: ReactNode;
+  onLogout?: () => void;
+}) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(JSON.parse(storedUser) as AuthUser);
       }
     } catch {
-      // Corrupted storage — clear it
+      // Corrupted storage -- clear it
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
     } finally {
@@ -72,7 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await res.json();
-    const authUser: AuthUser = { username: data.username, role: data.role };
+    const authUser: AuthUser = {
+      username: data.username,
+      role: data.role,
+      userId: data.user_id,
+    };
 
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(authUser));
@@ -85,7 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(USER_KEY);
     setToken(null);
     setUser(null);
-  }, []);
+    onLogout?.();
+  }, [onLogout]);
+
+  // Register global logout so apiFetch can trigger it on 401
+  useEffect(() => {
+    _logoutFn = logout;
+    return () => { _logoutFn = null; };
+  }, [logout]);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
@@ -94,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// ── Hook ───────────────────────────────────────────────────────────
+// -- Hook -------------------------------------------------------------------
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
@@ -104,7 +131,7 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
-// ── Token accessor (for apiFetch) ──────────────────────────────────
+// -- Token accessor (for apiFetch) ------------------------------------------
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;

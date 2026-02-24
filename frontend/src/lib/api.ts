@@ -1,4 +1,4 @@
-import { getStoredToken } from './auth';
+import { getStoredToken, triggerLogout } from './auth';
 import type {
   Account,
   AccountCreate,
@@ -59,6 +59,10 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     headers,
   });
   if (!res.ok) {
+    // Auto-logout on expired/invalid token so the user sees the login page
+    if (res.status === 401) {
+      triggerLogout();
+    }
     const error = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(error.detail || `API error: ${res.status}`);
   }
@@ -222,6 +226,23 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5, ...dealArgs }),
       }),
+  },
+
+  // Team & User management (admin)
+  teams: {
+    list: () => apiFetch<any[]>('/api/teams/'),
+    create: (data: { name: string; level: string; parent_id?: string; leader_id?: string }) =>
+      apiFetch<any>('/api/teams/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: { name?: string; parent_id?: string; leader_id?: string }) =>
+      apiFetch<any>(`/api/teams/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    members: (id: string) => apiFetch<any[]>(`/api/teams/${id}/members`),
+  },
+  users: {
+    list: () => apiFetch<any[]>('/api/users/'),
+    create: (data: { name: string; email: string; role: string; team_id?: string }) =>
+      apiFetch<any>('/api/users/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: { name?: string; role?: string; team_id?: string; is_active?: boolean }) =>
+      apiFetch<any>(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   },
 };
 
