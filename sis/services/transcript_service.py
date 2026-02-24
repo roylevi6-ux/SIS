@@ -43,6 +43,37 @@ FILLER_RE = re.compile('|'.join(FILLER_PATTERNS), re.IGNORECASE)
 
 MAX_TOKEN_BUDGET = 8000
 
+# Suffixes stripped from Gong topic names for short display labels
+_TOPIC_STRIP_SUFFIXES = [
+    " Discussion", " Review", " Analysis", " Overview",
+    " Management", " Assessment", " Evaluation",
+]
+_MAX_TOPIC_DISPLAY_LEN = 15
+
+
+def normalize_topic_name(name: str) -> str:
+    """Shorten verbose Gong topic names for timeline display.
+
+    Examples:
+        "Chargeback Rate Analysis" → "Chargebacks"
+        "Budget Discussion"        → "Budget"
+        "POC Planning"             → "POC Planning"
+    """
+    result = name.strip()
+    for suffix in _TOPIC_STRIP_SUFFIXES:
+        if result.lower().endswith(suffix.lower()):
+            result = result[: -len(suffix)].strip()
+            break
+    # Title-case and truncate at word boundary
+    result = result.title()
+    if len(result) > _MAX_TOPIC_DISPLAY_LEN:
+        # Find the last space before the limit to avoid mid-word cuts
+        cut = result.rfind(' ', 0, _MAX_TOPIC_DISPLAY_LEN)
+        result = result[:cut] if cut > 0 else result[:_MAX_TOPIC_DISPLAY_LEN]
+    # Strip trailing punctuation/whitespace
+    result = result.strip().rstrip('&,-:;/')
+    return result.strip()
+
 
 def upload_transcript(
     account_id: str,
@@ -52,8 +83,18 @@ def upload_transcript(
     duration_minutes: Optional[int] = None,
     gong_call_id: Optional[str] = None,
     call_title: Optional[str] = None,
+    call_topics: Optional[list[dict]] = None,
 ) -> Transcript:
     """Upload and preprocess a transcript. Enforces 5-transcript limit."""
+    # Normalize topic names for display before storing
+    normalized_topics = None
+    if call_topics:
+        normalized_topics = [
+            {"name": normalize_topic_name(t["name"]), "duration": t.get("duration", 0)}
+            for t in call_topics
+            if t.get("name")
+        ]
+
     with get_session() as session:
         # Basic preprocessing (token counting)
         preprocessed = _preprocess(raw_text)
@@ -67,6 +108,7 @@ def upload_transcript(
             preprocessed_text=preprocessed["text"],
             token_count=preprocessed["token_count"],
             call_title=call_title,
+            call_topics=json.dumps(normalized_topics) if normalized_topics else None,
             gong_call_id=gong_call_id,
             is_active=1,
         )
@@ -148,6 +190,7 @@ def list_transcripts(account_id: str, active_only: bool = True) -> list[dict]:
                 "is_active": bool(t.is_active),
                 "created_at": t.created_at,
                 "preprocessed_text": t.preprocessed_text,
+                "call_topics": json.loads(t.call_topics) if t.call_topics else None,
             }
             for t in transcripts
         ]

@@ -264,6 +264,7 @@ def get_account_detail(account_id: str) -> dict:
                 "created_at": t.created_at,
                 "participants": json.loads(t.participants) if t.participants else None,
                 "call_title": t.call_title,
+                "call_topics": json.loads(t.call_topics) if t.call_topics else None,
                 "analyzed": t.id in analyzed_ids,
             }
             for t in account.transcripts

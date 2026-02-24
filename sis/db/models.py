@@ -70,6 +70,7 @@ class Transcript(Base):
     preprocessed_text = Column(Text, nullable=True)
     token_count = Column(Integer, nullable=True)
     call_title = Column(Text, nullable=True)  # Short title from Gong (e.g. "QBR", "Technical Review")
+    call_topics = Column(Text, nullable=True)  # JSON: [{"name": "Pricing", "duration": 120}]
     gong_call_id = Column(Text, nullable=True)  # Gong's unique call ID for dedup
     upload_source = Column(Text, default="manual")
     is_active = Column(Integer, default=1)  # boolean: 1=active, 0=archived

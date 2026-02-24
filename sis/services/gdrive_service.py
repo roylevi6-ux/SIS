@@ -325,6 +325,14 @@ def upload_calls_to_db(
             continue
 
         agent_text = call.to_agent_text()
+
+        # Extract top 2 topics by duration from Gong enrichment
+        gong_topics = (
+            sorted(call.enrichment.topics, key=lambda t: -t.get("duration", 0))[:2]
+            if call.enrichment.topics
+            else None
+        )
+
         transcript = upload_transcript(
             account_id=account_id,
             raw_text=agent_text,
@@ -336,6 +344,7 @@ def upload_calls_to_db(
             duration_minutes=call.metadata.duration_minutes or None,
             gong_call_id=gong_call_id,
             call_title=call.metadata.title or None,
+            call_topics=gong_topics,
         )
         imported.append(transcript)
         logger.info(
