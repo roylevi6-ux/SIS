@@ -283,13 +283,13 @@ class TestBuildAnalysisPrompt:
             "deal_type": "new_logo",
             "stage_model": "new_logo_7",
             "inferred_stage": 3,
-            "stage_name": "Evaluation",
+            "stage_name": "Scope",
             "confidence": 0.80,
             "reasoning": "Consistent signals.",
         }
         prompt = build_analysis_prompt(self._TRANSCRIPTS, ctx, None, self._INSTRUCTION)
         assert "STAGE CONTEXT" in prompt
-        assert "Evaluation" in prompt
+        assert "Scope" in prompt
 
     def test_without_stage_context_omits_section(self):
         prompt = build_analysis_prompt(self._TRANSCRIPTS, None, None, self._INSTRUCTION)

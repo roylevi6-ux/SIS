@@ -3,12 +3,14 @@
 ## Values: 0.0 (irrelevant at this stage) to 1.0 (critical at this stage).
 ## Rows = agents, Columns = stages.
 
-# Stages:
-#   1: Qualification
-#   2: Discovery
-#   3: Evaluation
+# Stages (Salesforce-aligned):
+#   1: Qualify
+#   2: Establish Business Case
+#   3: Scope
 #   4: Proposal
-#   5: Closing
+#   5: Negotiate
+#   6: Contract
+#   7: Implement
 
 stage_relevance:
   agent_2_relationship:
@@ -17,6 +19,8 @@ stage_relevance:
     stage_3: 1.0    # champion and EB identification critical
     stage_4: 0.9    # decision makers must be engaged
     stage_5: 0.7    # relationships matter but deal is mostly decided
+    stage_6: 0.5    # relationships less critical post-signature
+    stage_7: 0.4    # implementation team handoff
 
   agent_3_commercial:
     stage_1: 0.3    # too early for pricing usually
@@ -24,6 +28,8 @@ stage_relevance:
     stage_3: 0.7    # ROI framing, pricing discussions
     stage_4: 1.0    # commercial negotiation is the core activity
     stage_5: 0.9    # final terms, objection resolution
+    stage_6: 0.4    # commercial terms settled by contract stage
+    stage_7: 0.3    # commercial is done during implementation
 
   agent_4_momentum:
     stage_1: 0.5    # cadence matters from the start
@@ -31,6 +37,8 @@ stage_relevance:
     stage_3: 0.9    # momentum through evaluation is critical
     stage_4: 1.0    # stalls here are the #1 risk signal
     stage_5: 0.8    # momentum through close matters
+    stage_6: 0.7    # momentum through contract execution
+    stage_7: 0.8    # momentum through implementation matters
 
   agent_5_technical:
     stage_1: 0.3    # minimal tech discussion early
@@ -38,6 +46,8 @@ stage_relevance:
     stage_3: 1.0    # POC/evaluation is peak technical
     stage_4: 0.7    # integration planning
     stage_5: 0.5    # tech is validated by now
+    stage_6: 0.9    # peak technical during integration
+    stage_7: 1.0    # implementation IS technical
 
   agent_6_economic_buyer:
     stage_1: 0.4    # EB identification should start early
@@ -45,6 +55,8 @@ stage_relevance:
     stage_3: 0.8    # EB must be aware of evaluation
     stage_4: 1.0    # EB must approve the deal
     stage_5: 1.0    # EB signs off
+    stage_6: 0.3    # EB has signed off by integration
+    stage_7: 0.3    # EB not involved in implementation
 
   agent_7_msp_next_steps:
     stage_1: 0.4    # next steps discipline from day 1
@@ -52,6 +64,8 @@ stage_relevance:
     stage_3: 0.8    # MSP should be documented
     stage_4: 1.0    # go-live dates, paper process, legal
     stage_5: 1.0    # execution against the plan
+    stage_6: 0.9    # execution plan critical for contract
+    stage_7: 1.0    # execution plan critical for implementation
 
   agent_8_competitive:
     stage_1: 0.7    # know the landscape early
@@ -59,6 +73,8 @@ stage_relevance:
     stage_3: 1.0    # head-to-head evaluation
     stage_4: 0.6    # competition usually decided by proposal
     stage_5: 0.3    # if still competing at close, bigger problems
+    stage_6: 0.2    # competition decided by now
+    stage_7: 0.1    # irrelevant during implementation
 
   agent_9_open_discovery:
     # Open discovery is stage-agnostic — always relevant
@@ -67,9 +83,13 @@ stage_relevance:
     stage_3: 0.8
     stage_4: 0.8
     stage_5: 0.8
+    stage_6: 0.7
+    stage_7: 0.6
 
 # Expansion stage relevance (per design doc Section 9)
-# Stages for expansion: 1-7 (expanded model)
+# Stages for expansion: 1-7 (Salesforce-aligned)
+#   1: Qualify, 2: Establish Business Case, 3: Scope
+#   4: Proposal, 5: Negotiate, 6: Contract, 7: Implement
 expansion_stage_relevance:
   agent_0e_account_health:
     stage_1: 1.0    # Critical — relationship health drives everything

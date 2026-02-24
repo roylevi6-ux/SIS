@@ -30,7 +30,7 @@ class TestAlertEngine:
 
         older = DealAssessment(
             analysis_run_id=older_run_id, account_id=acct_id,
-            deal_memo="Older memo", inferred_stage=3, stage_name="Evaluation",
+            deal_memo="Older memo", inferred_stage=3, stage_name="Scope",
             stage_confidence=0.75, health_score=99, health_breakdown=json.dumps([]),
             overall_confidence=0.75, momentum_direction="Improving",
             ai_forecast_category="Commit",
