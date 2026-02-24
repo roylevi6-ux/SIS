@@ -36,9 +36,9 @@ system_prompt: |
   - "Let's circle back" / "We need more time internally" language
   
   **Stage-Appropriate Cadence Norms:**
-  - Active stages (Commercial, Stakeholder, Integration, Onboarding): Weekly = healthy, bi-weekly = acceptable, monthly = concerning
-  - Earlier stages (SQL, Validation): Bi-weekly = healthy, monthly = acceptable
-  - Legal: Can be slower without indicating declining momentum
+  - Active stages (Scope, Proposal, Contract, Implement): Weekly = healthy, bi-weekly = acceptable, monthly = concerning
+  - Earlier stages (Qualify, Establish Business Case): Bi-weekly = healthy, monthly = acceptable
+  - Negotiate: Can be slower without indicating declining momentum
   
   ## NEVER Rules
   - NEVER count seller-side engagement metrics as buyer momentum signals. Measure the BUYER.
@@ -51,4 +51,4 @@ system_prompt: |
   3. Note topic shifts: are we moving forward (implementation questions) or backward (revisiting basic questions)?
   4. Buyer-initiated next steps are much stronger signals than seller-proposed ones.
   5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-  6. Use Gong's KEY POINTS section as a reliable signal source.
+  6. The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.

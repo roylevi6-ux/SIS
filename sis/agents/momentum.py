@@ -29,6 +29,23 @@ class EngagementSignal(BaseModel):
     evidence: str = Field(description="One sentence: quote or reference from transcript")
 
 
+class UrgencyImpact(BaseModel):
+    """Behavioral validation of buyer-stated urgency."""
+
+    urgency_detected: bool = Field(description="Did the buyer express any time pressure?")
+    urgency_behavioral_match: str = Field(
+        description="Aligned (behavior matches stated urgency), "
+        "Mismatched (says urgent, acts slow), or Ambiguous"
+    )
+    urgency_trend: str = Field(
+        description="Increasing, Stable, Fading, or None"
+    )
+    urgency_evidence: str = Field(
+        description="One sentence: the strongest behavioral signal "
+        "supporting or contradicting urgency"
+    )
+
+
 # --- Findings ---
 
 
@@ -43,6 +60,11 @@ class MomentumFindings(BaseModel):
     engagement_signals: list[EngagementSignal] = Field(default_factory=list, description="Specific engagement signals identified. Max 5 items.")
     leading_indicators: list[str] = Field(default_factory=list, description="Leading indicators of acceleration or stall")
     stall_risk: Optional[str] = Field(default=None, description="If declining, what specifically suggests a stall")
+    urgency_impact: Optional[UrgencyImpact] = Field(
+        default=None,
+        description="Urgency behavioral validation. Populate only when "
+        "buyer expresses time pressure.",
+    )
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     manager_insight: str = Field(
         default="",
@@ -97,9 +119,9 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 - "Let's circle back" / "We need more time internally" language
 
 **Stage-Appropriate Cadence Norms:**
-- Active stages (Commercial, Stakeholder, Integration, Onboarding): Weekly = healthy, bi-weekly = acceptable, monthly = concerning
-- Earlier stages (SQL, Validation): Bi-weekly = healthy, monthly = acceptable
-- Legal: Can be slower without indicating declining momentum
+- Active stages (Scope, Proposal, Contract, Implement): Weekly = healthy, bi-weekly = acceptable, monthly = concerning
+- Earlier stages (Qualify, Establish Business Case): Bi-weekly = healthy, monthly = acceptable
+- Negotiate: Can be slower without indicating declining momentum
 
 ## NEVER Rules
 - NEVER count seller-side engagement metrics as buyer momentum signals. Measure the BUYER.
@@ -112,7 +134,24 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 3. Note topic shifts: are we moving forward (implementation questions) or backward (revisiting basic questions)?
 4. Buyer-initiated next steps are much stronger signals than seller-proposed ones.
 5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-6. Use Gong's KEY POINTS section as a reliable signal source.
+6. The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.
+
+## Urgency & Deal Velocity
+When a buyer mentions timelines, deadlines, or business events:
+- Assess whether their BEHAVIOR matches the stated urgency
+- A buyer who says "urgent" but responds slowly, delays meetings, or won't pull in stakeholders = Mismatched urgency
+- Track urgency trajectory across calls: is the time pressure increasing (approaching deadline) or fading (deadline passed or deprioritized)?
+- Urgency that isn't backed by buyer behavior is a forecast risk
+- A buyer who says "this is urgent" is stating intent, not proving urgency. Only their ACTIONS prove it.
+
+## Urgency Trend Heuristics
+- "Increasing": deadline mentioned with more specificity in recent calls than earlier ones, OR new stakeholders pulled in to meet timeline, OR buyer proactively compresses schedule
+- "Fading": deadline mentioned in earlier calls but absent from recent ones, OR buyer language shifted from specific dates to "sometime in Q3", OR previously urgent items now described as "when we get to it"
+- "Stable": same deadline referenced consistently across calls with no change in urgency level
+- "None": urgency was never mentioned, OR only mentioned once with no follow-through
+
+If fewer than 3 transcripts are available, set urgency_trend to "None" -- a single call cannot establish a trajectory.
+If no urgency or time pressure is mentioned, set urgency_impact to null.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format

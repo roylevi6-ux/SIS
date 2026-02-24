@@ -7,6 +7,7 @@ from sis.validation.never_rules import (
     check_unresolved_contradictions,
     check_inferred_pricing,
     check_adversarial_challenges_exist,
+    check_commit_without_compelling_event,
     check_all_never_rules,
 )
 
@@ -152,6 +153,67 @@ class TestAdversarialChallengesExist:
     def test_fails_when_agent9_missing(self):
         result = check_adversarial_challenges_exist({}, {})
         assert result is not None
+
+
+class TestCommitWithoutCompellingEvent:
+    def test_passes_when_not_commit(self):
+        result = check_commit_without_compelling_event(
+            {}, {"forecast_category": "Realistic"}
+        )
+        assert result is None
+
+    def test_passes_when_catalyst_exists(self):
+        agent_outputs = {
+            "agent_8": {
+                "findings": {
+                    "consequence_of_inaction": "None",
+                    "catalyst_strength": "Structural",
+                }
+            },
+        }
+        result = check_commit_without_compelling_event(
+            agent_outputs, {"forecast_category": "Commit"}
+        )
+        assert result is None
+
+    def test_passes_when_consequence_exists(self):
+        agent_outputs = {
+            "agent_8": {
+                "findings": {
+                    "consequence_of_inaction": "Moderate",
+                    "catalyst_strength": "None Identified",
+                }
+            },
+        }
+        result = check_commit_without_compelling_event(
+            agent_outputs, {"forecast_category": "Commit"}
+        )
+        assert result is None
+
+    def test_fails_when_no_catalyst_no_consequence(self):
+        agent_outputs = {
+            "agent_8": {
+                "findings": {
+                    "consequence_of_inaction": "None",
+                    "catalyst_strength": "None Identified",
+                }
+            },
+        }
+        result = check_commit_without_compelling_event(
+            agent_outputs, {"forecast_category": "Commit"}
+        )
+        assert result is not None
+        assert result.rule_id == "NEVER_COMMIT_WITHOUT_COMPELLING_EVENT"
+        assert result.severity == "error"
+
+    def test_fails_when_agent8_missing(self):
+        result = check_commit_without_compelling_event(
+            {}, {"forecast_category": "Commit"}
+        )
+        # With empty agent8, catalyst_strength defaults to "" which is in the weak list
+        # but consequence_of_inaction defaults to None (not the string "None")
+        # so this should NOT trigger (None != "None")
+        assert result is None
 
 
 class TestCheckAllNeverRules:

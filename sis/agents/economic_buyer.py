@@ -99,11 +99,11 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 ## Analysis Rules
 1. Direct EB appearance on a call is the strongest signal. Track exact calls.
 2. Budget language analysis: "approved" vs. "need to present" vs. "not sure about budget" carry very different weights.
-3. EB absence in late-stage deals (Stakeholder Alignment, Legal) is a critical risk.
+3. EB absence in late-stage deals (Proposal, Negotiate) is a critical risk.
 4. Track if EB is referenced increasingly negatively or with uncertainty over time.
 5. MEDDIC framework: Economic Buyer is the person who can say YES when everyone else says NO.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-7. Use Gong's KEY POINTS section as a reliable signal source.
+7. The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format

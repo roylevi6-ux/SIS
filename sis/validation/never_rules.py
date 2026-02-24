@@ -214,6 +214,43 @@ def check_adversarial_challenges_exist(
     return None
 
 
+def check_commit_without_compelling_event(
+    agent_outputs: dict, synthesis_output: dict
+) -> NeverRuleViolation | None:
+    """Rule 7: Commit requires a catalyst + consequence of inaction.
+
+    NEVER produce Commit forecast if Agent 8 consequence_of_inaction is "None"
+    AND catalyst_strength is "None Identified".
+    """
+    forecast = synthesis_output.get("forecast_category", "")
+    if forecast != "Commit":
+        return None
+
+    agent8 = agent_outputs.get("agent_8", {})
+    findings = agent8.get("findings", {})
+
+    consequence = findings.get("consequence_of_inaction", None)
+    catalyst = findings.get("catalyst_strength", "")
+
+    if consequence == "None" and catalyst in ("None Identified", "None", ""):
+        return NeverRuleViolation(
+            rule_id="NEVER_COMMIT_WITHOUT_COMPELLING_EVENT",
+            agent_id="agent_10",
+            severity="error",
+            description=(
+                f"Forecast is 'Commit' but Agent 8 reports no consequence of inaction "
+                f"('{consequence}') and no catalyst ('{catalyst}'). "
+                f"A deal with no pain of inaction and no catalyst is not committable."
+            ),
+            context={
+                "forecast": forecast,
+                "consequence_of_inaction": consequence,
+                "catalyst_strength": catalyst,
+            },
+        )
+    return None
+
+
 def check_no_decision_risk_override(
     agent_outputs: dict, synthesis_output: dict
 ) -> NeverRuleViolation | None:
@@ -328,6 +365,7 @@ _COMMON_RULE_CHECKERS = [
     check_inferred_pricing,
     check_adversarial_challenges_exist,
     check_no_decision_risk_override,
+    check_commit_without_compelling_event,
 ]
 
 # Deal-type-specific rules
@@ -351,6 +389,7 @@ _RULE_CHECKERS = [
     check_inferred_pricing,
     check_adversarial_challenges_exist,
     check_no_decision_risk_override,
+    check_commit_without_compelling_event,
 ]
 
 

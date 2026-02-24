@@ -45,6 +45,25 @@ class CompetitiveFindings(BaseModel):
     no_decision_risk: str = Field(description="High (buyer may do nothing), Medium (some inertia signals), Low (clear intent), or Unknown")
     no_decision_evidence: list[str] = Field(default_factory=list, description="Evidence supporting the no-decision risk assessment. Max 5 items.")
     recommended_catalyst_actions: list[str] = Field(default_factory=list, description="Recommended actions to strengthen catalyst and reduce no-decision risk")
+    consequence_of_inaction: Optional[str] = Field(
+        default=None,
+        description="What happens if the buyer does nothing? "
+        "Severe (business viability at risk), "
+        "Moderate (measurable ongoing cost), "
+        "Mild (growth limited but no immediate pain), or "
+        "None (buyer can delay indefinitely)",
+    )
+    catalyst_time_horizon: Optional[str] = Field(
+        default=None,
+        description="When must the buyer act? "
+        "Immediate (days-weeks) | Near-term (1-3 months) | "
+        "Medium-term (3-6 months) | Long-term (6+ months) | No Timeline",
+    )
+    urgency_source: str = Field(
+        default="None Identified",
+        description="Customer-initiated | Seller-created | Market/External | None Identified. "
+        "Choose the PRIMARY source if multiple exist.",
+    )
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     manager_insight: str = Field(
         default="",
@@ -111,7 +130,29 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 4. Note if the buyer is comparing Riskified to alternatives or evaluating in isolation.
 5. A strong catalyst creates urgency. No catalyst = the buyer can always delay.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-7. Use Gong's KEY POINTS section as a reliable signal source.
+7. The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.
+
+## Catalyst vs. Consequence: How They Differ
+The switching catalyst is the EVENT that might force a decision (chargeback spike, platform migration). Catalyst strength rates how compelling that event is. Consequence of inaction rates what happens to the buyer's BUSINESS if they ignore the catalyst. These can diverge: a strong catalyst (platform migration) might have only a mild consequence (the old platform still works, just costs more).
+
+## Consequence of Inaction
+Every deal has a "do nothing" option. Assess what happens if the buyer stays with the status quo:
+- Severe: business viability threatened (fraud losses accelerating, processor termination)
+- Moderate: measurable ongoing cost (contract renewal at higher rate, manual review costs)
+- Mild: growth limited, competitive disadvantage persists
+- None: buyer can delay indefinitely with no pain
+The strength of the consequence directly predicts whether the deal will close on time or slip.
+
+If no transcript evidence exists for consequence of inaction, output "None" and note the gap in data_quality_notes. Do NOT infer consequence from catalyst alone.
+
+## Urgency Source
+- Customer-initiated: the buyer raised the timeline due to their own business needs
+- Seller-created: the sales team introduced urgency (end-of-quarter pricing, competitive framing)
+- Market/External: external event driving timeline (regulatory change, industry shift)
+Note: Seller-created urgency is tracked for visibility, not as a negative signal. Choose the PRIMARY source if multiple exist.
+
+If catalyst_strength is "None Identified", set catalyst_time_horizon to "No Timeline".
+urgency_source MUST be one of: "Customer-initiated", "Seller-created", "Market/External", "None Identified". Do not use any other values.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
@@ -126,7 +167,8 @@ Respond with a single JSON object using this envelope structure:
     "catalyst_strength": "...", "buying_dynamic": "...",
     "competitor_mentions": [...], "no_decision_risk": "...",
     "no_decision_evidence": [...], "recommended_catalyst_actions": [...],
-    "data_quality_notes": [...]
+    "consequence_of_inaction": "...", "catalyst_time_horizon": "...",
+    "urgency_source": "...", "data_quality_notes": [...]
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
   "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},

@@ -116,7 +116,7 @@ You are analyzing transcripts, not supporting the AE. If the evidence is weak, s
 3. Distinguish between Riskified-side and prospect/customer-side stakeholders.
 4. For champion assessment, look for: internal advocacy, timeline ownership, access facilitation, defending Riskified's value in internal discussions.
 5. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-6. Use Gong's KEY POINTS section as a reliable signal source.
+6. The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format

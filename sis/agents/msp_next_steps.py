@@ -32,6 +32,39 @@ class NextStep(BaseModel):
     confirmed_by_buyer: bool = Field(description="Whether the buyer explicitly confirmed/agreed to this step")
     status: str = Field(description="Completed (confirmed in later call), Pending (not yet due), Slipped (past deadline, not done), Unknown")
     evidence: str = Field(description="One sentence: quote or reference from transcript")
+    supports_deadline: bool = Field(
+        default=False,
+        description="True if this action is on the critical path "
+        "to the compelling deadline",
+    )
+
+
+class CompellingDeadline(BaseModel):
+    """A firm business deadline anchoring the deal timeline."""
+
+    event_type: str = Field(
+        description="Contract Expiry | Regulatory/Compliance | Fiscal Year/Budget | "
+        "Executive Mandate | Seasonal/Business Cycle | Integration Dependency | Other"
+    )
+    description: str = Field(
+        description="One sentence: what is the deadline and why it matters"
+    )
+    date_if_stated: Optional[str] = Field(
+        default=None,
+        description="The actual date/quarter if buyer stated one",
+    )
+    firmness: str = Field(
+        description="Hard (external, immovable) | Firm (internal, committed) | "
+        "Soft (aspirational)"
+    )
+    source: str = Field(
+        description="Buyer-stated (buyer said date + reason) | "
+        "Inferred from context"
+    )
+    stability: str = Field(
+        description="Stable (consistent across calls) | Shifted (moved once) | "
+        "Repeatedly Moved (red flag) | New (latest call only)"
+    )
 
 
 # --- Findings ---
@@ -49,6 +82,11 @@ class MSPNextStepsFindings(BaseModel):
     commitment_slip_rate: Optional[str] = Field(default=None, description="Percentage of committed actions that slipped or weren't completed")
     next_step_specificity: str = Field(description="Overall: High (concrete dates, owners, deliverables), Medium (general direction), Low (vague only)")
     structural_advancement: str = Field(description="Strong (deal moving through checkpoints), Moderate (some progress, some stalls), Weak (enthusiastic but not advancing), or Stalled")
+    compelling_deadline: Optional[CompellingDeadline] = Field(
+        default=None,
+        description="Populate only when a firm business deadline exists. "
+        "Null if no deadline identified.",
+    )
     recommended_actions: list[str] = Field(default_factory=list, description="Recommended actions to establish or strengthen forward commitment")
     data_quality_notes: list[str] = Field(default_factory=list, description="Notes on data quality affecting this analysis")
     manager_insight: str = Field(
@@ -117,7 +155,28 @@ A formal MSP includes:
 4. Look for escalating specificity over time (good) vs. decreasing specificity (bad).
 5. Go-live dates that keep moving are a red flag, even if the deal appears active.
 6. Language: Transcripts may be in Chinese, English, Japanese, French, Spanish, or Hebrew.
-7. Use Gong's KEY POINTS section as a reliable signal source.
+7. The transcript header includes Gong's AI-generated summary (GONG BRIEF, KEY POINTS, TOPICS, SIGNALS). Use these as ORIENTATION ONLY — they help you know where to look in the raw transcript. NEVER cite a Gong summary as evidence. All evidence must come from verbatim speaker quotes in the transcript itself.
+
+## Deadline Drivers
+When a go-live date or timeline is mentioned:
+- Identify WHAT business event anchors it (contract expiry, regulatory deadline, fiscal year, board mandate, seasonal peak, integration dependency)
+- Assess firmness: Hard = externally imposed, immovable (regulatory, contract). Firm = internally committed, has consequences if missed. Soft = aspirational, movable without consequence.
+- "Hard" deadlines anchored to external events are the strongest signals
+- If NO business event anchors any stated timeline, set compelling_deadline to null. Do NOT fabricate deadline drivers from generic "let's aim for Q3" language.
+
+## Scope Boundary: Catalyst vs. Deadline
+Agent 8 handles WHY the buyer is considering change (the switching catalyst). Your job is different: you handle WHEN the buyer must act and what makes the timeline stick. A "platform migration" is a catalyst (Agent 8's domain). A "platform migration completing Q3 2026 that requires a new fraud vendor integrated before launch" is a deadline driver (YOUR domain). Focus on the DATE ANCHOR, not the motivation.
+
+## Firmness Examples (Riskified-specific)
+- Hard: "We need fraud prevention live before Black Friday" (seasonal, immovable)
+- Hard: "Our Forter contract ends March 31" (contractual, external)
+- Firm: "Our board approved the fraud initiative for H2 and it's in the 2026 plan"
+- Soft: "We'd like to have something in place by end of year" (aspirational)
+
+## Source Calibration
+"Buyer-stated" = buyer explicitly said a date AND a reason.
+"Inferred from context" = date stated but reason assembled from multiple signals.
+NEVER infer a compelling deadline from seller-stated timelines alone.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
@@ -131,7 +190,8 @@ Respond with a single JSON object using this envelope structure:
     "go_live_date_confirmed": false, "go_live_date": null,
     "next_steps": [...], "buyer_initiation_ratio": "...",
     "commitment_slip_rate": "...", "next_step_specificity": "...",
-    "structural_advancement": "...", "recommended_actions": [...], "data_quality_notes": [...]
+    "structural_advancement": "...", "compelling_deadline": null,
+    "recommended_actions": [...], "data_quality_notes": [...]
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
   "confidence": {"overall": 0.75, "rationale": "...", "data_gaps": [...]},
