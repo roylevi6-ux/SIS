@@ -41,7 +41,7 @@ interface AgentCardProps {
 
 // Map agent_id → health component name (primary component per agent)
 const AGENT_TO_COMPONENT: Record<string, string> = {
-  agent_0e_account_health: 'account_health',
+  agent_0e_account_health: 'account_relationship_health',
   agent_1_stage_progress: 'stage_appropriateness',
   agent_2_relationship: 'champion_strength',
   agent_3_commercial_risk: 'buyer_validated_pain_commercial_clarity',

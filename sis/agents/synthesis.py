@@ -117,9 +117,9 @@ class SynthesisOutput(BaseModel):
     inferred_stage_name: str = Field(description="Stage name")
     inferred_stage_confidence: float = Field(ge=0.0, le=1.0)
 
-    health_score: int = Field(ge=0, le=100, description="Overall deal health score (sum of 10 components)")
+    health_score: int = Field(ge=0, le=100, description="Overall deal health score (sum of weighted components: 10 for new-logo, 11 for expansion)")
     health_score_breakdown: list[HealthScoreComponent] = Field(
-        description="10-component health score breakdown",
+        description="Weighted health score breakdown (10 new-logo or 11 expansion components)",
     )
 
     momentum_direction: str = Field(description="Improving, Stable, or Declining")

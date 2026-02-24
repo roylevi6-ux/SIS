@@ -76,13 +76,23 @@ const COMPONENT_LABELS: Record<string, string> = {
   technical_path_clarity: 'Tech. Path',
   technical_path: 'Tech. Path',
   account_health: 'Acct. Health',
-  // Legacy keys (backward compat with old data)
+  account_relationship_health: 'Acct. Health',
+  // Legacy keys (backward compat with old data — will be removed in v2)
   stakeholder_completeness: 'Stakeholders',
   commercial_clarity: 'Commercial',
 };
 
+const LEGACY_KEYS = new Set(['stakeholder_completeness', 'commercial_clarity']);
+
 function normalizeKey(key: string): string {
-  return key.toLowerCase().replace(/[\s-]+/g, '_');
+  const normalized = key.toLowerCase().replace(/[\s-]+/g, '_');
+  if (LEGACY_KEYS.has(normalized)) {
+    console.warn(
+      `[HealthBreakdown] Legacy dimension "${key}" detected — this was split/renamed in v1.0. ` +
+      `Update data source to use new dimension names.`
+    );
+  }
+  return normalized;
 }
 
 // ---------------------------------------------------------------------------
@@ -245,9 +255,6 @@ function CustomAngleTick({
   const pillTopY = labelBaseY + PILL_GAP;
 
   // Build native tooltip text for the label/pill area
-  const rationale = scoreMap && score !== undefined
-    ? undefined // rationale is in the data but not accessible from scoreMap
-    : undefined;
   const zone = score !== undefined ? ZONE_LABEL[getZone(score)] : '';
   const titleText = score !== undefined
     ? `${label}: ${score}% (${zone})`

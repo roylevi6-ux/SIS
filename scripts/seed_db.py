@@ -58,7 +58,7 @@ ACCOUNTS = [
      "confidence": 0.62, "divergent": False},
     {"key": "homegoods", "name": "HomeGoods Direct", "team": "Enterprise EMEA",
      "tl": "Sarah Cohen", "ae": "Rachel Stern", "mrr": 28000.0, "ic_forecast": "Commit",
-     "health": 48, "forecast": "At Risk", "momentum": "Declining", "stage": 3,
+     "health": 38, "forecast": "At Risk", "momentum": "Declining", "stage": 3,
      "confidence": 0.55, "divergent": True},
     {"key": "urbanstyle", "name": "UrbanStyle Inc", "team": "Mid-Market NA",
      "tl": "Mike Torres", "ae": "Jenny Park", "mrr": 18000.0, "ic_forecast": "Realistic",
@@ -82,7 +82,7 @@ ACCOUNTS = [
      "confidence": 0.75, "divergent": False},
     {"key": "ecomtrend", "name": "EcomTrend Japan", "team": "Growth APAC",
      "tl": "Yuki Tanaka", "ae": "Li Wei", "mrr": 16000.0, "ic_forecast": "Realistic",
-     "health": 45, "forecast": "At Risk", "momentum": "Declining", "stage": 2,
+     "health": 42, "forecast": "At Risk", "momentum": "Declining", "stage": 2,
      "confidence": 0.48, "divergent": True},
 ]
 
@@ -251,28 +251,33 @@ def _make_agent_analysis(acct: dict, agent_id: str, run_id: str) -> dict:
 
 
 def _make_health_breakdown(health: int) -> list:
-    """Generate health score breakdown matching synthesis output format."""
+    """Generate health score breakdown matching HealthScoreComponent schema.
+
+    Output format: {component, score, max_score, rationale}
+    Score is 0..max_score (integer points), not 0-100 percentage.
+    """
     weights = [
-        ("buyer_validated_pain_commercial_clarity", 14),
-        ("momentum_quality", 13),
-        ("champion_strength", 12),
-        ("commitment_quality", 11),
-        ("economic_buyer_engagement", 11),
-        ("urgency_compelling_event", 10),
-        ("stage_appropriateness", 9),
-        ("multithreading_stakeholder_coverage", 7),
-        ("competitive_position", 7),
-        ("technical_path_clarity", 6),
+        ("Buyer-Validated Pain & Commercial Clarity", 14),
+        ("Momentum Quality", 13),
+        ("Champion Strength", 12),
+        ("Commitment Quality", 11),
+        ("Economic Buyer Engagement", 11),
+        ("Urgency & Compelling Event", 10),
+        ("Stage Appropriateness", 9),
+        ("Multi-threading & Stakeholder Coverage", 7),
+        ("Competitive Position", 7),
+        ("Technical Path Clarity", 6),
     ]
     breakdown = []
-    for dim, max_weight in weights:
-        score = min(100, max(10, health + (hash(dim) % 20) - 10))
-        weighted = round(score * max_weight / 100, 1)
+    for component_name, max_score in weights:
+        # Generate a plausible score (0..max_score) based on overall health
+        pct = min(100, max(10, health + (hash(component_name) % 20) - 10))
+        score = round(pct * max_score / 100)
         breakdown.append({
-            "dimension": dim,
+            "component": component_name,
             "score": score,
-            "weight": max_weight,
-            "weighted_contribution": weighted,
+            "max_score": max_score,
+            "rationale": f"Scored {score}/{max_score} based on transcript evidence.",
         })
     return breakdown
 

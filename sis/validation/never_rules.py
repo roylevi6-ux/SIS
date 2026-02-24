@@ -37,8 +37,12 @@ def check_health_score_without_eb(
     findings = agent6.get("findings", {})
 
     # Check for EB direct engagement signals
-    eb_identified = findings.get("eb_identified", False)
-    eb_engaged = findings.get("eb_directly_engaged", findings.get("direct_engagement", False))
+    # Primary: Agent 6 schema fields; fallback: legacy field names
+    eb_identified = findings.get("eb_confirmed", findings.get("eb_identified", False))
+    eb_engagement = findings.get("eb_engagement", "")
+    eb_engaged = eb_engagement == "Direct" if eb_engagement else findings.get(
+        "eb_directly_engaged", findings.get("direct_engagement", False)
+    )
 
     if not eb_identified or not eb_engaged:
         return NeverRuleViolation(
@@ -106,7 +110,7 @@ def check_commit_without_commitments(
     A 'Commit' forecast must be backed by a mutual success plan with
     high next-step specificity from Agent 7.
     """
-    forecast = synthesis_output.get("ai_forecast_category", "")
+    forecast = synthesis_output.get("forecast_category", "")
     if forecast != "Commit":
         return None
 
@@ -421,19 +425,6 @@ _EXPANSION_RULE_CHECKERS = [
     check_expansion_account_health_cap,
     check_expansion_commit_relationship,
 ]
-
-# Legacy flat list (backward compat with existing tests)
-_RULE_CHECKERS = [
-    check_health_score_without_eb,
-    check_health_score_without_champion,
-    check_commit_without_commitments,
-    check_unresolved_contradictions,
-    check_inferred_pricing,
-    check_adversarial_challenges_exist,
-    check_no_decision_risk_override,
-    check_commit_without_compelling_event,
-]
-
 
 def check_all_never_rules(
     agent_outputs: dict,

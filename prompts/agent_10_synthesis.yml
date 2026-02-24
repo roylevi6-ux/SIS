@@ -1,4 +1,11 @@
-# Auto-extracted from sis/agents/synthesis.py
+# STALE SNAPSHOT — DO NOT USE AS SOURCE OF TRUTH
+# The authoritative prompt is in sis/agents/synthesis.py (SYSTEM_PROMPT string).
+# This YAML is a historical snapshot from initial extraction and is missing:
+# - Manager Brief, Champion/Multi-threading/Pain/Urgency scoring rubrics
+# - Forecast Override Rules, Pipeline Notes, Expansion support
+# Re-extraction is tracked as a separate task.
+#
+# Original: Auto-extracted from sis/agents/synthesis.py
 # Per Technical Architecture Appendix A
 metadata:
   agent_id: "agent_10_synthesis"
