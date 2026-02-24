@@ -203,9 +203,42 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
           </div>
         </div>
 
-        {/* Timeline — Gong-style: clean dots on line, details in tooltip */}
         <TooltipProvider delayDuration={100}>
-          <div className="relative h-10">
+          {/*
+            Layout: 3 stacked layers, each positioned independently.
+            ┌─────────────────────────────────────────┐
+            │  Topic labels ABOVE (odd-indexed calls)  │  h-5  overflow-hidden
+            ├─────────────────────────────────────────┤
+            │  ●───●───○───●───●───○───●  dots+line  │  h-8  the axis
+            ├─────────────────────────────────────────┤
+            │  Topic labels BELOW (even-indexed calls) │  h-5  overflow-hidden
+            ├─────────────────────────────────────────┤
+            │  Date axis labels                        │  h-4
+            └─────────────────────────────────────────┘
+            Labels alternate above/below so adjacent calls don't overlap horizontally.
+          */}
+
+          {/* Topic labels ABOVE the line (odd-indexed calls) */}
+          <div className="relative h-5 overflow-hidden">
+            {sorted.map((call, idx) => {
+              if (idx % 2 === 0) return null; // even = below
+              if (!call.analyzed) return null;
+              const topics = getTopicStrings(call);
+              if (topics.length === 0) return null;
+              return (
+                <span
+                  key={call.id}
+                  className="absolute bottom-0 text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap -translate-x-1/2 pointer-events-none"
+                  style={{ left: `${pcts[idx]}%` }}
+                >
+                  {topics[0]}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Dot layer — the axis line with dots */}
+          <div className="relative h-8">
             {/* Horizontal axis line */}
             <div className="absolute left-0 right-0 top-1/2 -translate-y-px h-px bg-border" />
 
@@ -215,18 +248,17 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
                 className="absolute top-0 bottom-0 w-px bg-rose-400/60"
                 style={{ left: `${todayPct}%` }}
               >
-                <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-rose-500 whitespace-nowrap">
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-rose-500 whitespace-nowrap">
                   Today
                 </span>
               </div>
             )}
 
-            {/* Call dots — all centered on the line, no inline labels */}
+            {/* Call dots */}
             {sorted.map((call, idx) => {
               const pct = pcts[idx];
               const d = parseDate(call.call_date);
               const topics = getTopicStrings(call);
-
               const external = getExternalNames(call.participants);
               const internal = getInternalNames(call.participants);
 
@@ -247,20 +279,16 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-xs">
-                    {/* Topics — bold at top */}
                     {topics.length > 0 && (
                       <p className="font-semibold">{topics.join(' · ')}</p>
                     )}
-                    {/* Title if no topics */}
                     {topics.length === 0 && call.call_title && (
                       <p className="font-semibold">{call.call_title}</p>
                     )}
-                    {/* Date + duration */}
                     <p className="text-muted-foreground">
                       {formatFullDate(d)}
                       {call.duration_minutes ? ` · ${formatDuration(call.duration_minutes)}` : ''}
                     </p>
-                    {/* Participants */}
                     {external && (
                       <p className="text-muted-foreground">With: {external}</p>
                     )}
@@ -276,8 +304,27 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
             })}
           </div>
 
+          {/* Topic labels BELOW the line (even-indexed calls) */}
+          <div className="relative h-5 overflow-hidden">
+            {sorted.map((call, idx) => {
+              if (idx % 2 !== 0) return null; // odd = above
+              if (!call.analyzed) return null;
+              const topics = getTopicStrings(call);
+              if (topics.length === 0) return null;
+              return (
+                <span
+                  key={call.id}
+                  className="absolute top-0 text-[10px] leading-tight font-medium text-foreground/70 whitespace-nowrap -translate-x-1/2 pointer-events-none"
+                  style={{ left: `${pcts[idx]}%` }}
+                >
+                  {topics[0]}
+                </span>
+              );
+            })}
+          </div>
+
           {/* Date axis labels */}
-          <div className="relative h-4 mt-1">
+          <div className="relative h-4 mt-0.5">
             {axisTicks.map((tick, i) => (
               <span
                 key={i}
