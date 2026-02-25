@@ -53,7 +53,7 @@ class RetryConfig:
 TIER_CONFIGS: dict[str, RetryConfig] = {
     "haiku": RetryConfig(max_retries=3, base_delay_seconds=0.5),
     "sonnet": RetryConfig(max_retries=2, base_delay_seconds=1.0),
-    "opus": RetryConfig(max_retries=1, base_delay_seconds=2.0),
+    "opus": RetryConfig(max_retries=2, base_delay_seconds=2.0),
 }
 
 
