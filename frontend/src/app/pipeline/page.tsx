@@ -123,6 +123,7 @@ function filterDeals(
 export default function PipelineCommandCenter() {
   const [quarter, setQuarter] = useState(currentQuarter());
   const [team, setTeam] = useState<string | undefined>(undefined);
+  const [teamLeadFilter, setTeamLeadFilter] = useState<string | undefined>(undefined);
   const [forecastFilter, setForecastFilter] = useState<ForecastFilter>('all');
   const [healthFilters, setHealthFilters] = useState<HealthFilter[]>([]);
   const [flagFilters, setFlagFilters] = useState<FlagFilter[]>([]);
@@ -161,8 +162,12 @@ export default function PipelineCommandCenter() {
   // Filtered deals for the table
   const filteredDeals = useMemo(() => {
     if (!data) return [];
-    return filterDeals(data.deals, forecastFilter, healthFilters, flagFilters);
-  }, [data, forecastFilter, healthFilters, flagFilters]);
+    let deals = filterDeals(data.deals, forecastFilter, healthFilters, flagFilters);
+    if (teamLeadFilter) {
+      deals = deals.filter((d) => d.team_lead === teamLeadFilter);
+    }
+    return deals;
+  }, [data, forecastFilter, healthFilters, flagFilters, teamLeadFilter]);
 
   const handleHealthToggle = useCallback((h: HealthFilter) => {
     setHealthFilters((prev) =>
@@ -180,10 +185,11 @@ export default function PipelineCommandCenter() {
     setForecastFilter('all');
     setHealthFilters([]);
     setFlagFilters([]);
+    setTeamLeadFilter(undefined);
   }, []);
 
   const handleTeamClick = useCallback((teamLead: string) => {
-    setTeam(teamLead);
+    setTeamLeadFilter((prev) => prev === teamLead ? undefined : teamLead);
   }, []);
 
   return (

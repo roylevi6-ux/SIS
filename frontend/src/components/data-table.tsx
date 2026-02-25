@@ -74,7 +74,7 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
     cell: ({ row }) => {
       const deal = row.original;
       return (
-        <div className="min-w-[160px]">
+        <div className="min-w-[160px]" title={deal.deal_memo_preview || undefined}>
           <a
             href={`/deals/${deal.account_id}`}
             className="font-medium text-foreground hover:text-primary hover:underline"
