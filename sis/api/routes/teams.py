@@ -15,6 +15,14 @@ def _require_admin(user: dict):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
+# -- IC listing (non-admin) ---------------------------------------------------
+
+@router.get("/api/users/ics")
+def list_ics(user: dict = Depends(get_current_user)):
+    """List all active IC users with team hierarchy info. Any authenticated user can call."""
+    return team_service.list_ics_with_hierarchy()
+
+
 # -- Team endpoints -----------------------------------------------------------
 
 @router.get("/api/teams/")

@@ -10,12 +10,13 @@ from sis.db.session import get_session
 from sis.db.models import (
     Account, AnalysisRun, DealAssessment,
     AgentAnalysis, Transcript, ScoreFeedback, CoachingEntry,
+    User, Team,
 )
 
 logger = logging.getLogger(__name__)
 
 # Whitelist of fields that can be updated via update_account
-UPDATABLE_FIELDS = {"account_name", "mrr_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value"}
+UPDATABLE_FIELDS = {"account_name", "mrr_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id"}
 
 # Whitelist of fields that can be used for sorting
 SORTABLE_FIELDS = {"account_name", "mrr_estimate", "team_name", "created_at", "updated_at"}
@@ -29,9 +30,28 @@ def create_account(
     team: Optional[str] = None,
     deal_type: str = "new_logo",
     prior_contract_value: Optional[float] = None,
+    owner_id: Optional[str] = None,
 ) -> Account:
-    """Create a new account."""
+    """Create a new account.
+
+    When owner_id is provided, auto-resolve ae_owner, team_lead, and team_name
+    from the org hierarchy (User → Team → Team.leader).
+    """
     with get_session() as session:
+        # Auto-resolve hierarchy fields from owner_id
+        if owner_id:
+            owner = session.query(User).filter_by(id=owner_id).first()
+            if owner:
+                ae_owner = ae_owner or owner.name
+                if owner.team_id:
+                    owner_team = session.query(Team).filter_by(id=owner.team_id).first()
+                    if owner_team:
+                        team = team or owner_team.name
+                        if owner_team.leader_id:
+                            leader = session.query(User).filter_by(id=owner_team.leader_id).first()
+                            if leader:
+                                team_lead = team_lead or leader.name
+
         account = Account(
             account_name=name,
             mrr_estimate=mrr,
@@ -40,6 +60,7 @@ def create_account(
             team_name=team,
             deal_type=deal_type,
             prior_contract_value=prior_contract_value,
+            owner_id=owner_id,
         )
         session.add(account)
         session.flush()

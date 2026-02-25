@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useTeamRollup } from '@/lib/hooks/use-dashboard';
+import { useState, useMemo, Fragment } from 'react';
+import Link from 'next/link';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useTeamRollupHierarchy } from '@/lib/hooks/use-dashboard';
 import { useForecastTeams } from '@/lib/hooks/use-admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -29,22 +31,11 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface TeamRollupItem {
-  team_name: string;
-  total_deals: number;
-  scored_deals: number;
-  avg_health_score: number | null;
-  healthy_count: number;
-  at_risk_count: number;
-  critical_count: number;
-  total_mrr: number | null;
-  divergent_count: number;
-}
+import type {
+  TeamRollupHierarchyTeam,
+  TeamRollupHierarchyRep,
+  TeamRollupHierarchyDeal,
+} from '@/lib/api-types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,6 +53,13 @@ function formatScore(value: number | null): string {
   return value.toFixed(1);
 }
 
+function healthColor(score: number | null): string {
+  if (score === null) return 'text-muted-foreground';
+  if (score >= 70) return 'text-emerald-600 dark:text-emerald-400';
+  if (score >= 45) return 'text-amber-600 dark:text-amber-400';
+  return 'text-red-600 dark:text-red-400';
+}
+
 // ---------------------------------------------------------------------------
 // Loading skeletons
 // ---------------------------------------------------------------------------
@@ -75,7 +73,7 @@ function SkeletonChart() {
 function SkeletonTableRow() {
   return (
     <TableRow>
-      {Array.from({ length: 7 }).map((_, i) => (
+      {Array.from({ length: 8 }).map((_, i) => (
         <TableCell key={i}>
           <div className="h-4 animate-pulse rounded bg-muted" style={{ width: `${50 + i * 8}px` }} />
         </TableCell>
@@ -100,24 +98,43 @@ const CHART_COLORS = {
 
 export default function TeamRollupPage() {
   const [team, setTeam] = useState<string | undefined>(undefined);
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const [expandedRep, setExpandedRep] = useState<string | null>(null);
 
-  const { data: rawData, isLoading, isError, error } = useTeamRollup(team);
+  const { data: rawData, isLoading, isError, error } = useTeamRollupHierarchy(team);
   const { data: teams = [] } = useForecastTeams();
 
-  const items = useMemo<TeamRollupItem[]>(() => {
+  const items = useMemo<TeamRollupHierarchyTeam[]>(() => {
     if (!rawData) return [];
-    return rawData as TeamRollupItem[];
+    return rawData;
   }, [rawData]);
 
-  // Transform data for Recharts stacked bar chart
+  // Chart data: when a team is selected, show rep-level bars; otherwise team-level
   const chartData = useMemo(() => {
+    if (team && items.length === 1 && items[0].reps.length > 0) {
+      return items[0].reps.map((rep) => ({
+        name: rep.rep_name,
+        Healthy: rep.healthy_count,
+        'At Risk': rep.at_risk_count,
+        Critical: rep.critical_count,
+      }));
+    }
     return items.map((item) => ({
       name: item.team_name,
       Healthy: item.healthy_count,
       'At Risk': item.at_risk_count,
       Critical: item.critical_count,
     }));
-  }, [items]);
+  }, [items, team]);
+
+  function toggleTeam(teamName: string) {
+    setExpandedTeam(expandedTeam === teamName ? null : teamName);
+    setExpandedRep(null);
+  }
+
+  function toggleRep(repKey: string) {
+    setExpandedRep(expandedRep === repKey ? null : repKey);
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -135,7 +152,11 @@ export default function TeamRollupPage() {
         {teams.length > 0 && (
           <Select
             value={team ?? 'all'}
-            onValueChange={(v) => setTeam(v === 'all' ? undefined : v)}
+            onValueChange={(v) => {
+              setTeam(v === 'all' ? undefined : v);
+              setExpandedTeam(null);
+              setExpandedRep(null);
+            }}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Teams" />
@@ -168,7 +189,9 @@ export default function TeamRollupPage() {
       {!isError && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Deal Health by Team</CardTitle>
+            <CardTitle className="text-base">
+              {team ? `Rep Health — ${team}` : 'Deal Health by Team'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -211,7 +234,7 @@ export default function TeamRollupPage() {
         </Card>
       )}
 
-      {/* Summary table */}
+      {/* Expandable hierarchy table */}
       {!isError && (
         <Card>
           <CardHeader>
@@ -222,14 +245,14 @@ export default function TeamRollupPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8" />
                     <TableHead>Team</TableHead>
-                    <TableHead className="text-right">Total Deals</TableHead>
+                    <TableHead className="text-right">Deals</TableHead>
                     <TableHead className="text-right">Avg Health</TableHead>
-                    <TableHead className="text-right text-healthy">Healthy</TableHead>
-                    <TableHead className="text-right text-at-risk">At Risk</TableHead>
-                    <TableHead className="text-right text-critical">Critical</TableHead>
+                    <TableHead className="text-right text-emerald-600">Healthy</TableHead>
+                    <TableHead className="text-right text-amber-600">At Risk</TableHead>
+                    <TableHead className="text-right text-red-600">Critical</TableHead>
                     <TableHead className="text-right">Total MRR</TableHead>
-                    <TableHead className="text-right">Divergent</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -252,29 +275,126 @@ export default function TeamRollupPage() {
                   )}
 
                   {!isLoading &&
-                    items.map((item) => (
-                      <TableRow key={item.team_name}>
-                        <TableCell className="font-medium">{item.team_name}</TableCell>
-                        <TableCell className="text-right tabular-nums">{item.total_deals}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatScore(item.avg_health_score)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-healthy">
-                          {item.healthy_count}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-at-risk">
-                          {item.at_risk_count}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-critical">
-                          {item.critical_count}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatMrr(item.total_mrr)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {item.divergent_count}
-                        </TableCell>
-                      </TableRow>
+                    items.map((teamItem) => (
+                      <Fragment key={teamItem.team_name}>
+                        {/* Team row */}
+                        <TableRow
+                          className={`cursor-pointer hover:bg-muted/50 font-medium ${
+                            teamItem.critical_count > 0 ? 'border-l-4 border-l-red-500' : ''
+                          }`}
+                          onClick={() => toggleTeam(teamItem.team_name)}
+                        >
+                          <TableCell className="w-8 pl-4">
+                            {expandedTeam === teamItem.team_name ? (
+                              <ChevronDown className="size-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="size-4 text-muted-foreground" />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <span className="font-medium">{teamItem.team_name}</span>
+                              {teamItem.team_lead && (
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  ({teamItem.team_lead})
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{teamItem.total_deals}</TableCell>
+                          <TableCell className={`text-right tabular-nums ${healthColor(teamItem.avg_health_score)}`}>
+                            {formatScore(teamItem.avg_health_score)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                            {teamItem.healthy_count}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-amber-600 dark:text-amber-400">
+                            {teamItem.at_risk_count}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">
+                            {teamItem.critical_count}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatMrr(teamItem.total_mrr)}
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Rep rows (expanded) */}
+                        {expandedTeam === teamItem.team_name &&
+                          teamItem.reps.map((rep) => (
+                            <Fragment key={rep.rep_id ?? rep.rep_name}>
+                              <TableRow
+                                className="cursor-pointer hover:bg-muted/30 bg-muted/10"
+                                onClick={() => toggleRep(rep.rep_id ?? rep.rep_name)}
+                              >
+                                <TableCell className="w-8 pl-8">
+                                  {expandedRep === (rep.rep_id ?? rep.rep_name) ? (
+                                    <ChevronDown className="size-3.5 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronRight className="size-3.5 text-muted-foreground" />
+                                  )}
+                                </TableCell>
+                                <TableCell className="pl-6 text-sm">{rep.rep_name}</TableCell>
+                                <TableCell className="text-right tabular-nums text-sm">{rep.total_deals}</TableCell>
+                                <TableCell className={`text-right tabular-nums text-sm ${healthColor(rep.avg_health_score)}`}>
+                                  {formatScore(rep.avg_health_score)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-sm text-emerald-600 dark:text-emerald-400">
+                                  {rep.healthy_count}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-sm text-amber-600 dark:text-amber-400">
+                                  {rep.at_risk_count}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-sm text-red-600 dark:text-red-400">
+                                  {rep.critical_count}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-sm">
+                                  {formatMrr(rep.total_mrr)}
+                                </TableCell>
+                              </TableRow>
+
+                              {/* Deal rows (expanded under rep) */}
+                              {expandedRep === (rep.rep_id ?? rep.rep_name) &&
+                                rep.deals.map((deal) => (
+                                  <TableRow
+                                    key={deal.account_id}
+                                    className="bg-muted/5 hover:bg-muted/20"
+                                  >
+                                    <TableCell />
+                                    <TableCell className="pl-12 text-xs">
+                                      <Link
+                                        href={`/deals/${deal.account_id}`}
+                                        className="text-primary hover:underline"
+                                      >
+                                        {deal.account_name}
+                                      </Link>
+                                      {deal.stage_name && (
+                                        <span className="ml-2 text-muted-foreground">
+                                          {deal.stage_name}
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell />
+                                    <TableCell className={`text-right tabular-nums text-xs ${healthColor(deal.health_score)}`}>
+                                      {deal.health_score ?? '--'}
+                                    </TableCell>
+                                    <TableCell colSpan={3} className="text-xs text-muted-foreground whitespace-normal">
+                                      {deal.momentum_direction ?? '--'}
+                                      {deal.ai_forecast_category && ` / ${deal.ai_forecast_category}`}
+                                      {deal.divergence_flag && (
+                                        <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium">
+                                          DIV
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right tabular-nums text-xs">
+                                      {formatMrr(deal.mrr_estimate)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </Fragment>
+                          ))}
+                      </Fragment>
                     ))}
                 </TableBody>
               </Table>

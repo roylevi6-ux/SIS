@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from sis.db.session import get_session
-from sis.db.models import Account, DealAssessment, AnalysisRun, Transcript
+from sis.db.models import Account, DealAssessment, AnalysisRun, Transcript, User, Team
 from sis.config import STALE_CALL_DAYS_THRESHOLD
 
 
@@ -204,6 +204,139 @@ def get_team_rollup(
 
         rollup.sort(key=lambda r: -(r["total_mrr"]))
         return rollup
+
+
+def get_team_rollup_hierarchy(
+    team: Optional[str] = None,
+    visible_user_ids: Optional[set[str]] = None,
+) -> list[dict]:
+    """Hierarchical team rollup: Team → Reps → Deals with aggregates at each level.
+
+    Groups accounts by Account.owner_id → User.team_id → Team.
+    Falls back to team_name string for legacy accounts without owner_id.
+    Default sort: critical_count DESC at team level.
+    """
+    with get_session() as session:
+        query = session.query(Account)
+        if visible_user_ids is not None:
+            query = query.filter(Account.owner_id.in_(visible_user_ids))
+        accounts = query.all()
+
+        # Build a lookup: team_id → team info
+        all_teams = {t.id: t for t in session.query(Team).all()}
+        # Build a lookup: user_id → user
+        all_users = {u.id: u for u in session.query(User).filter(User.is_active == 1).all()}
+
+        # Group accounts into team → rep → deals
+        # Structure: {team_key: {rep_key: [deal_dicts]}}
+        hierarchy: dict[str, dict[str, list[dict]]] = {}
+        team_meta: dict[str, dict] = {}  # team_key → {name, leader}
+
+        for acct in accounts:
+            # Get latest assessment
+            latest = (
+                session.query(DealAssessment)
+                .filter_by(account_id=acct.id)
+                .order_by(DealAssessment.created_at.desc())
+                .first()
+            )
+
+            deal = {
+                "account_id": acct.id,
+                "account_name": acct.account_name,
+                "mrr_estimate": acct.mrr_estimate,
+                "health_score": latest.health_score if latest else None,
+                "momentum_direction": latest.momentum_direction if latest else None,
+                "ai_forecast_category": latest.ai_forecast_category if latest else None,
+                "stage_name": latest.stage_name if latest else None,
+                "divergence_flag": bool(latest.divergence_flag) if latest else False,
+            }
+
+            # Resolve team via hierarchy (owner_id → user.team_id → team)
+            team_key = "Unassigned"
+            team_name_resolved = "Unassigned"
+            team_leader_name = None
+            rep_name = acct.ae_owner or "Unknown Rep"
+
+            if acct.owner_id and acct.owner_id in all_users:
+                owner = all_users[acct.owner_id]
+                rep_name = owner.name
+                if owner.team_id and owner.team_id in all_teams:
+                    t = all_teams[owner.team_id]
+                    team_key = t.id
+                    team_name_resolved = t.name
+                    if t.leader_id and t.leader_id in all_users:
+                        team_leader_name = all_users[t.leader_id].name
+            elif acct.team_name:
+                # Legacy fallback: group by string team_name
+                team_key = f"legacy:{acct.team_name}"
+                team_name_resolved = acct.team_name
+                team_leader_name = acct.team_lead
+
+            # Apply team filter
+            if team and team_name_resolved != team:
+                continue
+
+            if team_key not in hierarchy:
+                hierarchy[team_key] = {}
+                team_meta[team_key] = {"name": team_name_resolved, "leader": team_leader_name}
+
+            rep_key = acct.owner_id or f"legacy:{rep_name}"
+            if rep_key not in hierarchy[team_key]:
+                hierarchy[team_key][rep_key] = []
+            hierarchy[team_key][rep_key].append(deal)
+
+        # Build response with aggregates
+        result = []
+        for team_key, reps in hierarchy.items():
+            meta = team_meta[team_key]
+            all_deals = [d for deals in reps.values() for d in deals]
+            scored = [d for d in all_deals if d["health_score"] is not None]
+
+            team_entry = {
+                "team_id": team_key if not team_key.startswith("legacy:") else None,
+                "team_name": meta["name"],
+                "team_lead": meta["leader"],
+                "total_deals": len(all_deals),
+                "avg_health_score": (
+                    round(sum(d["health_score"] for d in scored) / len(scored), 1)
+                    if scored else None
+                ),
+                "healthy_count": sum(1 for d in scored if d["health_score"] >= 70),
+                "at_risk_count": sum(1 for d in scored if 45 <= d["health_score"] < 70),
+                "critical_count": sum(1 for d in scored if d["health_score"] < 45),
+                "total_mrr": sum(d["mrr_estimate"] or 0 for d in all_deals),
+                "divergent_count": sum(1 for d in scored if d["divergence_flag"]),
+                "reps": [],
+            }
+
+            for rep_key, deals in reps.items():
+                rep_scored = [d for d in deals if d["health_score"] is not None]
+                rep_user = all_users.get(rep_key) if not rep_key.startswith("legacy:") else None
+                rep_entry = {
+                    "rep_id": rep_key if not rep_key.startswith("legacy:") else None,
+                    "rep_name": rep_user.name if rep_user else rep_key.replace("legacy:", ""),
+                    "total_deals": len(deals),
+                    "avg_health_score": (
+                        round(sum(d["health_score"] for d in rep_scored) / len(rep_scored), 1)
+                        if rep_scored else None
+                    ),
+                    "healthy_count": sum(1 for d in rep_scored if d["health_score"] >= 70),
+                    "at_risk_count": sum(1 for d in rep_scored if 45 <= d["health_score"] < 70),
+                    "critical_count": sum(1 for d in rep_scored if d["health_score"] < 45),
+                    "total_mrr": sum(d["mrr_estimate"] or 0 for d in deals),
+                    "deals": deals,
+                }
+                team_entry["reps"].append(rep_entry)
+
+            # Sort reps by critical count DESC
+            team_entry["reps"].sort(key=lambda r: -(r["critical_count"]))
+
+            result.append(team_entry)
+
+        # Sort teams by critical count DESC (risk-first)
+        result.sort(key=lambda t: -(t["critical_count"]))
+        return result
 
 
 def get_pipeline_insights(visible_user_ids: Optional[set[str]] = None) -> dict:

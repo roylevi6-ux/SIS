@@ -70,6 +70,38 @@ def list_users() -> list[dict]:
         ]
 
 
+def list_ics_with_hierarchy() -> list[dict]:
+    """List all active IC users with their team name and team lead resolved from the hierarchy."""
+    with get_session() as session:
+        ics = (
+            session.query(User)
+            .filter(User.role == "ic", User.is_active == 1)
+            .order_by(User.name)
+            .all()
+        )
+        result = []
+        for ic in ics:
+            team_name = None
+            team_lead = None
+            if ic.team_id:
+                team = session.query(Team).filter_by(id=ic.team_id).first()
+                if team:
+                    team_name = team.name
+                    if team.leader_id:
+                        leader = session.query(User).filter_by(id=team.leader_id).first()
+                        if leader:
+                            team_lead = leader.name
+            result.append({
+                "id": ic.id,
+                "name": ic.name,
+                "email": ic.email,
+                "team_id": ic.team_id,
+                "team_name": team_name,
+                "team_lead": team_lead,
+            })
+        return result
+
+
 def update_user(user_id: str, **fields) -> dict:
     with get_session() as session:
         user = session.query(User).filter_by(id=user_id).one_or_none()

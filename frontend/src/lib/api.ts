@@ -31,8 +31,10 @@ import type {
   PipelineOverview,
   PortfolioSummary,
   PromptVersion,
+  ICUser,
   RepScorecard,
   TeamRollup,
+  TeamRollupHierarchyTeam,
   TeamTrend,
   TimelineEntry,
   Transcript,
@@ -129,6 +131,8 @@ export const api = {
       apiFetch<DivergenceItem[]>(`/api/dashboard/divergence${team ? `?team=${team}` : ''}`),
     teamRollup: (team?: string) =>
       apiFetch<TeamRollup[]>(`/api/dashboard/team-rollup${team ? `?team=${team}` : ''}`),
+    teamRollupHierarchy: (team?: string) =>
+      apiFetch<TeamRollupHierarchyTeam[]>(`/api/dashboard/team-rollup/hierarchy${team ? `?team=${team}` : ''}`),
     insights: () => apiFetch<InsightsResponse>('/api/dashboard/insights'),
     dealTrends: (params?: { account_id?: string; weeks?: number }) =>
       apiFetch<DealTrend[]>(`/api/dashboard/trends/deals?${new URLSearchParams(params as Record<string, string>)}`),
@@ -239,6 +243,7 @@ export const api = {
   },
   users: {
     list: () => apiFetch<any[]>('/api/users/'),
+    listICs: () => apiFetch<ICUser[]>('/api/users/ics'),
     create: (data: { name: string; email: string; role: string; team_id?: string }) =>
       apiFetch<any>('/api/users/', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: { name?: string; role?: string; team_id?: string; is_active?: boolean }) =>

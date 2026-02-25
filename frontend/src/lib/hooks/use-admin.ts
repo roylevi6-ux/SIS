@@ -55,6 +55,14 @@ export function useCreatePromptVersion() {
   });
 }
 
+// IC Users (non-admin)
+export function useICUsers() {
+  return useQuery({
+    queryKey: ['users', 'ics'],
+    queryFn: () => api.users.listICs(),
+  });
+}
+
 // Scorecard
 export function useRepScorecard(aeOwner?: string) {
   return useQuery({

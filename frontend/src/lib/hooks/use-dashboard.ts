@@ -22,6 +22,13 @@ export function useTeamRollup(team?: string) {
   });
 }
 
+export function useTeamRollupHierarchy(team?: string) {
+  return useQuery({
+    queryKey: ['dashboard', 'team-rollup-hierarchy', team],
+    queryFn: () => api.dashboard.teamRollupHierarchy(team),
+  });
+}
+
 export function useInsights() {
   return useQuery({
     queryKey: ['dashboard', 'insights'],

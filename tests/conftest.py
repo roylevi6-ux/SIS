@@ -125,15 +125,34 @@ def seeded_db(mock_get_session):
     """
     session = mock_get_session
 
+    # Teams
+    team_alpha_id = _uuid()
+    team_beta_id = _uuid()
+    team_alpha = Team(id=team_alpha_id, name="Team Alpha", level="team")
+    team_beta = Team(id=team_beta_id, name="Team Beta", level="team")
+    session.add_all([team_alpha, team_beta])
+    session.flush()
+
+    # Team leads
+    user_tl1 = User(id=_uuid(), name="TL One", email="tl_one@sis.com", role="team_lead", team_id=team_alpha_id)
+    user_tl2 = User(id=_uuid(), name="TL Two", email="tl_two@sis.com", role="team_lead", team_id=team_beta_id)
+    session.add_all([user_tl1, user_tl2])
+    session.flush()
+
+    # Set team leaders
+    team_alpha.leader_id = user_tl1.id
+    team_beta.leader_id = user_tl2.id
+    session.flush()
+
     # Accounts
     healthy_id = _uuid()
     at_risk_id = _uuid()
     critical_id = _uuid()
 
-    # Create users matching the account owners
-    user_ae1 = User(id=_uuid(), name="AE One", email="ae_one@sis.com", role="ic")
-    user_ae2 = User(id=_uuid(), name="AE Two", email="ae_two@sis.com", role="ic")
-    user_ae3 = User(id=_uuid(), name="AE Three", email="ae_three@sis.com", role="ic")
+    # Create IC users linked to teams
+    user_ae1 = User(id=_uuid(), name="AE One", email="ae_one@sis.com", role="ic", team_id=team_alpha_id)
+    user_ae2 = User(id=_uuid(), name="AE Two", email="ae_two@sis.com", role="ic", team_id=team_alpha_id)
+    user_ae3 = User(id=_uuid(), name="AE Three", email="ae_three@sis.com", role="ic", team_id=team_beta_id)
     session.add_all([user_ae1, user_ae2, user_ae3])
     session.flush()
 
@@ -337,6 +356,15 @@ def seeded_db(mock_get_session):
         "transcript_ids": transcript_ids,
         "feedback_ids": [fb1_id, fb2_id],
         "chat_id": chat_id,
+        "team_alpha_id": team_alpha_id,
+        "team_beta_id": team_beta_id,
+        "user_ids": {
+            "ae1": user_ae1.id,
+            "ae2": user_ae2.id,
+            "ae3": user_ae3.id,
+            "tl1": user_tl1.id,
+            "tl2": user_tl2.id,
+        },
     }
 
 
