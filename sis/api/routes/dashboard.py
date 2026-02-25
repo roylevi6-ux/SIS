@@ -98,3 +98,24 @@ def portfolio_summary(weeks: int = 4, user: dict = Depends(get_current_user)):
     """Portfolio-wide trend summary."""
     deal_data = trend_service.get_deal_trends(weeks=weeks)
     return trend_service.get_portfolio_summary(weeks=weeks, deal_trends=deal_data)
+
+
+@router.get("/command-center")
+def command_center(
+    team: Optional[str] = None,
+    ae: Optional[str] = None,
+    period: str = "2026",
+    quarter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Command Center: quota attainment, forecast breakdown, pipeline totals, attention items."""
+    visible = _resolve_scoping(user, db)
+    return dashboard_service.get_command_center(
+        db=db,
+        visible_user_ids=visible,
+        period=period,
+        quarter=quarter,
+        team_id=team,
+        ae_name=ae,
+    )
