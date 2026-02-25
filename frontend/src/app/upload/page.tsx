@@ -101,7 +101,7 @@ export default function UploadPage() {
   const refreshAccounts = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 max-w-full">
       <h1 className="text-2xl font-bold tracking-tight mb-1">
         Upload Transcript
       </h1>
@@ -437,9 +437,9 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
                           <TableCell className="p-1 whitespace-normal">
                             {row.selected ? (
                               <Select value={row.sfStage?.toString() ?? ""} onValueChange={(v) => updateRow(index, { sfStage: v ? parseInt(v) : undefined })}>
-                                <SelectTrigger className="h-7 text-xs w-16"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs w-28"><SelectValue placeholder="—" /></SelectTrigger>
                                 <SelectContent>
-                                  {[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"},{v:"6",l:"6"},{v:"7",l:"7"}].map(s => (
+                                  {[{v:"1",l:"1 – Qualify"},{v:"2",l:"2 – Establish Business Case"},{v:"3",l:"3 – Scope"},{v:"4",l:"4 – Proposal"},{v:"5",l:"5 – Negotiate"},{v:"6",l:"6 – Contract"},{v:"7",l:"7 – Implement"}].map(s => (
                                     <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>
                                   ))}
                                 </SelectContent>
@@ -887,12 +887,12 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
                     <SelectContent>
                       {[
                         { value: "1", label: "1 – Qualify" },
-                        { value: "2", label: "2 – Discover" },
+                        { value: "2", label: "2 – Establish Business Case" },
                         { value: "3", label: "3 – Scope" },
-                        { value: "4", label: "4 – Validate" },
+                        { value: "4", label: "4 – Proposal" },
                         { value: "5", label: "5 – Negotiate" },
-                        { value: "6", label: "6 – Prove" },
-                        { value: "7", label: "7 – Close" },
+                        { value: "6", label: "6 – Contract" },
+                        { value: "7", label: "7 – Implement" },
                       ].map((s) => (
                         <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                       ))}
