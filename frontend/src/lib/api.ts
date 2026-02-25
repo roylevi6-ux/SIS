@@ -14,6 +14,7 @@ import type {
   CoachingNote,
   CoachingSummary,
   CROMetric,
+  DealHealthResponse,
   DealTrend,
   DeltaResponse,
   DivergenceItem,
@@ -22,6 +23,7 @@ import type {
   FeedbackSubmit,
   FeedbackSummary,
   ForecastData,
+  ForecastMovementResponse,
   GDriveAccount,
   GDriveCall,
   GDriveConfig,
@@ -30,11 +32,13 @@ import type {
   InsightsResponse,
   ActionLog,
   ActionLogSummary,
+  PipelineFlowResponse,
   PipelineOverview,
   PortfolioSummary,
   PromptVersion,
   ICUser,
   RepScorecard,
+  TeamComparisonResponse,
   TeamRollup,
   TeamRollupHierarchyTeam,
   TeamTrend,
@@ -42,6 +46,7 @@ import type {
   Transcript,
   TranscriptUpload,
   UsageSummary,
+  VelocityResponse,
 } from './api-types';
 import type { CommandCenterResponse } from './pipeline-types';
 
@@ -157,6 +162,16 @@ export const api = {
       const qs = sp.toString();
       return apiFetch<CommandCenterResponse>(`/api/dashboard/command-center${qs ? `?${qs}` : ''}`);
     },
+    trendsPipelineFlow: (weeks?: number) =>
+      apiFetch<PipelineFlowResponse>(`/api/dashboard/trends/pipeline-flow?weeks=${weeks ?? 4}`),
+    trendsForecastMovement: (weeks?: number) =>
+      apiFetch<ForecastMovementResponse>(`/api/dashboard/trends/forecast-migration?weeks=${weeks ?? 4}`),
+    trendsDealHealth: (weeks?: number) =>
+      apiFetch<DealHealthResponse>(`/api/dashboard/trends/deal-health?weeks=${weeks ?? 4}`),
+    trendsVelocity: (weeks?: number) =>
+      apiFetch<VelocityResponse>(`/api/dashboard/trends/velocity?weeks=${weeks ?? 4}`),
+    trendsTeamComparison: (weeks?: number) =>
+      apiFetch<TeamComparisonResponse>(`/api/dashboard/trends/team-comparison?weeks=${weeks ?? 4}`),
   },
   feedback: {
     submit: (data: FeedbackSubmit) =>
