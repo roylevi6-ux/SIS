@@ -19,11 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+// Note: Collapsible removed – Radix renders a <div> wrapper that is invalid
+// inside <tbody>. We use plain state + conditional rendering instead.
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -55,27 +52,25 @@ function PromptRow({ version }: { version: any }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <TableRow className="cursor-pointer hover:bg-muted/50">
-          <TableCell className="w-8">
-            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </TableCell>
-          <TableCell className="font-mono text-sm">{version.version}</TableCell>
-          <TableCell>
-            {version.is_active ? (
-              <Badge>Active</Badge>
-            ) : (
-              <Badge variant="outline">Inactive</Badge>
-            )}
-          </TableCell>
-          <TableCell className="max-w-xs text-sm text-muted-foreground">
-            {version.change_notes ?? '--'}
-          </TableCell>
-          <TableCell className="text-sm text-muted-foreground">{formatDate(version.created_at)}</TableCell>
-        </TableRow>
-      </CollapsibleTrigger>
-      <CollapsibleContent asChild>
+    <>
+      <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setOpen(!open)}>
+        <TableCell className="w-8">
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </TableCell>
+        <TableCell className="font-mono text-sm">{version.version}</TableCell>
+        <TableCell>
+          {version.is_active ? (
+            <Badge>Active</Badge>
+          ) : (
+            <Badge variant="outline">Inactive</Badge>
+          )}
+        </TableCell>
+        <TableCell className="max-w-xs text-sm text-muted-foreground">
+          {version.change_notes ?? '--'}
+        </TableCell>
+        <TableCell className="text-sm text-muted-foreground">{formatDate(version.created_at)}</TableCell>
+      </TableRow>
+      {open && (
         <TableRow>
           <TableCell colSpan={5} className="bg-muted/30 p-0">
             <div className="px-6 py-4">
@@ -88,8 +83,8 @@ function PromptRow({ version }: { version: any }) {
             </div>
           </TableCell>
         </TableRow>
-      </CollapsibleContent>
-    </Collapsible>
+      )}
+    </>
   );
 }
 
