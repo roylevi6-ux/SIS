@@ -19,7 +19,7 @@ export interface UserInfo {
 export interface Account {
   id: string;
   account_name: string;
-  mrr_estimate: number | null;
+  cp_estimate: number | null;
   team_lead: string | null;
   ae_owner: string | null;
   ic_forecast_category: string | null;
@@ -31,15 +31,21 @@ export interface Account {
   divergence_flag: boolean;
   created_at: string;
   updated_at: string;
+  sf_stage: number | null;
+  sf_forecast_category: string | null;
+  sf_close_quarter: string | null;
   // Backend may include additional fields (assessment data, etc.)
   [key: string]: unknown;
 }
 
 export interface AccountCreate {
   account_name: string;
-  mrr_estimate?: number;
+  cp_estimate?: number;
   team_lead?: string;
   ae_owner?: string;
+  sf_stage?: number;
+  sf_forecast_category?: string;
+  sf_close_quarter?: string;
 }
 
 // ── Transcripts ──
@@ -140,7 +146,7 @@ export interface DivergenceItem {
   account_name: string;
   ai_forecast_category: string;
   ic_forecast_category: string;
-  mrr_estimate: number;
+  cp_estimate: number;
   health_score: number | null;
 }
 
@@ -157,7 +163,7 @@ export interface PipelineInsight {
   account_name: string;
   health_score: number | null;
   description: string;
-  mrr_estimate?: number | null;
+  cp_estimate?: number | null;
   team_name?: string | null;
   ae_owner?: string | null;
   momentum_direction?: string | null;
@@ -310,7 +316,7 @@ export interface ForecastData {
   account_name: string;
   ai_forecast_category: string;
   ic_forecast_category: string | null;
-  mrr_estimate: number;
+  cp_estimate: number;
   health_score: number | null;
   [key: string]: unknown;
 }
@@ -377,7 +383,7 @@ export interface ICUser {
 export interface TeamRollupHierarchyDeal {
   account_id: string;
   account_name: string;
-  mrr_estimate: number | null;
+  cp_estimate: number | null;
   health_score: number | null;
   momentum_direction: string | null;
   ai_forecast_category: string | null;
@@ -433,8 +439,11 @@ export interface BatchItemRequest {
   drive_path: string;
   max_calls: number;
   deal_type?: string;
-  mrr_estimate?: number;
+  cp_estimate?: number;
   owner_id?: string;
+  sf_stage?: number;
+  sf_forecast_category?: string;
+  sf_close_quarter?: string;
 }
 
 export interface BatchItem {
@@ -457,4 +466,168 @@ export interface BatchAnalysisResponse {
   completed_count: number;
   failed_count: number;
   items: BatchItem[];
+}
+
+// ── Deal Trends (5-tab analytics) ──
+
+export interface WaterfallData {
+  previous_total: number;
+  new_deals: number;
+  lost_deals: number;
+  upgrades: number;
+  downgrades: number;
+  current_total: number;
+}
+
+export interface CoverageTrendPoint {
+  week: string;
+  coverage_ratio: number | null;
+  pipeline_value: number;
+  quota: number;
+}
+
+export interface PipelineByCategoryPoint {
+  week: string;
+  commit: number;
+  realistic: number;
+  upside: number;
+  risk: number;
+}
+
+export interface PipelineFlowResponse {
+  waterfall: WaterfallData | null;
+  coverage_trend: CoverageTrendPoint[];
+  pipeline_by_category: PipelineByCategoryPoint[];
+}
+
+export interface ForecastMigration {
+  account_id: string;
+  account_name: string;
+  mrr_estimate: number;
+  previous_category: string;
+  current_category: string;
+  changed_at: string;
+  direction: 'upgrade' | 'downgrade';
+}
+
+export interface MigrationSummary {
+  upgrades: number;
+  downgrades: number;
+  net: number;
+  upgrade_value: number;
+  downgrade_value: number;
+}
+
+export interface DivergenceTrendPoint {
+  week: string;
+  divergent_count: number;
+  total_deals: number;
+  divergence_pct: number;
+}
+
+export interface ForecastMovementResponse {
+  migrations: ForecastMigration[];
+  migration_summary: MigrationSummary;
+  divergence_trend: DivergenceTrendPoint[];
+}
+
+export interface HealthDistributionPoint {
+  week: string;
+  healthy: number;
+  at_risk: number;
+  critical: number;
+}
+
+export interface BiggestMover {
+  account_id: string;
+  account_name: string;
+  mrr_estimate: number;
+  current_score: number;
+  delta: number;
+  direction: string;
+  sparkline: number[];
+}
+
+export interface ComponentAverage {
+  component: string;
+  avg_score: number;
+  trend_delta: number;
+}
+
+export interface WeightedHealth {
+  current: number;
+  previous: number;
+  delta: number;
+}
+
+export interface DealHealthResponse {
+  distribution_over_time: HealthDistributionPoint[];
+  biggest_movers: BiggestMover[];
+  component_averages: ComponentAverage[];
+  weighted_health: WeightedHealth;
+}
+
+export interface StageDuration {
+  stage: number;
+  stage_name: string;
+  avg_days: number;
+  median_days: number;
+  deal_count: number;
+}
+
+export interface StalledDeal {
+  account_id: string;
+  account_name: string;
+  mrr_estimate: number;
+  current_stage: number;
+  stage_name: string;
+  days_in_stage: number;
+  median_for_stage: number;
+  excess_days: number;
+  health_score: number | null;
+}
+
+export interface StageEvent {
+  account_id: string;
+  account_name: string;
+  from_stage: number;
+  to_stage: number;
+  from_stage_name: string;
+  to_stage_name: string;
+  event_date: string;
+  direction: 'advance' | 'regression';
+}
+
+export interface VelocityResponse {
+  stage_durations: StageDuration[];
+  stalled_deals: StalledDeal[];
+  stage_events: StageEvent[];
+}
+
+export interface TeamBenchmark {
+  team_name: string;
+  total_deals: number;
+  pipeline_value: number;
+  avg_health: number | null;
+  improving_count: number;
+  stable_count: number;
+  declining_count: number;
+}
+
+export interface TeamMomentum {
+  team_name: string;
+  improving: number;
+  stable: number;
+  declining: number;
+}
+
+export interface TeamPipelineTrendPoint {
+  week: string;
+  teams: Record<string, number>;
+}
+
+export interface TeamComparisonResponse {
+  team_pipeline_trend: TeamPipelineTrendPoint[];
+  benchmark_table: TeamBenchmark[];
+  momentum_distribution: TeamMomentum[];
 }
