@@ -152,6 +152,18 @@ def trends_velocity(
     return trend_service.get_velocity_trends(db=db, weeks=weeks, visible_user_ids=visible_ids)
 
 
+@router.get("/trends/team-comparison")
+def trends_team_comparison(
+    weeks: int = 4,
+    deal_type: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Per-team pipeline trends, benchmarking, momentum distribution."""
+    visible_ids = _resolve_scoping(user, db)
+    return trend_service.get_team_comparison(db=db, weeks=weeks, visible_user_ids=visible_ids)
+
+
 @router.get("/command-center")
 def command_center(
     team: Optional[str] = None,
