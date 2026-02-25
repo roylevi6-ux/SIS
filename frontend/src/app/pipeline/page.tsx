@@ -282,7 +282,7 @@ export default function PipelineCommandCenter() {
       {data && !isLoading && (
         <>
           {/* 1. Number Line — sticky on scroll */}
-          <div className="sticky top-0 lg:top-0 z-10">
+          <div className="sticky top-0 z-10 bg-background pb-2">
             <NumberLine
               quota={data.quota}
               pipeline={data.pipeline}
