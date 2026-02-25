@@ -126,7 +126,7 @@ def get_deal_health_trends(
         movers.append({
             "account_id": aid,
             "account_name": acct.account_name,
-            "mrr_estimate": acct.mrr_estimate or 0,
+            "cp_estimate": acct.cp_estimate or 0,
             "current_score": da_last.health_score,
             "delta": delta,
             "direction": direction,
@@ -164,7 +164,7 @@ def get_deal_health_trends(
     current_weighted = 0.0
     current_total_mrr = 0.0
     for da, acct in latest.values():
-        mrr = acct.mrr_estimate or 0
+        mrr = acct.cp_estimate or 0
         current_weighted += da.health_score * mrr
         current_total_mrr += mrr
     current_wh = round(current_weighted / current_total_mrr, 1) if current_total_mrr > 0 else 0
@@ -199,7 +199,7 @@ def get_pipeline_flow(
         cats = {"commit": 0.0, "realistic": 0.0, "upside": 0.0, "risk": 0.0}
         total = 0.0
         for da, acct in deals.values():
-            mrr = acct.mrr_estimate or 0
+            mrr = acct.cp_estimate or 0
             total += mrr
             cat = (da.ai_forecast_category or "").lower().replace(" ", "_").replace("at_risk", "risk")
             if cat in cats:
@@ -217,14 +217,14 @@ def get_pipeline_flow(
         prev_ids = set(prev_deals.keys())
         curr_ids = set(curr_deals.keys())
 
-        new_deals = sum((curr_deals[aid][1].mrr_estimate or 0) for aid in curr_ids - prev_ids)
-        lost_deals = sum((prev_deals[aid][1].mrr_estimate or 0) for aid in prev_ids - curr_ids)
+        new_deals = sum((curr_deals[aid][1].cp_estimate or 0) for aid in curr_ids - prev_ids)
+        lost_deals = sum((prev_deals[aid][1].cp_estimate or 0) for aid in prev_ids - curr_ids)
         common = prev_ids & curr_ids
         upgrades = 0.0
         downgrades = 0.0
         for aid in common:
-            prev_mrr = prev_deals[aid][1].mrr_estimate or 0
-            curr_mrr = curr_deals[aid][1].mrr_estimate or 0
+            prev_mrr = prev_deals[aid][1].cp_estimate or 0
+            curr_mrr = curr_deals[aid][1].cp_estimate or 0
             diff = curr_mrr - prev_mrr
             if diff > 0:
                 upgrades += diff
@@ -291,14 +291,14 @@ def get_forecast_migration(
         migrations.append({
             "account_id": aid,
             "account_name": acct.account_name,
-            "mrr_estimate": acct.mrr_estimate or 0,
+            "cp_estimate": acct.cp_estimate or 0,
             "previous_category": prev_cat,
             "current_category": curr_cat,
             "changed_at": da_last.created_at[:10],
             "direction": direction,
         })
 
-    migrations.sort(key=lambda m: -(m["mrr_estimate"]))
+    migrations.sort(key=lambda m: -(m["cp_estimate"]))
 
     ups = [m for m in migrations if m["direction"] == "upgrade"]
     downs = [m for m in migrations if m["direction"] == "downgrade"]
@@ -306,8 +306,8 @@ def get_forecast_migration(
         "upgrades": len(ups),
         "downgrades": len(downs),
         "net": len(ups) - len(downs),
-        "upgrade_value": round(sum(m["mrr_estimate"] for m in ups), 2),
-        "downgrade_value": round(sum(m["mrr_estimate"] for m in downs), 2),
+        "upgrade_value": round(sum(m["cp_estimate"] for m in ups), 2),
+        "downgrade_value": round(sum(m["cp_estimate"] for m in downs), 2),
     }
 
     by_week = _group_by_week(rows)
@@ -388,7 +388,7 @@ def get_velocity_trends(
             current_stages.append({
                 "account_id": aid,
                 "account_name": acct.account_name,
-                "mrr_estimate": acct.mrr_estimate or 0,
+                "cp_estimate": acct.cp_estimate or 0,
                 "current_stage": prev_stage,
                 "stage_name": stage_names.get(prev_stage, f"Stage {prev_stage}"),
                 "days_in_stage": round(days, 1),
@@ -456,7 +456,7 @@ def get_team_comparison(
         teams_val: dict[str, float] = {}
         for da, acct in weekly_latest[wk].values():
             tn = _get_team_name(acct)
-            teams_val[tn] = teams_val.get(tn, 0) + (acct.mrr_estimate or 0)
+            teams_val[tn] = teams_val.get(tn, 0) + (acct.cp_estimate or 0)
         team_pipeline_trend.append({"week": wk, "teams": {k: round(v, 2) for k, v in teams_val.items()}})
 
     latest = _latest_per_account(rows)
@@ -468,7 +468,7 @@ def get_team_comparison(
     benchmark_table = []
     momentum_distribution = []
     for tn, deals in team_deals.items():
-        total_mrr = sum(acct.mrr_estimate or 0 for _, acct in deals)
+        total_mrr = sum(acct.cp_estimate or 0 for _, acct in deals)
         scores = [da.health_score for da, _ in deals if da.health_score is not None]
         avg_health = round(sum(scores) / len(scores), 1) if scores else None
         improving = sum(1 for da, _ in deals if da.momentum_direction == "Improving")

@@ -304,7 +304,7 @@ def seed():
             session.add(Account(
                 id=acct_id,
                 account_name=acct["name"],
-                mrr_estimate=acct["mrr"],
+                cp_estimate=acct["mrr"],
                 ic_forecast_category=acct["ic_forecast"],
                 team_lead=acct["tl"],
                 ae_owner=acct["ae"],

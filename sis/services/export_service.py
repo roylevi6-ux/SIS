@@ -58,7 +58,7 @@ def export_deal_brief(account_id: str, format: str = "markdown") -> str:
 
         data = {
             "account_name": account.account_name,
-            "mrr": account.mrr_estimate,
+            "cp_estimate": account.cp_estimate,
             "team_lead": account.team_lead,
             "ae_owner": account.ae_owner,
             "stage": assessment.inferred_stage,
@@ -92,14 +92,14 @@ def export_deal_brief(account_id: str, format: str = "markdown") -> str:
 
 def _render_structured_brief(d: dict) -> str:
     """Structured one-pager with fixed template sections."""
-    mrr_str = f"${d['mrr']:,.0f}" if d["mrr"] else "TBD"
+    cp_str = f"${d['cp_estimate']:,.0f}" if d["cp_estimate"] else "TBD"
     lines = [
         f"# Deal Brief: {d['account_name']}",
         f"*Generated {d['created_at']}*",
         "",
         f"| Field | Value |",
         f"|-------|-------|",
-        f"| MRR | {mrr_str} |",
+        f"| CP Estimate | {cp_str} |",
         f"| Stage | {d['stage']} — {d['stage_name']} ({(d['stage_confidence'] or 0):.0%} conf) |",
         f"| Health Score | {d['health_score']}/100 ({(d['overall_confidence'] or 0):.0%} conf) |",
         f"| Momentum | {d['momentum']} |",
@@ -167,10 +167,10 @@ def _render_structured_brief(d: dict) -> str:
 
 def _render_narrative_brief(d: dict) -> str:
     """Narrative memo — 3-5 paragraphs + structured fields."""
-    mrr_str = f"${d['mrr']:,.0f}" if d["mrr"] else "TBD"
+    cp_str = f"${d['cp_estimate']:,.0f}" if d["cp_estimate"] else "TBD"
     lines = [
         f"# Deal Memo: {d['account_name']}",
-        f"*Generated {d['created_at']} | MRR: {mrr_str} | "
+        f"*Generated {d['created_at']} | CP Est.: {cp_str} | "
         f"Health: {d['health_score']}/100 | Momentum: {d['momentum']}*",
         "",
     ]
@@ -209,10 +209,10 @@ def _render_narrative_brief(d: dict) -> str:
 
 def _render_inspection_brief(d: dict) -> str:
     """Inspection-question format — 3-5 questions with evidence for TL review."""
-    mrr_str = f"${d['mrr']:,.0f}" if d["mrr"] else "TBD"
+    cp_str = f"${d['cp_estimate']:,.0f}" if d["cp_estimate"] else "TBD"
     lines = [
         f"# Inspection Questions: {d['account_name']}",
-        f"*Generated {d['created_at']} | MRR: {mrr_str} | "
+        f"*Generated {d['created_at']} | CP Est.: {cp_str} | "
         f"Health: {d['health_score']}/100 | Stage: {d['stage']} — {d['stage_name']}*",
         "",
     ]
@@ -297,7 +297,7 @@ def export_forecast_report(team: Optional[str] = None, format: str = "markdown")
 
             rows.append({
                 "account_name": acct.account_name,
-                "mrr": acct.mrr_estimate or 0,
+                "cp_estimate": acct.cp_estimate or 0,
                 "team_name": acct.team_name or "Unassigned",
                 "ai_forecast": latest.ai_forecast_category,
                 "ic_forecast": acct.ic_forecast_category,
@@ -325,33 +325,33 @@ def export_forecast_report(team: Optional[str] = None, format: str = "markdown")
         "",
         "## Deal-Level Comparison",
         "",
-        "| Deal | MRR | Team | AI Forecast | IC Forecast | Health | Divergent |",
-        "|------|-----|------|-------------|-------------|--------|-----------|",
+        "| Deal | CP Est. | Team | AI Forecast | IC Forecast | Health | Divergent |",
+        "|------|---------|------|-------------|-------------|--------|-----------|",
     ]
 
-    for r in sorted(rows, key=lambda x: -x["mrr"]):
-        mrr_str = f"${r['mrr']:,.0f}"
+    for r in sorted(rows, key=lambda x: -x["cp_estimate"]):
+        cp_str = f"${r['cp_estimate']:,.0f}"
         div_str = "!!!" if r["divergence"] else ""
         ic_str = r["ic_forecast"] or "—"
         lines.append(
-            f"| {r['account_name']} | {mrr_str} | {r['team_name']} | "
+            f"| {r['account_name']} | {cp_str} | {r['team_name']} | "
             f"{r['ai_forecast']} | {ic_str} | {r['health_score']} | {div_str} |"
         )
 
     lines.append("")
 
     # Weighted pipeline summary
-    ai_weighted = sum(r["mrr"] * category_weights.get(r["ai_forecast"], 0.25) for r in rows)
+    ai_weighted = sum(r["cp_estimate"] * category_weights.get(r["ai_forecast"], 0.25) for r in rows)
     ic_rows = [r for r in rows if r["ic_forecast"]]
-    ic_weighted = sum(r["mrr"] * category_weights.get(r["ic_forecast"], 0.25) for r in ic_rows)
-    total_mrr = sum(r["mrr"] for r in rows)
+    ic_weighted = sum(r["cp_estimate"] * category_weights.get(r["ic_forecast"], 0.25) for r in ic_rows)
+    total_cp = sum(r["cp_estimate"] for r in rows)
 
     lines.extend([
         "## Weighted Pipeline Summary",
         "",
         f"| Metric | Value |",
         f"|--------|-------|",
-        f"| Total Pipeline MRR | ${total_mrr:,.0f} |",
+        f"| Total Pipeline CP Estimate | ${total_cp:,.0f} |",
         f"| AI Weighted Pipeline | ${ai_weighted:,.0f} |",
         f"| IC Weighted Pipeline | ${ic_weighted:,.0f} |",
         f"| Delta (AI - IC) | ${ai_weighted - ic_weighted:,.0f} |",
@@ -372,17 +372,17 @@ def export_forecast_report(team: Optional[str] = None, format: str = "markdown")
         lines.extend([
             "## By Team",
             "",
-            "| Team | Deals | MRR | AI Weighted | IC Weighted | Divergent |",
-            "|------|-------|-----|-------------|-------------|-----------|",
+            "| Team | Deals | CP Est. | AI Weighted | IC Weighted | Divergent |",
+            "|------|-------|---------|-------------|-------------|-----------|",
         ])
         for t_name, t_rows in sorted(teams.items()):
-            t_mrr = sum(r["mrr"] for r in t_rows)
-            t_ai = sum(r["mrr"] * category_weights.get(r["ai_forecast"], 0.25) for r in t_rows)
+            t_cp = sum(r["cp_estimate"] for r in t_rows)
+            t_ai = sum(r["cp_estimate"] * category_weights.get(r["ai_forecast"], 0.25) for r in t_rows)
             t_ic_rows = [r for r in t_rows if r["ic_forecast"]]
-            t_ic = sum(r["mrr"] * category_weights.get(r["ic_forecast"], 0.25) for r in t_ic_rows)
+            t_ic = sum(r["cp_estimate"] * category_weights.get(r["ic_forecast"], 0.25) for r in t_ic_rows)
             t_div = sum(1 for r in t_rows if r["divergence"])
             lines.append(
-                f"| {t_name} | {len(t_rows)} | ${t_mrr:,.0f} | "
+                f"| {t_name} | {len(t_rows)} | ${t_cp:,.0f} | "
                 f"${t_ai:,.0f} | ${t_ic:,.0f} | {t_div} |"
             )
         lines.append("")

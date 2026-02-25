@@ -97,7 +97,7 @@ class BatchItemRequest(BaseModel):
     drive_path: str
     max_calls: int = 5
     deal_type: Optional[str] = None
-    mrr_estimate: Optional[float] = None
+    cp_estimate: Optional[float] = None
     owner_id: Optional[str] = None
 
 

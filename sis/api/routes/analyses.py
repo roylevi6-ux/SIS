@@ -83,12 +83,25 @@ def _run_batch_item(batch_id: str, index: int, item_data: dict):
                 account_id = acct["id"]
                 break
 
+        if account_id:
+            # Update existing account's SF fields if provided
+            from sis.services.account_service import update_account
+            sf_updates = {}
+            for f in ["sf_stage", "sf_forecast_category", "sf_close_quarter", "cp_estimate"]:
+                if item_data.get(f) is not None:
+                    sf_updates[f] = item_data[f]
+            if sf_updates:
+                update_account(account_id, **sf_updates)
+
         if not account_id:
             acct_obj = create_account(
                 name=item_data["account_name"],
                 deal_type=normalize_deal_type(item_data.get("deal_type")),
-                mrr=item_data.get("mrr_estimate"),
+                cp_estimate=item_data.get("cp_estimate"),
                 owner_id=item_data.get("owner_id"),
+                sf_stage=item_data.get("sf_stage"),
+                sf_forecast_category=item_data.get("sf_forecast_category"),
+                sf_close_quarter=item_data.get("sf_close_quarter"),
             )
             account_id = acct_obj.id
 

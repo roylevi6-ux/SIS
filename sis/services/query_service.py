@@ -271,7 +271,7 @@ def _build_rep_context(accounts: list[dict]) -> str:
     for rep_name in sorted(reps.keys()):
         deals = reps[rep_name]
         scored = [d for d in deals if d.get("health_score") is not None]
-        total_mrr = sum(d.get("mrr_estimate") or 0 for d in deals)
+        total_mrr = sum(d.get("cp_estimate") or 0 for d in deals)
 
         # Health tiers
         healthy = sum(1 for d in scored if d["health_score"] >= 70)
@@ -342,7 +342,7 @@ def _build_context(accounts: list[dict]) -> str:
         ai_fc = a.get("ai_forecast_category", "N/A")
         ic_fc = a.get("ic_forecast_category", "Not set")
         stage = f"{a.get('inferred_stage', '?')} ({a.get('stage_name', 'N/A')})"
-        mrr = f"${a['mrr_estimate']:,.0f}" if a.get("mrr_estimate") else "N/A"
+        mrr = f"${a['cp_estimate']:,.0f}" if a.get("cp_estimate") else "N/A"
         div = " [DIVERGENT]" if a.get("divergence_flag") else ""
         sections.append(
             f"- {a['account_name']}: Health={hs}, Momentum={mom}, "
@@ -355,7 +355,7 @@ def _build_context(accounts: list[dict]) -> str:
         for d in divergences:
             sections.append(
                 f"- {d['account_name']}: AI={d['ai_forecast_category']}, "
-                f"IC={d['ic_forecast_category']}, MRR=${d.get('mrr_estimate', 0):,.0f}"
+                f"IC={d['ic_forecast_category']}, CP Est.=${d.get('cp_estimate', 0):,.0f}"
             )
 
     if rollup:
