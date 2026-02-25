@@ -43,6 +43,7 @@ import type {
   TranscriptUpload,
   UsageSummary,
 } from './api-types';
+import type { CommandCenterResponse } from './pipeline-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -154,7 +155,7 @@ export const api = {
       if (params?.period) sp.set('period', params.period);
       if (params?.quarter) sp.set('quarter', params.quarter);
       const qs = sp.toString();
-      return apiFetch<any>(`/api/dashboard/command-center${qs ? `?${qs}` : ''}`);
+      return apiFetch<CommandCenterResponse>(`/api/dashboard/command-center${qs ? `?${qs}` : ''}`);
     },
   },
   feedback: {

@@ -515,22 +515,61 @@ def get_command_center(
 
     accounts = query.all()
 
-    # ── 2. Build deal list (same shape as get_pipeline_overview) ─────────
+    # ── 2. Build deal list — batch queries to avoid N+1 ─────────────────
+    from sqlalchemy import func, and_
+
+    account_ids = [a.id for a in accounts]
+    acct_map = {a.id: a for a in accounts}
+
+    # Batch: latest assessment per account (single query)
+    latest_assess_sq = (
+        db.query(
+            DealAssessment.account_id,
+            func.max(DealAssessment.created_at).label("max_ca"),
+        )
+        .filter(DealAssessment.account_id.in_(account_ids))
+        .group_by(DealAssessment.account_id)
+        .subquery()
+    ) if account_ids else None
+
+    assess_map: dict[str, DealAssessment] = {}
+    if latest_assess_sq is not None:
+        for da in (
+            db.query(DealAssessment)
+            .join(latest_assess_sq, and_(
+                DealAssessment.account_id == latest_assess_sq.c.account_id,
+                DealAssessment.created_at == latest_assess_sq.c.max_ca,
+            ))
+            .all()
+        ):
+            assess_map[da.account_id] = da
+
+    # Batch: latest transcript per account (single query)
+    latest_tx_sq = (
+        db.query(
+            Transcript.account_id,
+            func.max(Transcript.call_date).label("max_cd"),
+        )
+        .filter(Transcript.account_id.in_(account_ids), Transcript.is_active == 1)
+        .group_by(Transcript.account_id)
+        .subquery()
+    ) if account_ids else None
+
+    tx_map: dict[str, str] = {}  # account_id → call_date
+    if latest_tx_sq is not None:
+        for tx in (
+            db.query(Transcript)
+            .join(latest_tx_sq, and_(
+                Transcript.account_id == latest_tx_sq.c.account_id,
+                Transcript.call_date == latest_tx_sq.c.max_cd,
+            ))
+            .all()
+        ):
+            tx_map[tx.account_id] = tx.call_date
+
     deals = []
     for acct in accounts:
-        latest = (
-            db.query(DealAssessment)
-            .filter_by(account_id=acct.id)
-            .order_by(DealAssessment.created_at.desc())
-            .first()
-        )
-        latest_transcript = (
-            db.query(Transcript)
-            .filter_by(account_id=acct.id, is_active=1)
-            .order_by(Transcript.call_date.desc())
-            .first()
-        )
-
+        latest = assess_map.get(acct.id)
         deal: dict = {
             "account_id": acct.id,
             "account_name": acct.account_name,
@@ -539,7 +578,8 @@ def get_command_center(
             "ae_owner": acct.ae_owner,
             "team_name": acct.team_name,
             "ic_forecast_category": acct.ic_forecast_category,
-            "last_call_date": latest_transcript.call_date if latest_transcript else None,
+            "deal_type": acct.deal_type,
+            "last_call_date": tx_map.get(acct.id),
         }
 
         if latest:
@@ -572,23 +612,23 @@ def get_command_center(
         deals.append(deal)
 
     # ── 3. Forecast breakdown ─────────────────────────────────────────────
-    _CATEGORIES = ("Commit", "Realistic", "Upside", "At Risk")
+    # Map backend category names → frontend keys (frontend expects "risk", not "at_risk")
+    _CAT_MAP = {"Commit": "commit", "Realistic": "realistic", "Upside": "upside", "At Risk": "risk"}
     forecast: dict = {}
-    for cat in _CATEGORIES:
-        cat_deals = [d for d in deals if d.get("ai_forecast_category") == cat]
-        forecast[cat.lower().replace(" ", "_")] = {
+    for db_cat, fe_key in _CAT_MAP.items():
+        cat_deals = [d for d in deals if d.get("ai_forecast_category") == db_cat]
+        forecast[fe_key] = {
             "count": len(cat_deals),
             "value": sum(d["mrr_estimate"] or 0 for d in cat_deals),
         }
 
     # ── 4. Pipeline totals ────────────────────────────────────────────────
-    scored_deals = [d for d in deals if d["health_score"] is not None]
     total_mrr = sum(d["mrr_estimate"] or 0 for d in deals)
 
-    # Weighted pipeline: health_score (0-100) used as win-probability proxy
+    # Weighted pipeline per design spec: Commit×0.90 + Realistic×0.60 + Upside×0.30 + Risk×0.10
+    _WEIGHTS = {"commit": 0.90, "realistic": 0.60, "upside": 0.30, "risk": 0.10}
     weighted_mrr = sum(
-        (d["mrr_estimate"] or 0) * (d["health_score"] / 100)
-        for d in scored_deals
+        forecast[k]["value"] * w for k, w in _WEIGHTS.items()
     )
 
     # ── 5. Quota lookup ───────────────────────────────────────────────────
@@ -606,19 +646,9 @@ def get_command_center(
         quota_for_period = total_quota
 
     # Pipeline coverage ratio (total pipeline / quota)
-    coverage = (total_mrr / quota_for_period) if quota_for_period > 0 else None
-    # Gap: how much more commit pipeline is needed to hit quota
-    commit_value = forecast.get("commit", {}).get("value", 0)
-    gap = max(0.0, quota_for_period - commit_value)
-
-    pipeline_totals = {
-        "total_value": total_mrr,
-        "weighted_value": round(weighted_mrr, 2),
-        "coverage_ratio": round(coverage, 3) if coverage is not None else None,
-        "gap_to_quota": round(gap, 2),
-        "total_deals": len(deals),
-        "scored_deals": len(scored_deals),
-    }
+    coverage = (total_mrr / quota_for_period) if quota_for_period > 0 else 0.0
+    # Gap: weighted - quota (positive = ahead, negative = behind)
+    gap = weighted_mrr - quota_for_period
 
     # ── 6. Attention items ────────────────────────────────────────────────
     # Declining health — momentum_direction == "declining" (case-insensitive)
@@ -713,49 +743,69 @@ def _compute_weekly_changes(db, accounts: list) -> dict:
 
     one_week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     account_ids = [a.id for a in accounts]
+    acct_mrr = {a.id: (a.mrr_estimate or 0) for a in accounts}
 
     if not account_ids:
         return {"added": 0, "dropped": 0, "net": 0, "stage_advances": 0, "forecast_flips": 0, "new_risks": 0}
 
-    # Latest assessment per account
-    current = {}
-    for acct in accounts:
-        latest = (
-            db.query(DealAssessment)
-            .filter_by(account_id=acct.id)
-            .order_by(DealAssessment.created_at.desc())
-            .first()
+    # Batch: latest assessment per account (reuse subquery pattern)
+    latest_sq = (
+        db.query(
+            DealAssessment.account_id,
+            func.max(DealAssessment.created_at).label("max_ca"),
         )
-        if latest:
-            current[acct.id] = {
-                "mrr": acct.mrr_estimate or 0,
-                "stage": latest.inferred_stage,
-                "forecast": latest.ai_forecast_category,
-                "health": latest.health_score,
-                "created_at": latest.created_at,
-            }
+        .filter(DealAssessment.account_id.in_(account_ids))
+        .group_by(DealAssessment.account_id)
+        .subquery()
+    )
+    current: dict[str, dict] = {}
+    for da in (
+        db.query(DealAssessment)
+        .join(latest_sq, and_(
+            DealAssessment.account_id == latest_sq.c.account_id,
+            DealAssessment.created_at == latest_sq.c.max_ca,
+        ))
+        .all()
+    ):
+        current[da.account_id] = {
+            "mrr": acct_mrr.get(da.account_id, 0),
+            "stage": da.inferred_stage,
+            "forecast": da.ai_forecast_category,
+            "health": da.health_score,
+        }
 
-    # Previous assessment: latest created before 7 days ago
-    previous = {}
-    for acct in accounts:
-        prev = (
-            db.query(DealAssessment)
-            .filter(
-                DealAssessment.account_id == acct.id,
-                DealAssessment.created_at < one_week_ago,
-            )
-            .order_by(DealAssessment.created_at.desc())
-            .first()
+    # Batch: latest assessment before 7 days ago
+    prev_sq = (
+        db.query(
+            DealAssessment.account_id,
+            func.max(DealAssessment.created_at).label("max_ca"),
         )
-        if prev:
-            previous[acct.id] = {
-                "stage": prev.inferred_stage,
-                "forecast": prev.ai_forecast_category,
-                "health": prev.health_score,
-            }
+        .filter(
+            DealAssessment.account_id.in_(account_ids),
+            DealAssessment.created_at < one_week_ago,
+        )
+        .group_by(DealAssessment.account_id)
+        .subquery()
+    )
+    previous: dict[str, dict] = {}
+    for da in (
+        db.query(DealAssessment)
+        .join(prev_sq, and_(
+            DealAssessment.account_id == prev_sq.c.account_id,
+            DealAssessment.created_at == prev_sq.c.max_ca,
+        ))
+        .all()
+    ):
+        previous[da.account_id] = {
+            "mrr": acct_mrr.get(da.account_id, 0),
+            "stage": da.inferred_stage,
+            "forecast": da.ai_forecast_category,
+            "health": da.health_score,
+        }
 
     # Compute deltas
     added = sum(d["mrr"] for aid, d in current.items() if aid not in previous)
+    dropped = sum(d["mrr"] for aid, d in previous.items() if aid not in current)
     stage_advances = 0
     forecast_flips = 0
     new_risks = 0
@@ -775,8 +825,8 @@ def _compute_weekly_changes(db, accounts: list) -> dict:
 
     return {
         "added": round(added, 0),
-        "dropped": 0,
-        "net": round(added, 0),
+        "dropped": round(dropped, 0),
+        "net": round(added - dropped, 0),
         "stage_advances": stage_advances,
         "forecast_flips": forecast_flips,
         "new_risks": new_risks,

@@ -24,8 +24,11 @@ class QuotaCreate(BaseModel):
     amount: float
 
 
-def _rollup_quota(db: Session, user_id: str, period: str) -> float:
+def _rollup_quota(db: Session, user_id: str, period: str, _depth: int = 0) -> float:
     """Compute quota for a user: own quota if IC, sum of subordinates otherwise."""
+    if _depth > 10:
+        return 0.0
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return 0.0
@@ -42,7 +45,7 @@ def _rollup_quota(db: Session, user_id: str, period: str) -> float:
     for team in led_teams:
         members = db.query(User).filter(User.team_id == team.id).all()
         for member in members:
-            total += _rollup_quota(db, member.id, period)
+            total += _rollup_quota(db, member.id, period, _depth + 1)
     return total
 
 
