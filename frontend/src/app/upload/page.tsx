@@ -32,6 +32,23 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function generateCloseQuarters(): string[] {
+  const now = new Date();
+  const currentQ = Math.ceil((now.getMonth() + 1) / 3);
+  const currentY = now.getFullYear();
+  const quarters: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const q = ((currentQ - 1 + i) % 4) + 1;
+    const y = currentY + Math.floor((currentQ - 1 + i) / 4);
+    quarters.push(`Q${q} ${y}`);
+  }
+  return quarters;
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -136,6 +153,10 @@ interface BatchRow {
   maxCalls: number;
   dealType: string;
   ownerId: string;
+  sfStage?: number;
+  sfForecast?: string;
+  sfCloseQuarter?: string;
+  cpEstimate?: number;
 }
 
 function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportComplete?: () => void }) {
@@ -247,6 +268,10 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
         max_calls: r.maxCalls,
         deal_type: r.dealType || undefined,
         owner_id: r.ownerId || undefined,
+        sf_stage: r.sfStage,
+        sf_forecast_category: r.sfForecast,
+        sf_close_quarter: r.sfCloseQuarter,
+        cp_estimate: r.cpEstimate,
       }));
 
       const result = await api.analyses.batch(items);
@@ -337,6 +362,10 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
                         <TableHead className="w-32">Calls</TableHead>
                         <TableHead className="w-40">Deal Type</TableHead>
                         <TableHead className="w-44">AE Owner</TableHead>
+                        <TableHead className="text-xs w-16">SF Stg</TableHead>
+                        <TableHead className="text-xs w-20">SF Fct</TableHead>
+                        <TableHead className="text-xs w-20">Close Q</TableHead>
+                        <TableHead className="text-xs w-20">CP $</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -404,6 +433,57 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
                               </Select>
                             )}
                           </TableCell>
+                          {/* SF Stage */}
+                          <TableCell className="p-1 whitespace-normal">
+                            {row.selected ? (
+                              <Select value={row.sfStage?.toString() ?? ""} onValueChange={(v) => updateRow(index, { sfStage: v ? parseInt(v) : undefined })}>
+                                <SelectTrigger className="h-7 text-xs w-16"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  {[{v:"1",l:"1"},{v:"2",l:"2"},{v:"3",l:"3"},{v:"4",l:"4"},{v:"5",l:"5"},{v:"6",l:"6"},{v:"7",l:"7"}].map(s => (
+                                    <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : null}
+                          </TableCell>
+                          {/* SF Forecast */}
+                          <TableCell className="p-1 whitespace-normal">
+                            {row.selected ? (
+                              <Select value={row.sfForecast ?? ""} onValueChange={(v) => updateRow(index, { sfForecast: v || undefined })}>
+                                <SelectTrigger className="h-7 text-xs w-20"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  {["Commit","Realistic","Upside","At Risk"].map(f => (
+                                    <SelectItem key={f} value={f}>{f}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : null}
+                          </TableCell>
+                          {/* Close Quarter */}
+                          <TableCell className="p-1 whitespace-normal">
+                            {row.selected ? (
+                              <Select value={row.sfCloseQuarter ?? ""} onValueChange={(v) => updateRow(index, { sfCloseQuarter: v || undefined })}>
+                                <SelectTrigger className="h-7 text-xs w-20"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  {generateCloseQuarters().map(q => (
+                                    <SelectItem key={q} value={q}>{q}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : null}
+                          </TableCell>
+                          {/* CP Estimate */}
+                          <TableCell className="p-1 whitespace-normal">
+                            {row.selected ? (
+                              <Input
+                                type="number"
+                                className="h-7 text-xs w-20"
+                                placeholder="$"
+                                value={row.cpEstimate ?? ""}
+                                onChange={(e) => updateRow(index, { cpEstimate: e.target.value ? parseFloat(e.target.value) : undefined })}
+                              />
+                            ) : null}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -470,9 +550,12 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
   const [analysisAccountId, setAnalysisAccountId] = useState<string | null>(null);
 
   const [dealType, setDealType] = useState<string>('');
-  const [mrrEstimate, setMrrEstimate] = useState<string>('');
+  const [cpEstimate, setCpEstimate] = useState<string>('');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
   const [selectedIC, setSelectedIC] = useState<ICUser | null>(null);
+  const [sfStage, setSfStage] = useState<number | undefined>();
+  const [sfForecast, setSfForecast] = useState<string | undefined>();
+  const [sfCloseQuarter, setSfCloseQuarter] = useState<string | undefined>();
 
   const { data: icUsers = [] } = useICUsers();
 
@@ -562,8 +645,11 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
     try {
       const dealArgs = {
         deal_type: dealType || undefined,
-        cp_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
+        cp_estimate: cpEstimate ? parseFloat(cpEstimate) : undefined,
         owner_id: selectedOwnerId || undefined,
+        sf_stage: sfStage,
+        sf_forecast_category: sfForecast,
+        sf_close_quarter: sfCloseQuarter,
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result as unknown as ImportResult);
@@ -754,8 +840,8 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">MRR Estimate ($)</label>
-                  <Input type="number" min="0" step="1000" placeholder="Optional" value={mrrEstimate} onChange={e => setMrrEstimate(e.target.value)} />
+                  <label className="text-xs font-medium">CP Estimate ($)</label>
+                  <Input type="number" min="0" step="1000" placeholder="Optional" value={cpEstimate} onChange={e => setCpEstimate(e.target.value)} />
                 </div>
                 <div className="col-span-2 space-y-1.5">
                   <label className="text-xs font-medium">AE Owner</label>
@@ -784,6 +870,57 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
                     </div>
                   </>
                 )}
+              </div>
+            </div>
+
+            {/* SF Indication */}
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-sm font-medium">SF Indication</h4>
+                <p className="text-xs text-muted-foreground">Salesforce values at day of last analysis</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">SF Stage</label>
+                  <Select value={sfStage?.toString() ?? ""} onValueChange={(v) => setSfStage(v ? parseInt(v) : undefined)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select stage" /></SelectTrigger>
+                    <SelectContent>
+                      {[
+                        { value: "1", label: "1 – Qualify" },
+                        { value: "2", label: "2 – Discover" },
+                        { value: "3", label: "3 – Scope" },
+                        { value: "4", label: "4 – Validate" },
+                        { value: "5", label: "5 – Negotiate" },
+                        { value: "6", label: "6 – Prove" },
+                        { value: "7", label: "7 – Close" },
+                      ].map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">SF Forecast</label>
+                  <Select value={sfForecast ?? ""} onValueChange={(v) => setSfForecast(v || undefined)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select forecast" /></SelectTrigger>
+                    <SelectContent>
+                      {["Commit", "Realistic", "Upside", "At Risk"].map((f) => (
+                        <SelectItem key={f} value={f}>{f}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Close Quarter</label>
+                  <Select value={sfCloseQuarter ?? ""} onValueChange={(v) => setSfCloseQuarter(v || undefined)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select quarter" /></SelectTrigger>
+                    <SelectContent>
+                      {generateCloseQuarters().map((q) => (
+                        <SelectItem key={q} value={q}>{q}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
