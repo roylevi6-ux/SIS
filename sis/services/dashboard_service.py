@@ -504,7 +504,7 @@ def get_command_center(
         dict with keys: deals, forecast, pipeline, quota_amount, attention, weekly_changes.
     """
     now = datetime.now(timezone.utc)
-    stale_cutoff_14 = (now - timedelta(days=14)).strftime("%Y-%m-%d")
+    stale_cutoff_30 = (now - timedelta(days=STALE_CALL_DAYS_THRESHOLD)).strftime("%Y-%m-%d")
 
     # ── 1. Resolve accounts ───────────────────────────────────────────────
     query = db.query(Account)
@@ -680,13 +680,13 @@ def get_command_center(
         key=lambda d: -(d["cp_estimate"] or 0),
     )[:5]
 
-    # Stale — no call in 14+ days
+    # Stale — no call in 30+ days
     stale_attn = sorted(
         [
             d for d in deals
             if (
                 d.get("last_call_date") is None
-                or d["last_call_date"][:10] < stale_cutoff_14
+                or d["last_call_date"][:10] < stale_cutoff_30
             )
         ],
         key=lambda d: -(d["cp_estimate"] or 0),
@@ -724,7 +724,7 @@ def get_command_center(
             "account_id": d["account_id"],
             "account_name": d["account_name"],
             "cp_estimate": d["cp_estimate"] or 0,
-            "reason": f"No call in 14+ days (last: {d.get('last_call_date', 'never')[:10] if d.get('last_call_date') else 'never'})",
+            "reason": f"No call in {STALE_CALL_DAYS_THRESHOLD}+ days (last: {d.get('last_call_date', 'never')[:10] if d.get('last_call_date') else 'never'})",
             "type": "stale",
         })
     # Sort by CP Estimate descending and limit to top 10

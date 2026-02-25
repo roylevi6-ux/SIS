@@ -42,8 +42,8 @@ function daysAgoColor(dateStr: string | null): string {
   const d = new Date(dateStr);
   const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff <= 7) return 'text-healthy';
-  if (diff <= 14) return 'text-at-risk';
+  if (diff <= 14) return 'text-healthy';
+  if (diff <= 30) return 'text-at-risk';
   return 'text-critical';
 }
 
