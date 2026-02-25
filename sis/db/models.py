@@ -84,13 +84,16 @@ class Account(Base):
 
     id = Column(Text, primary_key=True, default=_uuid)
     account_name = Column(Text, nullable=False)
-    mrr_estimate = Column(Float, nullable=True)
+    cp_estimate = Column(Float, nullable=True)  # Contribution Profit estimate ($)
     ic_forecast_category = Column(Text, nullable=True)  # Commit/Realistic/Upside/At Risk
     team_lead = Column(Text, nullable=True)
     ae_owner = Column(Text, nullable=True)
     team_name = Column(Text, nullable=True)
     deal_type = Column(Text, nullable=False, default="new_logo")  # new_logo | expansion_upsell | expansion_cross_sell | expansion_both
     prior_contract_value = Column(Float, nullable=True)  # Existing MRR if applicable
+    sf_stage = Column(Integer, nullable=True)  # SF stage number (1-7)
+    sf_forecast_category = Column(Text, nullable=True)  # "Commit" / "Realistic" / "Upside" / "At Risk"
+    sf_close_quarter = Column(Text, nullable=True)  # Expected close quarter, e.g. "Q2 2026"
     owner_id = Column(Text, ForeignKey("users.id"), nullable=True)
     created_at = Column(Text, nullable=False, default=_now)
     updated_at = Column(Text, nullable=False, default=_now, onupdate=_now)
@@ -248,6 +251,18 @@ class DealAssessment(Base):
     # Divergence (computed post-hoc)
     divergence_flag = Column(Integer, default=0)  # boolean
     divergence_explanation = Column(Text, nullable=True)
+
+    # SF indication snapshot (values at time of analysis run)
+    sf_stage_at_run = Column(Integer, nullable=True)
+    sf_forecast_at_run = Column(Text, nullable=True)
+    sf_close_quarter_at_run = Column(Text, nullable=True)
+    cp_estimate_at_run = Column(Float, nullable=True)
+
+    # Gap analysis (computed post-pipeline)
+    stage_gap_direction = Column(Text, nullable=True)  # "Aligned" / "SF-ahead" / "SIS-ahead"
+    stage_gap_magnitude = Column(Integer, nullable=True)  # Absolute stage difference (0-6)
+    forecast_gap_direction = Column(Text, nullable=True)  # "Aligned" / "SF-more-optimistic" / "SIS-more-optimistic"
+    sf_gap_interpretation = Column(Text, nullable=True)  # Agent 10's natural language gap analysis
 
     created_at = Column(Text, nullable=False, default=_now)
 
