@@ -9,6 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { formatMrr } from '@/lib/format';
 import type { PipelineDeal } from '@/lib/pipeline-types';
 
 interface TeamForecastGridProps {
@@ -24,12 +25,6 @@ interface TeamRow {
   risk: number;
   total: number;
   deals: number;
-}
-
-function formatMrr(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toLocaleString()}`;
 }
 
 function buildTeamRows(deals: PipelineDeal[]): TeamRow[] {

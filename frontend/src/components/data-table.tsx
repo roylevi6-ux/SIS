@@ -21,17 +21,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatMrr } from '@/lib/format';
 import { HealthBadge } from '@/components/health-badge';
 import { MomentumIndicator } from '@/components/momentum-indicator';
 import { ForecastBadge } from '@/components/forecast-badge';
 import type { PipelineDeal } from '@/lib/pipeline-types';
-
-function formatMrr(value: number | null): string {
-  if (!value) return '$0';
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toLocaleString()}`;
-}
 
 function daysAgo(dateStr: string | null): string {
   if (!dateStr) return 'N/A';

@@ -1,13 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api';
 
-export function usePipeline(team?: string) {
-  return useQuery({
-    queryKey: ['dashboard', 'pipeline', team],
-    queryFn: () => api.dashboard.pipeline(team),
-  });
-}
-
 export function useDivergence(team?: string) {
   return useQuery({
     queryKey: ['dashboard', 'divergence', team],
@@ -15,24 +8,10 @@ export function useDivergence(team?: string) {
   });
 }
 
-export function useTeamRollup(team?: string) {
-  return useQuery({
-    queryKey: ['dashboard', 'team-rollup', team],
-    queryFn: () => api.dashboard.teamRollup(team),
-  });
-}
-
 export function useTeamRollupHierarchy(team?: string) {
   return useQuery({
     queryKey: ['dashboard', 'team-rollup-hierarchy', team],
     queryFn: () => api.dashboard.teamRollupHierarchy(team),
-  });
-}
-
-export function useInsights() {
-  return useQuery({
-    queryKey: ['dashboard', 'insights'],
-    queryFn: () => api.dashboard.insights(),
   });
 }
 

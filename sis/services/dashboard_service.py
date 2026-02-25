@@ -651,6 +651,8 @@ def get_command_center(
     gap = weighted_mrr - quota_for_period
 
     # ── 6. Attention items ────────────────────────────────────────────────
+    scored_deals = [d for d in deals if d.get("health_score") is not None]
+
     # Declining health — momentum_direction == "declining" (case-insensitive)
     declining_attn = sorted(
         [
