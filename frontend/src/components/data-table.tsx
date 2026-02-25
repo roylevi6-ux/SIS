@@ -175,29 +175,25 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
             : 'AI > SF';
 
       return (
-        <div className="text-xs space-y-0.5 text-muted-foreground">
-          {stageText && (
-            <div>
-              <span className="text-[10px] uppercase tracking-wider opacity-60">Stg</span>{' '}
-              <span className={cn(
-                'font-medium',
-                stageText !== '=' ? 'text-foreground' : '',
-              )}>
-                {stageText}
-              </span>
-            </div>
-          )}
-          {forecastText && (
-            <div>
-              <span className="text-[10px] uppercase tracking-wider opacity-60">Fct</span>{' '}
-              <span className={cn(
-                'font-medium',
-                forecastText !== '=' ? 'text-foreground' : '',
-              )}>
-                {forecastText}
-              </span>
-            </div>
-          )}
+        <div className="text-xs space-y-0.5">
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Stg</span>{' '}
+            <span className={cn(
+              'font-medium',
+              stageText === '=' ? 'text-muted-foreground' : 'text-foreground',
+            )}>
+              {stageText ?? '—'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Fct</span>{' '}
+            <span className={cn(
+              'font-medium',
+              forecastText === '=' ? 'text-muted-foreground' : 'text-foreground',
+            )}>
+              {forecastText ?? '—'}
+            </span>
+          </div>
         </div>
       );
     },
