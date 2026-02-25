@@ -139,6 +139,19 @@ def trends_forecast_migration(
     return trend_service.get_forecast_migration(db=db, weeks=weeks, visible_user_ids=visible_ids)
 
 
+@router.get("/trends/velocity")
+def trends_velocity(
+    weeks: int = 4,
+    team: Optional[str] = None,
+    deal_type: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Stage velocity, stalled deals, progression events."""
+    visible_ids = _resolve_scoping(user, db)
+    return trend_service.get_velocity_trends(db=db, weeks=weeks, visible_user_ids=visible_ids)
+
+
 @router.get("/command-center")
 def command_center(
     team: Optional[str] = None,
