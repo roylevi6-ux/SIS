@@ -5,11 +5,82 @@ Per-deal and per-team health trajectories using DealAssessment time-series data.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
+from sqlalchemy.orm import Session
+
 from sis.db.session import get_session
-from sis.db.models import Account, DealAssessment
+from sis.db.models import Account, DealAssessment, User, Team, Quota
+
+
+FORECAST_RANK = {"At Risk": 0, "Upside": 1, "Realistic": 2, "Commit": 3}
+
+HEALTH_TIERS = {"healthy": 70, "at_risk": 45}  # >= 70 healthy, >= 45 at_risk, < 45 critical
+
+
+def _iso_week(date_str: str) -> str:
+    """Convert ISO 8601 timestamp to 'YYYY-WNN' for weekly grouping."""
+    dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    year, week, _ = dt.isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def _get_assessments_in_window(
+    db: Session,
+    weeks: int,
+    visible_user_ids: set[str] | None,
+) -> list[tuple[DealAssessment, Account]]:
+    """Fetch all assessments within time window, joined with Account.
+    Returns list of (DealAssessment, Account) tuples, ordered by account_id, created_at ASC.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(weeks=weeks)).isoformat()
+    query = (
+        db.query(DealAssessment, Account)
+        .join(Account, DealAssessment.account_id == Account.id)
+        .filter(DealAssessment.created_at >= cutoff)
+        .order_by(DealAssessment.account_id, DealAssessment.created_at)
+    )
+    if visible_user_ids is not None:
+        query = query.filter(Account.owner_id.in_(visible_user_ids))
+    return query.all()
+
+
+def _latest_per_account(
+    assessments: list[tuple[DealAssessment, Account]],
+) -> dict[str, tuple[DealAssessment, Account]]:
+    """From time-ordered list, return dict of account_id -> (latest_assessment, account)."""
+    result: dict[str, tuple[DealAssessment, Account]] = {}
+    for da, acct in assessments:
+        result[da.account_id] = (da, acct)
+    return result
+
+
+def _group_by_week(
+    assessments: list[tuple[DealAssessment, Account]],
+) -> dict[str, list[tuple[DealAssessment, Account]]]:
+    """Group assessments by ISO week. Returns dict of week_label -> list."""
+    by_week: dict[str, list[tuple[DealAssessment, Account]]] = {}
+    for da, acct in assessments:
+        wk = _iso_week(da.created_at)
+        by_week.setdefault(wk, []).append((da, acct))
+    return by_week
+
+
+def _latest_per_account_per_week(
+    by_week: dict[str, list[tuple[DealAssessment, Account]]],
+) -> dict[str, dict[str, tuple[DealAssessment, Account]]]:
+    """For each week, keep only the latest assessment per account.
+    Returns dict of week_label -> {account_id -> (assessment, account)}.
+    """
+    result: dict[str, dict[str, tuple[DealAssessment, Account]]] = {}
+    for wk, items in by_week.items():
+        latest: dict[str, tuple[DealAssessment, Account]] = {}
+        for da, acct in items:
+            latest[da.account_id] = (da, acct)  # items are pre-sorted ASC, last wins
+        result[wk] = latest
+    return result
 
 
 def get_deal_trends(
