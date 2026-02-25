@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIS Pipeline Command Center — Design Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-50: #ecfdf5;
+    --brand-100: #d1fae5;
+    --brand-200: #a7f3d0;
+    --brand-300: #6ee7b7;
+    --brand-400: #34d399;
+    --brand-500: #10b981;
+    --brand-600: #059669;
+    --brand-700: #047857;
+    --brand-800: #065f46;
+    --brand-900: #064e3b;
+
+    --sidebar-bg: #0a2e23;
+    --sidebar-hover: #0f3d2e;
+    --sidebar-active: #145239;
+    --sidebar-text: #d1e8df;
+    --sidebar-muted: #6b9d8a;
+    --sidebar-border: #1a4a38;
+
+    --page-bg: #f6fdf9;
+    --card-bg: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --border: #e5e7eb;
+
+    --forecast-commit: #059669;
+    --forecast-commit-bg: #d1fae5;
+    --forecast-realistic: #2563eb;
+    --forecast-realistic-bg: #dbeafe;
+    --forecast-upside: #d97706;
+    --forecast-upside-bg: #fef3c7;
+    --forecast-risk: #dc2626;
+    --forecast-risk-bg: #fee2e2;
+
+    --health-green: #059669;
+    --health-amber: #d97706;
+    --health-red: #dc2626;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--page-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 256px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    border-right: 1px solid var(--sidebar-border);
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 16px;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  .logo-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--brand-400), var(--brand-600));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: -0.02em;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .logo-text { display: flex; flex-direction: column; }
+  .logo-text .name { font-size: 14px; font-weight: 600; color: var(--sidebar-text); }
+  .logo-text .desc { font-size: 11px; color: var(--sidebar-muted); }
+
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 8px; }
+
+  .nav-group { margin-bottom: 8px; }
+  .nav-group-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sidebar-muted);
+    padding: 8px 12px 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: var(--sidebar-hover); }
+  .nav-item.active {
+    background: var(--sidebar-active);
+    color: var(--brand-300);
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 3px;
+    height: 24px;
+    background: var(--brand-400);
+    border-radius: 0 3px 3px 0;
+  }
+  .nav-item { position: relative; }
+
+  .nav-icon {
+    width: 18px;
+    height: 18px;
+    opacity: 0.7;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .nav-item.active .nav-icon { opacity: 1; }
+
+  .sidebar-footer {
+    border-top: 1px solid var(--sidebar-border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--sidebar-active);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-300);
+  }
+  .user-info { flex: 1; }
+  .user-name { font-size: 13px; font-weight: 500; }
+  .user-role { font-size: 11px; color: var(--sidebar-muted); }
+
+  /* ── Main Content ── */
+  .main {
+    margin-left: 256px;
+    flex: 1;
+    max-width: 1400px;
+    padding: 0 32px 48px;
+  }
+
+  /* ── Page Header ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .page-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .header-controls { display: flex; gap: 8px; align-items: center; }
+  .header-select {
+    padding: 7px 32px 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+  .header-search {
+    padding: 7px 12px 7px 34px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 200px;
+    background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l3 3'/%3E%3C/svg%3E") no-repeat 10px center;
+  }
+
+  /* ── Number Line ── */
+  .number-line {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .number-line-top {
+    display: flex;
+    align-items: baseline;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .kpi-item { display: flex; flex-direction: column; }
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  .kpi-value {
+    font-family: 'Geist Mono', 'SF Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .kpi-value.green { color: var(--brand-600); }
+  .kpi-value.normal { color: var(--text-primary); }
+  .kpi-delta {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .kpi-delta.positive { color: var(--health-green); }
+  .kpi-delta.negative { color: var(--health-red); }
+  .kpi-separator {
+    width: 1px;
+    height: 44px;
+    background: var(--border);
+    align-self: center;
+  }
+
+  /* Forecast distribution bar */
+  .forecast-bar {
+    display: flex;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f3f4f6;
+  }
+  .forecast-bar-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    padding: 0 8px;
+    transition: flex 0.3s;
+  }
+  .forecast-bar-labels {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .forecast-bar-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .forecast-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ── Attention Strip ── */
+  .attention-strip {
+    background: var(--card-bg);
+    border: 1px solid #fbbf24;
+    border-left: 4px solid #f59e0b;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .attention-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .attention-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .attention-badge {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 12px;
+  }
+  .attention-total {
+    font-size: 13px;
+    color: #b45309;
+    font-weight: 600;
+  }
+  .attention-items { display: flex; flex-direction: column; gap: 8px; }
+  .attention-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #fffbeb;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .attention-item-left { display: flex; align-items: center; gap: 10px; }
+  .attention-item-name { font-weight: 600; color: var(--text-primary); }
+  .attention-item-value {
+    font-family: 'Geist Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+  .attention-item-reason { font-size: 12px; color: #92400e; }
+  .attention-item-type {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .type-declining { background: #fee2e2; color: #991b1b; }
+  .type-divergent { background: #fef3c7; color: #92400e; }
+  .type-stale { background: #f3f4f6; color: #4b5563; }
+
+  /* ── Pipeline Changes ── */
+  .pipeline-changes {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .change-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .change-metric { display: flex; align-items: center; gap: 4px; }
+  .change-positive { color: var(--health-green); font-weight: 600; }
+  .change-negative { color: var(--health-red); font-weight: 600; }
+  .change-neutral { color: var(--text-secondary); }
+  .change-sep { color: var(--border); }
+
+  /* ── Filter Chips ── */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--brand-400); color: var(--text-primary); }
+  .filter-chip.active {
+    border-color: transparent;
+    color: white;
+  }
+  .filter-chip.active.commit { background: var(--forecast-commit); }
+  .filter-chip.active.realistic { background: var(--forecast-realistic); }
+  .filter-chip.active.upside { background: var(--forecast-upside); }
+  .filter-chip.active.risk { background: var(--forecast-risk); }
+  .filter-chip.active.all { background: var(--brand-500); }
+  .filter-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+  .filter-chip .chip-count {
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.25);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .filter-chip:not(.active) .chip-count {
+    background: #f3f4f6;
+    color: var(--text-secondary);
+  }
+
+  /* ── Deal Table ── */
+  .table-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom: 20px;
+  }
+  .deal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .deal-table thead th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: #f9fafb;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  .deal-table thead th:hover { color: var(--text-primary); }
+  .deal-table thead th.right { text-align: right; }
+  .deal-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+  .deal-table tbody tr:hover { background: var(--brand-50) !important; }
+  .deal-table tbody tr:nth-child(even) { background: #fafbfc; }
+  .deal-table tbody td {
+    padding: 11px 14px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .deal-table tbody td.right { text-align: right; }
+  .deal-table tbody td.mono {
+    font-family: 'Geist Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  /* Row urgency tinting */
+  .row-critical { background: rgba(254, 226, 226, 0.35) !important; }
+  .row-at-risk { background: rgba(254, 243, 199, 0.25) !important; }
+
+  /* Account cell */
+  .account-name { font-weight: 600; color: var(--text-primary); }
+  .account-ae { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-new { background: #ede9fe; color: #6d28d9; }
+  .badge-expansion { background: #dbeafe; color: #1d4ed8; }
+
+  /* Forecast combined column */
+  .forecast-combined {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .forecast-tag {
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .forecast-tag.commit { background: var(--forecast-commit-bg); color: var(--forecast-commit); }
+  .forecast-tag.realistic { background: var(--forecast-realistic-bg); color: var(--forecast-realistic); }
+  .forecast-tag.upside { background: var(--forecast-upside-bg); color: var(--forecast-upside); }
+  .forecast-tag.risk { background: var(--forecast-risk-bg); color: var(--forecast-risk); }
+  .divergence-split {
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .divergence-split .vs { color: #92400e; font-weight: 400; font-size: 10px; }
+
+  /* Health badge */
+  .health-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .health-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .health-green .health-dot { background: var(--health-green); }
+  .health-green { color: var(--health-green); }
+  .health-amber .health-dot { background: var(--health-amber); }
+  .health-amber { color: var(--health-amber); }
+  .health-red .health-dot { background: var(--health-red); }
+  .health-red { color: var(--health-red); }
+
+  /* Momentum */
+  .momentum { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; }
+  .momentum.improving { color: var(--health-green); }
+  .momentum.stable { color: var(--text-secondary); }
+  .momentum.declining { color: var(--health-red); }
+
+  /* Confidence */
+  .confidence-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .confidence-track {
+    width: 40px;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .confidence-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--brand-400);
+  }
+  .confidence-value {
+    font-size: 12px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--text-secondary);
+  }
+
+  /* Last call aging */
+  .last-call { font-size: 13px; }
+  .last-call.fresh { color: var(--text-secondary); }
+  .last-call.aging { color: var(--health-amber); font-weight: 500; }
+  .last-call.stale { color: var(--health-red); font-weight: 600; }
+
+  /* ── Team Forecast Grid ── */
+  .team-grid-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .team-grid-header {
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    background: #f9fafb;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .team-grid-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .team-grid {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .team-grid th {
+    text-align: right;
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    background: #f9fafb;
+    border-bottom: 1px solid var(--border);
+  }
+  .team-grid th:first-child { text-align: left; }
+  .team-grid td {
+    padding: 10px 14px;
+    text-align: right;
+    font-family: 'Geist Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    font-weight: 500;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .team-grid td:first-child {
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+  }
+  .team-grid tr:hover td { background: var(--brand-50); }
+  .coverage-warn { color: var(--health-red); font-weight: 700; }
+  .coverage-ok { color: var(--health-green); }
+
+  /* ── Sort arrows ── */
+  .sort-arrow { font-size: 10px; opacity: 0.5; margin-left: 3px; }
+  th.sorted .sort-arrow { opacity: 1; color: var(--brand-500); }
+
+  /* ── Table pagination ── */
+  .table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+  }
+  .pagination {
+    display: flex;
+    gap: 4px;
+  }
+  .page-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    cursor: pointer;
+  }
+  .page-btn.active {
+    background: var(--brand-500);
+    color: white;
+    border-color: var(--brand-500);
+  }
+
+  /* Section spacing */
+  .section-gap { margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">SIS</div>
+    <div class="logo-text">
+      <span class="name">SIS</span>
+      <span class="desc">Sales Intelligence</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">Analytics</div>
+      <a class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Pipeline
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Trends
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Team Rollup
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        Rep Scorecard
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Methodology
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Actions</div>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import &amp; Analyze
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Chat
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Meeting Prep
+      </a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Admin</div>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Team Management
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-avatar">RL</div>
+    <div class="user-info">
+      <div class="user-name">Roy Levie</div>
+      <div class="user-role">VP Sales</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+<div class="main">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Pipeline Command Center</div>
+      <div class="page-subtitle">Q1 2026 &middot; 30 active deals across all teams</div>
+    </div>
+    <div class="header-controls">
+      <select class="header-select" style="font-weight:600; background-color: var(--brand-50); border-color: var(--brand-300);">
+        <option>Q1 2026</option>
+        <option>Q2 2026</option>
+        <option>Q3 2026</option>
+        <option>Q4 2026</option>
+        <option>Full Year 2026</option>
+      </select>
+      <select class="header-select">
+        <option>All Teams</option>
+        <optgroup label="VPs">
+          <option>Roy</option>
+          <option>Gili</option>
+        </optgroup>
+        <optgroup label="Team Leads">
+          <option>Lisa L</option>
+          <option>Lachlan</option>
+          <option>Bar Barda</option>
+          <option>Ying</option>
+        </optgroup>
+      </select>
+      <select class="header-select">
+        <option>All AEs</option>
+        <option>Nadine Barchecht</option>
+        <option>Omer Snir</option>
+        <option>Stefania Fanari</option>
+        <option>Keiko Navon</option>
+      </select>
+      <input class="header-search" type="text" placeholder="Search deals...">
+    </div>
+  </div>
+
+  <!-- ═══ NUMBER LINE ═══ -->
+  <div class="number-line">
+    <div class="number-line-top">
+      <div class="kpi-item">
+        <span class="kpi-label">Q1 Quota</span>
+        <span class="kpi-value normal">$283K</span>
+      </div>
+      <div class="kpi-separator"></div>
+      <div class="kpi-item">
+        <span class="kpi-label">Pipeline</span>
+        <span class="kpi-value normal">$840K</span>
+      </div>
+      <div class="kpi-separator"></div>
+      <div class="kpi-item">
+        <span class="kpi-label">Coverage</span>
+        <span class="kpi-value green">2.97x</span>
+        <span class="kpi-delta positive">Healthy</span>
+      </div>
+      <div class="kpi-separator"></div>
+      <div class="kpi-item">
+        <span class="kpi-label">Weighted</span>
+        <span class="kpi-value normal">$520K</span>
+      </div>
+      <div class="kpi-separator"></div>
+      <div class="kpi-item">
+        <span class="kpi-label">Gap to Quota</span>
+        <span class="kpi-value green">+$237K</span>
+        <span class="kpi-delta positive">Above target</span>
+      </div>
+    </div>
+
+    <div class="forecast-bar">
+      <div class="forecast-bar-segment" style="flex: 37; background: var(--forecast-commit);">Commit $310K</div>
+      <div class="forecast-bar-segment" style="flex: 33; background: var(--forecast-realistic);">Realistic $280K</div>
+      <div class="forecast-bar-segment" style="flex: 21; background: var(--forecast-upside);">Upside $180K</div>
+      <div class="forecast-bar-segment" style="flex: 9; background: var(--forecast-risk);">Risk $70K</div>
+    </div>
+
+    <div class="forecast-bar-labels">
+      <div class="forecast-bar-label"><div class="forecast-dot" style="background: var(--forecast-commit)"></div> Commit: 8 deals</div>
+      <div class="forecast-bar-label"><div class="forecast-dot" style="background: var(--forecast-realistic)"></div> Realistic: 12 deals</div>
+      <div class="forecast-bar-label"><div class="forecast-dot" style="background: var(--forecast-upside)"></div> Upside: 6 deals</div>
+      <div class="forecast-bar-label"><div class="forecast-dot" style="background: var(--forecast-risk)"></div> At Risk: 4 deals</div>
+    </div>
+  </div>
+
+  <!-- ═══ ATTENTION STRIP ═══ -->
+  <div class="attention-strip">
+    <div class="attention-header">
+      <div class="attention-title">
+        <span>&#9888;</span>
+        Deals Needing Attention
+        <span class="attention-badge">3</span>
+      </div>
+      <div class="attention-total">$890K at risk</div>
+    </div>
+    <div class="attention-items">
+      <div class="attention-item">
+        <div class="attention-item-left">
+          <span class="attention-item-type type-declining">DECLINING</span>
+          <span class="attention-item-name">Acme Corp</span>
+          <span class="attention-item-value">$340K</span>
+          <span class="attention-item-reason">Health dropped 72 &rarr; 41, declining 2 consecutive runs</span>
+        </div>
+      </div>
+      <div class="attention-item">
+        <div class="attention-item-left">
+          <span class="attention-item-type type-divergent">DIVERGENT</span>
+          <span class="attention-item-name">Beta Inc</span>
+          <span class="attention-item-value">$320K</span>
+          <span class="attention-item-reason">AI says At Risk, IC says Commit</span>
+        </div>
+      </div>
+      <div class="attention-item">
+        <div class="attention-item-left">
+          <span class="attention-item-type type-stale">STALE</span>
+          <span class="attention-item-name">Gamma Ltd</span>
+          <span class="attention-item-value">$230K</span>
+          <span class="attention-item-reason">No activity in 21 days, Stage 4 for 6 weeks</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PIPELINE CHANGES ═══ -->
+  <div class="pipeline-changes">
+    <span class="change-label">This week</span>
+    <span class="change-metric"><span class="change-positive">+$420K</span> <span class="change-neutral">added</span></span>
+    <span class="change-sep">|</span>
+    <span class="change-metric"><span class="change-negative">-$180K</span> <span class="change-neutral">dropped</span></span>
+    <span class="change-sep">|</span>
+    <span class="change-metric"><span class="change-positive">+$240K net</span></span>
+    <span class="change-sep">|</span>
+    <span class="change-metric"><span class="change-neutral">2 stage advances</span></span>
+    <span class="change-sep">|</span>
+    <span class="change-metric"><span class="change-negative">1 forecast flip</span></span>
+    <span class="change-sep">|</span>
+    <span class="change-metric"><span class="change-negative">3 new risks</span></span>
+  </div>
+
+  <!-- ═══ FILTER CHIPS ═══ -->
+  <div class="filter-bar">
+    <div class="filter-chip active all">All <span class="chip-count">30</span></div>
+    <div class="filter-chip commit">Commit <span class="chip-count">8</span></div>
+    <div class="filter-chip realistic">Realistic <span class="chip-count">12</span></div>
+    <div class="filter-chip upside">Upside <span class="chip-count">6</span></div>
+    <div class="filter-chip risk">At Risk <span class="chip-count">4</span></div>
+    <div class="filter-divider"></div>
+    <div class="filter-chip">Healthy</div>
+    <div class="filter-chip">At Risk</div>
+    <div class="filter-chip">Critical</div>
+    <div class="filter-divider"></div>
+    <div class="filter-chip">Divergent</div>
+    <div class="filter-chip">Stale</div>
+    <div class="filter-chip">Declining</div>
+  </div>
+
+  <!-- ═══ DEAL TABLE ═══ -->
+  <div class="table-card">
+    <table class="deal-table">
+      <thead>
+        <tr>
+          <th class="sorted">Account <span class="sort-arrow">&#9650;</span></th>
+          <th>AE</th>
+          <th class="right">MRR <span class="sort-arrow">&#9660;</span></th>
+          <th>Type</th>
+          <th>Stage</th>
+          <th>Forecast</th>
+          <th>Health</th>
+          <th>Momentum</th>
+          <th>Conf</th>
+          <th class="right">Last Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="row-critical">
+          <td>
+            <div class="account-name">Acme Corp</div>
+            <div class="account-ae">Lisa L's team</div>
+          </td>
+          <td>Nadine B.</td>
+          <td class="right mono">$340K</td>
+          <td><span class="badge badge-new">New</span></td>
+          <td>Negotiate</td>
+          <td><div class="divergence-split"><span style="color:#059669">Commit</span> <span class="vs">vs</span> <span style="color:#dc2626">Risk</span></div></td>
+          <td><span class="health-badge health-red"><span class="health-dot"></span>41</span></td>
+          <td><span class="momentum declining">&#8600; Declining</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:62%"></div></div><span class="confidence-value">0.62</span></div></td>
+          <td class="right"><span class="last-call stale">21d</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="account-name">TechVenture Global</div>
+            <div class="account-ae">Lachlan's team</div>
+          </td>
+          <td>Keiko N.</td>
+          <td class="right mono">$285K</td>
+          <td><span class="badge badge-expansion">Expansion</span></td>
+          <td>Proposal</td>
+          <td><span class="forecast-tag commit">Commit</span></td>
+          <td><span class="health-badge health-green"><span class="health-dot"></span>88</span></td>
+          <td><span class="momentum improving">&#8599; Improving</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:91%"></div></div><span class="confidence-value">0.91</span></div></td>
+          <td class="right"><span class="last-call fresh">2d</span></td>
+        </tr>
+        <tr class="row-at-risk">
+          <td>
+            <div class="account-name">Beta Industries</div>
+            <div class="account-ae">Bar Barda's team</div>
+          </td>
+          <td>Dror G.</td>
+          <td class="right mono">$320K</td>
+          <td><span class="badge badge-new">New</span></td>
+          <td>Evaluate</td>
+          <td><div class="divergence-split"><span style="color:#dc2626">Risk</span> <span class="vs">vs</span> <span style="color:#059669">Commit</span></div></td>
+          <td><span class="health-badge health-amber"><span class="health-dot"></span>52</span></td>
+          <td><span class="momentum declining">&#8600; Declining</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:48%"></div></div><span class="confidence-value">0.48</span></div></td>
+          <td class="right"><span class="last-call aging">8d</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="account-name">Meridian Health</div>
+            <div class="account-ae">Lisa L's team</div>
+          </td>
+          <td>Omer S.</td>
+          <td class="right mono">$195K</td>
+          <td><span class="badge badge-new">New</span></td>
+          <td>Negotiate</td>
+          <td><span class="forecast-tag commit">Commit</span></td>
+          <td><span class="health-badge health-green"><span class="health-dot"></span>82</span></td>
+          <td><span class="momentum stable">&#8594; Stable</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:85%"></div></div><span class="confidence-value">0.85</span></div></td>
+          <td class="right"><span class="last-call fresh">1d</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="account-name">Quantum Retail</div>
+            <div class="account-ae">Ying's team</div>
+          </td>
+          <td>Wenze L.</td>
+          <td class="right mono">$165K</td>
+          <td><span class="badge badge-expansion">Expansion</span></td>
+          <td>Qualify</td>
+          <td><span class="forecast-tag realistic">Realistic</span></td>
+          <td><span class="health-badge health-green"><span class="health-dot"></span>71</span></td>
+          <td><span class="momentum improving">&#8599; Improving</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:74%"></div></div><span class="confidence-value">0.74</span></div></td>
+          <td class="right"><span class="last-call fresh">3d</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="account-name">Nova Financial</div>
+            <div class="account-ae">Lachlan's team</div>
+          </td>
+          <td>Nicholas K.</td>
+          <td class="right mono">$148K</td>
+          <td><span class="badge badge-new">New</span></td>
+          <td>Discovery</td>
+          <td><span class="forecast-tag upside">Upside</span></td>
+          <td><span class="health-badge health-green"><span class="health-dot"></span>67</span></td>
+          <td><span class="momentum stable">&#8594; Stable</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:59%"></div></div><span class="confidence-value">0.59</span></div></td>
+          <td class="right"><span class="last-call fresh">5d</span></td>
+        </tr>
+        <tr class="row-at-risk">
+          <td>
+            <div class="account-name">Gamma Solutions</div>
+            <div class="account-ae">Bar Barda's team</div>
+          </td>
+          <td>Yos J.</td>
+          <td class="right mono">$230K</td>
+          <td><span class="badge badge-new">New</span></td>
+          <td>Proposal</td>
+          <td><span class="forecast-tag upside">Upside</span></td>
+          <td><span class="health-badge health-amber"><span class="health-dot"></span>48</span></td>
+          <td><span class="momentum stable">&#8594; Stable</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:52%"></div></div><span class="confidence-value">0.52</span></div></td>
+          <td class="right"><span class="last-call stale">21d</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="account-name">Pinnacle Media</div>
+            <div class="account-ae">Ying's team</div>
+          </td>
+          <td>Lei B.</td>
+          <td class="right mono">$92K</td>
+          <td><span class="badge badge-expansion">Expansion</span></td>
+          <td>Negotiate</td>
+          <td><span class="forecast-tag commit">Commit</span></td>
+          <td><span class="health-badge health-green"><span class="health-dot"></span>79</span></td>
+          <td><span class="momentum improving">&#8599; Improving</span></td>
+          <td><div class="confidence-bar"><div class="confidence-track"><div class="confidence-fill" style="width:88%"></div></div><span class="confidence-value">0.88</span></div></td>
+          <td class="right"><span class="last-call fresh">1d</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-footer">
+      <span>Showing 1-8 of 30 deals</span>
+      <div class="pagination">
+        <div class="page-btn active">1</div>
+        <div class="page-btn">2</div>
+        <div class="page-btn">3</div>
+        <div class="page-btn">4</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TEAM FORECAST GRID ═══ -->
+  <div class="team-grid-section">
+    <div class="team-grid-header">
+      <span>Team Forecast Grid</span>
+      <span class="team-grid-label">VP+ View</span>
+    </div>
+    <table class="team-grid">
+      <thead>
+        <tr>
+          <th style="text-align:left">Team</th>
+          <th>Commit</th>
+          <th>Realistic</th>
+          <th>Upside</th>
+          <th>Risk</th>
+          <th>Total</th>
+          <th>Quota</th>
+          <th>Coverage</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Lisa L</td>
+          <td>$120K</td>
+          <td>$80K</td>
+          <td>$60K</td>
+          <td>$55K</td>
+          <td style="font-weight:700">$315K</td>
+          <td>$79K</td>
+          <td class="coverage-ok">4.0x</td>
+        </tr>
+        <tr>
+          <td>Lachlan</td>
+          <td>$95K</td>
+          <td>$70K</td>
+          <td>$45K</td>
+          <td>$40K</td>
+          <td style="font-weight:700">$250K</td>
+          <td>$63K</td>
+          <td class="coverage-ok">4.0x</td>
+        </tr>
+        <tr>
+          <td>Bar Barda</td>
+          <td>$55K</td>
+          <td>$90K</td>
+          <td>$70K</td>
+          <td>$100K</td>
+          <td style="font-weight:700">$315K</td>
+          <td>$79K</td>
+          <td class="coverage-ok">4.0x</td>
+        </tr>
+        <tr>
+          <td>Ying</td>
+          <td>$40K</td>
+          <td>$40K</td>
+          <td>$5K</td>
+          <td>$10K</td>
+          <td style="font-weight:700">$95K</td>
+          <td>$63K</td>
+          <td class="coverage-warn">1.5x &#9888;</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+</body>
+</html>
