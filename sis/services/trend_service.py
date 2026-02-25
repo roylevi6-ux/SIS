@@ -177,6 +177,90 @@ def get_deal_health_trends(
     }
 
 
+def get_pipeline_flow(
+    db: Session,
+    weeks: int = 4,
+    visible_user_ids: set[str] | None = None,
+) -> dict:
+    """Pipeline waterfall, coverage ratio trend, pipeline by forecast category."""
+    rows = _get_assessments_in_window(db, weeks, visible_user_ids)
+    if not rows:
+        return {"waterfall": None, "coverage_trend": [], "pipeline_by_category": []}
+
+    by_week = _group_by_week(rows)
+    weekly_latest = _latest_per_account_per_week(by_week)
+    sorted_weeks = sorted(weekly_latest.keys())
+
+    # 1. Pipeline by forecast category per week
+    pipeline_by_category = []
+    weekly_totals = {}
+    for wk in sorted_weeks:
+        deals = weekly_latest[wk]
+        cats = {"commit": 0.0, "realistic": 0.0, "upside": 0.0, "risk": 0.0}
+        total = 0.0
+        for da, acct in deals.values():
+            cp = acct.cp_estimate or 0
+            total += cp
+            cat = (da.ai_forecast_category or "").lower().replace(" ", "_").replace("at_risk", "risk")
+            if cat in cats:
+                cats[cat] += cp
+        pipeline_by_category.append({"week": wk, **cats})
+        weekly_totals[wk] = total
+
+    # 2. Waterfall: compare last two weeks
+    waterfall = None
+    if len(sorted_weeks) >= 2:
+        prev_wk = sorted_weeks[-2]
+        curr_wk = sorted_weeks[-1]
+        prev_deals = weekly_latest[prev_wk]
+        curr_deals = weekly_latest[curr_wk]
+        prev_ids = set(prev_deals.keys())
+        curr_ids = set(curr_deals.keys())
+
+        new_deals = sum((curr_deals[aid][1].cp_estimate or 0) for aid in curr_ids - prev_ids)
+        lost_deals = sum((prev_deals[aid][1].cp_estimate or 0) for aid in prev_ids - curr_ids)
+        common = prev_ids & curr_ids
+        upgrades = 0.0
+        downgrades = 0.0
+        for aid in common:
+            prev_cp = prev_deals[aid][1].cp_estimate or 0
+            curr_cp = curr_deals[aid][1].cp_estimate or 0
+            diff = curr_cp - prev_cp
+            if diff > 0:
+                upgrades += diff
+            elif diff < 0:
+                downgrades += diff
+
+        waterfall = {
+            "previous_total": round(weekly_totals[prev_wk], 2),
+            "new_deals": round(new_deals, 2),
+            "lost_deals": round(-lost_deals, 2),
+            "upgrades": round(upgrades, 2),
+            "downgrades": round(downgrades, 2),
+            "current_total": round(weekly_totals[curr_wk], 2),
+        }
+
+    # 3. Coverage ratio trend
+    total_quota = 0.0
+    quota_query = db.query(Quota).filter(Quota.period == "2026")
+    if visible_user_ids is not None:
+        quota_query = quota_query.filter(Quota.user_id.in_(visible_user_ids))
+    for q in quota_query.all():
+        total_quota += q.amount or 0
+
+    coverage_trend = []
+    for wk in sorted_weeks:
+        pv = weekly_totals.get(wk, 0)
+        ratio = round(pv / total_quota, 2) if total_quota > 0 else None
+        coverage_trend.append({"week": wk, "coverage_ratio": ratio, "pipeline_value": round(pv, 2), "quota": round(total_quota, 2)})
+
+    return {
+        "waterfall": waterfall,
+        "coverage_trend": coverage_trend,
+        "pipeline_by_category": pipeline_by_category,
+    }
+
+
 def get_deal_trends(
     account_id: Optional[str] = None,
     weeks: int = 4,

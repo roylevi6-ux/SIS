@@ -113,6 +113,19 @@ def trends_deal_health(
     return trend_service.get_deal_health_trends(db=db, weeks=weeks, visible_user_ids=visible_ids)
 
 
+@router.get("/trends/pipeline-flow")
+def trends_pipeline_flow(
+    weeks: int = 4,
+    team: Optional[str] = None,
+    deal_type: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Pipeline waterfall, coverage ratio, pipeline by forecast category."""
+    visible_ids = _resolve_scoping(user, db)
+    return trend_service.get_pipeline_flow(db=db, weeks=weeks, visible_user_ids=visible_ids)
+
+
 @router.get("/command-center")
 def command_center(
     team: Optional[str] = None,
