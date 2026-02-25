@@ -104,7 +104,10 @@ def backfill_owner_ids():
         for acct in accounts:
             if not acct.ae_owner:
                 continue
+            # Try exact match first, then partial (first name) match
             user = s.query(User).filter(User.name == acct.ae_owner).first()
+            if not user:
+                user = s.query(User).filter(User.name.ilike(acct.ae_owner + "%")).first()
             if user:
                 acct.owner_id = user.id
                 matched += 1
