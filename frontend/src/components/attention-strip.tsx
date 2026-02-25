@@ -53,7 +53,7 @@ export function AttentionStrip({ items }: AttentionStripProps) {
       {expanded && (
         <div className="border-t divide-y">
           {items.map((item) => (
-            <div key={item.account_id} className="flex items-center gap-3 px-4 py-2.5">
+            <div key={`${item.account_id}-${item.type}`} className="flex items-center gap-3 px-4 py-2.5">
               <span className="text-sm">{typeIcon(item.type)}</span>
               <a
                 href={`/deals/${item.account_id}`}
