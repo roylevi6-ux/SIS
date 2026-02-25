@@ -425,6 +425,72 @@ def get_velocity_trends(
     return {"stage_durations": stage_durations, "stalled_deals": stalled, "stage_events": events[:20]}
 
 
+def get_team_comparison(
+    db: Session,
+    weeks: int = 4,
+    visible_user_ids: set[str] | None = None,
+) -> dict:
+    """Per-team pipeline trends, benchmarking, momentum distribution."""
+    rows = _get_assessments_in_window(db, weeks, visible_user_ids)
+    if not rows:
+        return {"team_pipeline_trend": [], "benchmark_table": [], "momentum_distribution": []}
+
+    user_team_cache: dict[str, str] = {}
+
+    def _get_team_name(acct: Account) -> str:
+        if acct.owner_id and acct.owner_id not in user_team_cache:
+            owner = db.query(User).filter_by(id=acct.owner_id).first()
+            if owner and owner.team_id:
+                team = db.query(Team).filter_by(id=owner.team_id).first()
+                user_team_cache[acct.owner_id] = team.name if team else "Unassigned"
+            else:
+                user_team_cache[acct.owner_id] = "Unassigned"
+        return user_team_cache.get(acct.owner_id, acct.team_name or "Unassigned")
+
+    by_week = _group_by_week(rows)
+    weekly_latest = _latest_per_account_per_week(by_week)
+    sorted_weeks = sorted(weekly_latest.keys())
+
+    team_pipeline_trend = []
+    for wk in sorted_weeks:
+        teams_val: dict[str, float] = {}
+        for da, acct in weekly_latest[wk].values():
+            tn = _get_team_name(acct)
+            teams_val[tn] = teams_val.get(tn, 0) + (acct.mrr_estimate or 0)
+        team_pipeline_trend.append({"week": wk, "teams": {k: round(v, 2) for k, v in teams_val.items()}})
+
+    latest = _latest_per_account(rows)
+    team_deals: dict[str, list[tuple[DealAssessment, Account]]] = {}
+    for da, acct in latest.values():
+        tn = _get_team_name(acct)
+        team_deals.setdefault(tn, []).append((da, acct))
+
+    benchmark_table = []
+    momentum_distribution = []
+    for tn, deals in team_deals.items():
+        total_mrr = sum(acct.mrr_estimate or 0 for _, acct in deals)
+        scores = [da.health_score for da, _ in deals if da.health_score is not None]
+        avg_health = round(sum(scores) / len(scores), 1) if scores else None
+        improving = sum(1 for da, _ in deals if da.momentum_direction == "Improving")
+        stable = sum(1 for da, _ in deals if da.momentum_direction == "Stable")
+        declining = sum(1 for da, _ in deals if da.momentum_direction == "Declining")
+
+        benchmark_table.append({
+            "team_name": tn,
+            "total_deals": len(deals),
+            "pipeline_value": round(total_mrr, 2),
+            "avg_health": avg_health,
+            "improving_count": improving,
+            "stable_count": stable,
+            "declining_count": declining,
+        })
+        momentum_distribution.append({"team_name": tn, "improving": improving, "stable": stable, "declining": declining})
+
+    benchmark_table.sort(key=lambda t: -t["pipeline_value"])
+
+    return {"team_pipeline_trend": team_pipeline_trend, "benchmark_table": benchmark_table, "momentum_distribution": momentum_distribution}
+
+
 def get_deal_trends(
     account_id: Optional[str] = None,
     weeks: int = 4,
