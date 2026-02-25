@@ -7,10 +7,10 @@ interface ForecastBadgeProps {
 }
 
 const categoryColors: Record<string, string> = {
-  'Commit': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
-  'Realistic': 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
-  'Upside': 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
-  'At Risk': 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400',
+  'Commit': 'bg-forecast-commit-bg text-forecast-commit',
+  'Realistic': 'bg-forecast-realistic-bg text-forecast-realistic',
+  'Upside': 'bg-forecast-upside-bg text-forecast-upside',
+  'At Risk': 'bg-forecast-risk-bg text-forecast-risk',
 };
 
 export function ForecastBadge({ category, className }: ForecastBadgeProps) {
