@@ -71,6 +71,9 @@ def get_pipeline_overview(
                     "overall_confidence": latest.overall_confidence,
                     "divergence_flag": bool(latest.divergence_flag),
                     "deal_memo_preview": (latest.deal_memo[:200] + "...") if latest.deal_memo and len(latest.deal_memo) > 200 else latest.deal_memo,
+                    "stage_gap_direction": latest.stage_gap_direction,
+                    "stage_gap_magnitude": latest.stage_gap_magnitude,
+                    "forecast_gap_direction": latest.forecast_gap_direction,
                 })
             else:
                 deal.update({
@@ -82,6 +85,9 @@ def get_pipeline_overview(
                     "overall_confidence": None,
                     "divergence_flag": False,
                     "deal_memo_preview": None,
+                    "stage_gap_direction": None,
+                    "stage_gap_magnitude": None,
+                    "forecast_gap_direction": None,
                 })
 
             deals.append(deal)
@@ -596,6 +602,9 @@ def get_command_center(
                     if latest.deal_memo and len(latest.deal_memo) > 200
                     else latest.deal_memo
                 ),
+                "stage_gap_direction": latest.stage_gap_direction,
+                "stage_gap_magnitude": latest.stage_gap_magnitude,
+                "forecast_gap_direction": latest.forecast_gap_direction,
             })
         else:
             deal.update({
@@ -607,6 +616,9 @@ def get_command_center(
                 "overall_confidence": None,
                 "divergence_flag": False,
                 "deal_memo_preview": None,
+                "stage_gap_direction": None,
+                "stage_gap_magnitude": None,
+                "forecast_gap_direction": None,
             })
 
         deals.append(deal)
