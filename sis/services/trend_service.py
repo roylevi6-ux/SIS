@@ -261,6 +261,71 @@ def get_pipeline_flow(
     }
 
 
+def get_forecast_migration(
+    db: Session,
+    weeks: int = 4,
+    visible_user_ids: set[str] | None = None,
+) -> dict:
+    """Forecast category migrations and AI vs IC divergence trending."""
+    rows = _get_assessments_in_window(db, weeks, visible_user_ids)
+    if not rows:
+        return {"migrations": [], "migration_summary": {"upgrades": 0, "downgrades": 0, "net": 0, "upgrade_value": 0, "downgrade_value": 0}, "divergence_trend": []}
+
+    by_account: dict[str, list[tuple[DealAssessment, Account]]] = {}
+    for da, acct in rows:
+        by_account.setdefault(da.account_id, []).append((da, acct))
+
+    migrations = []
+    for aid, items in by_account.items():
+        if len(items) < 2:
+            continue
+        da_first, _ = items[0]
+        da_last, acct = items[-1]
+        prev_cat = da_first.ai_forecast_category
+        curr_cat = da_last.ai_forecast_category
+        if prev_cat == curr_cat:
+            continue
+        prev_rank = FORECAST_RANK.get(prev_cat, 0)
+        curr_rank = FORECAST_RANK.get(curr_cat, 0)
+        direction = "upgrade" if curr_rank > prev_rank else "downgrade"
+        migrations.append({
+            "account_id": aid,
+            "account_name": acct.account_name,
+            "mrr_estimate": acct.mrr_estimate or 0,
+            "previous_category": prev_cat,
+            "current_category": curr_cat,
+            "changed_at": da_last.created_at[:10],
+            "direction": direction,
+        })
+
+    migrations.sort(key=lambda m: -(m["mrr_estimate"]))
+
+    ups = [m for m in migrations if m["direction"] == "upgrade"]
+    downs = [m for m in migrations if m["direction"] == "downgrade"]
+    summary = {
+        "upgrades": len(ups),
+        "downgrades": len(downs),
+        "net": len(ups) - len(downs),
+        "upgrade_value": round(sum(m["mrr_estimate"] for m in ups), 2),
+        "downgrade_value": round(sum(m["mrr_estimate"] for m in downs), 2),
+    }
+
+    by_week = _group_by_week(rows)
+    weekly_latest = _latest_per_account_per_week(by_week)
+    sorted_weeks = sorted(weekly_latest.keys())
+
+    divergence_trend = []
+    for wk in sorted_weeks:
+        deals = weekly_latest[wk]
+        total = len(deals)
+        divergent = sum(1 for da, acct in deals.values()
+                        if acct.ic_forecast_category and da.ai_forecast_category != acct.ic_forecast_category)
+        pct = round(divergent / total * 100, 1) if total > 0 else 0
+        divergence_trend.append({"week": wk, "divergent_count": divergent, "total_deals": total, "divergence_pct": pct})
+
+    return {"migrations": migrations, "migration_summary": summary, "divergence_trend": divergence_trend}
+
+
 def get_deal_trends(
     account_id: Optional[str] = None,
     weeks: int = 4,
