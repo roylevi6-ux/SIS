@@ -79,6 +79,16 @@ def analyze_account(
         deal_type = normalize_deal_type(account.deal_type)
         prior_contract_value = account.prior_contract_value
 
+        # Read SF indication fields for gap analysis (Agent 10 Step 5 only)
+        sf_data = None
+        if any([account.sf_stage, account.sf_forecast_category, account.sf_close_quarter, account.cp_estimate]):
+            sf_data = {
+                "sf_stage": account.sf_stage,
+                "sf_forecast_category": account.sf_forecast_category,
+                "sf_close_quarter": account.sf_close_quarter,
+                "cp_estimate": account.cp_estimate,
+            }
+
         # Compute days since most recent transcript for confidence penalties
         from sis.db.models import Transcript
         from sqlalchemy import func
@@ -103,7 +113,7 @@ def analyze_account(
     }
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
-    result = pipeline.run(account_id, transcript_texts, deal_context=deal_context)
+    result = pipeline.run(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data)
 
     transcript_ids = get_active_transcript_ids(account_id)
     persisted_run_id = _persist_pipeline_result(
@@ -143,6 +153,16 @@ async def analyze_account_async(
         deal_type = normalize_deal_type(account.deal_type)
         prior_contract_value = account.prior_contract_value
 
+        # Read SF indication fields for gap analysis (Agent 10 Step 5 only)
+        sf_data = None
+        if any([account.sf_stage, account.sf_forecast_category, account.sf_close_quarter, account.cp_estimate]):
+            sf_data = {
+                "sf_stage": account.sf_stage,
+                "sf_forecast_category": account.sf_forecast_category,
+                "sf_close_quarter": account.sf_close_quarter,
+                "cp_estimate": account.cp_estimate,
+            }
+
         from sis.db.models import Transcript
         from sqlalchemy import func
         latest_date_str = (
@@ -166,7 +186,7 @@ async def analyze_account_async(
     }
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
-    result = await pipeline.run_async(account_id, transcript_texts, deal_context=deal_context)
+    result = await pipeline.run_async(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data)
 
     transcript_ids = get_active_transcript_ids(account_id)
     persisted_run_id = _persist_pipeline_result(
@@ -291,6 +311,42 @@ def _persist_pipeline_result(
                 top_risks=json.dumps(syn.get("top_risks", [])),
                 recommended_actions=json.dumps(syn.get("recommended_actions", [])),
             )
+
+            # Snapshot SF indication fields at run time
+            if result.sf_data:
+                assessment.sf_stage_at_run = result.sf_data.get("sf_stage")
+                assessment.sf_forecast_at_run = result.sf_data.get("sf_forecast_category")
+                assessment.sf_close_quarter_at_run = result.sf_data.get("sf_close_quarter")
+                assessment.cp_estimate_at_run = result.sf_data.get("cp_estimate")
+
+            # Deterministic gap computation
+            if result.sf_data and result.sf_data.get("sf_stage") is not None:
+                sf_stage = result.sf_data["sf_stage"]
+                sis_stage = syn.get("inferred_stage", 0)
+                if sf_stage == sis_stage:
+                    assessment.stage_gap_direction = "Aligned"
+                elif sf_stage > sis_stage:
+                    assessment.stage_gap_direction = "SF-ahead"
+                else:
+                    assessment.stage_gap_direction = "SIS-ahead"
+                assessment.stage_gap_magnitude = abs(sf_stage - sis_stage)
+
+            if result.sf_data and result.sf_data.get("sf_forecast_category"):
+                forecast_rank = {"At Risk": 1, "Upside": 2, "Realistic": 3, "Commit": 4}
+                sf_rank = forecast_rank.get(result.sf_data["sf_forecast_category"], 0)
+                sis_rank = forecast_rank.get(syn.get("forecast_category", ""), 0)
+                if sf_rank == sis_rank:
+                    assessment.forecast_gap_direction = "Aligned"
+                elif sf_rank > sis_rank:
+                    assessment.forecast_gap_direction = "SF-more-optimistic"
+                else:
+                    assessment.forecast_gap_direction = "SIS-more-optimistic"
+
+            # Store Agent 10's gap interpretation if present
+            sf_gap = syn.get("sf_gap_analysis")
+            if sf_gap:
+                assessment.sf_gap_interpretation = sf_gap.get("overall_gap_assessment", "")
+
             session.add(assessment)
 
         session.flush()
@@ -674,8 +730,20 @@ def resynthesize(run_id: str) -> dict:
     if not stage_context:
         raise ValueError("Agent 1 output not found — cannot resynthesize")
 
+    # Read SF data for gap analysis
+    with get_session() as session:
+        acct = session.query(Account).filter_by(id=account_id).one_or_none()
+        sf_data = None
+        if acct and any([acct.sf_stage, acct.sf_forecast_category, acct.sf_close_quarter, acct.cp_estimate]):
+            sf_data = {
+                "sf_stage": acct.sf_stage,
+                "sf_forecast_category": acct.sf_forecast_category,
+                "sf_close_quarter": acct.sf_close_quarter,
+                "cp_estimate": acct.cp_estimate,
+            }
+
     # Run synthesis
-    call_kwargs = synthesis_build_call(agent_outputs, stage_context)
+    call_kwargs = synthesis_build_call(agent_outputs, stage_context, sf_data)
     agent10_result = asyncio.run(run_agent_async(**call_kwargs))
     syn = agent10_result.output.model_dump()
 

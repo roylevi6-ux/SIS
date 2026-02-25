@@ -95,6 +95,7 @@ class PipelineResult:
     started_at: str = ""
     completed_at: str = ""
     wall_clock_seconds: float = 0.0
+    sf_data: dict | None = None  # SF indication data for gap computation
 
 
 class AnalysisPipeline:
@@ -140,9 +141,10 @@ class AnalysisPipeline:
         transcript_texts: list[str],
         timeline_entries: list[str] | None = None,
         deal_context: dict | None = None,
+        sf_data: dict | None = None,
     ) -> PipelineResult:
         """Run the full pipeline synchronously (wraps async version)."""
-        return asyncio.run(self.run_async(account_id, transcript_texts, timeline_entries, deal_context))
+        return asyncio.run(self.run_async(account_id, transcript_texts, timeline_entries, deal_context, sf_data))
 
     async def run_async(
         self,
@@ -150,6 +152,7 @@ class AnalysisPipeline:
         transcript_texts: list[str],
         timeline_entries: list[str] | None = None,
         deal_context: dict | None = None,
+        sf_data: dict | None = None,
     ) -> PipelineResult:
         """Run the full 3-step pipeline asynchronously.
 
@@ -158,6 +161,7 @@ class AnalysisPipeline:
             transcript_texts: List of preprocessed transcript texts
             timeline_entries: Optional timeline entries for context
             deal_context: Optional dict with deal_type and prior_contract_value
+            sf_data: Optional dict with SF indication fields for gap computation (Agent 10 Step 5 only)
 
         Returns:
             PipelineResult with all agent outputs, synthesis, and cost data
@@ -194,6 +198,7 @@ class AnalysisPipeline:
             started_at=datetime.now(timezone.utc).isoformat(),
         )
         pipeline_start = time.time()
+        result.sf_data = sf_data
         num_transcripts = len(transcript_texts)
         transcript_age_days = deal_context.get("most_recent_transcript_age_days") if deal_context else None
 
@@ -454,7 +459,7 @@ class AnalysisPipeline:
                 mark_agent_running(self._run_id, "agent_10")
             try:
                 build_start = time.time()
-                agent10_call = synthesis_build_call(result.agent_outputs, stage_context)
+                agent10_call = synthesis_build_call(result.agent_outputs, stage_context, sf_data)
                 build_elapsed = time.time() - build_start
                 agent10_result = await run_agent_async(**agent10_call)
                 total_prep = build_elapsed + agent10_result.prep_seconds
