@@ -140,6 +140,15 @@ export const api = {
       apiFetch<TeamTrend[]>(`/api/dashboard/trends/teams?weeks=${weeks ?? 4}`),
     portfolioSummary: (weeks?: number) =>
       apiFetch<PortfolioSummary>(`/api/dashboard/trends/portfolio?weeks=${weeks ?? 4}`),
+    commandCenter: (params?: { team?: string; ae?: string; period?: string; quarter?: string }) => {
+      const sp = new URLSearchParams();
+      if (params?.team) sp.set('team', params.team);
+      if (params?.ae) sp.set('ae', params.ae);
+      if (params?.period) sp.set('period', params.period);
+      if (params?.quarter) sp.set('quarter', params.quarter);
+      const qs = sp.toString();
+      return apiFetch<any>(`/api/dashboard/command-center${qs ? `?${qs}` : ''}`);
+    },
   },
   feedback: {
     submit: (data: FeedbackSubmit) =>
