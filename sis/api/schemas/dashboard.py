@@ -15,7 +15,7 @@ class PipelineDeal(BaseModel):
 
     account_id: str
     account_name: str
-    cp_estimate: Optional[float] = None
+    mrr_estimate: Optional[float] = None
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
@@ -62,7 +62,7 @@ class DivergenceItem(BaseModel):
 
     account_id: str
     account_name: str
-    cp_estimate: Optional[float] = None
+    mrr_estimate: Optional[float] = None
     team_lead: Optional[str] = None
     ai_forecast_category: str
     ic_forecast_category: Optional[str] = None
@@ -151,7 +151,7 @@ class PipelineInsight(BaseModel):
     health_score: Optional[int] = None
     description: str
     # Additional optional fields vary by insight type
-    cp_estimate: Optional[float] = None
+    mrr_estimate: Optional[float] = None
     team_name: Optional[str] = None
     ae_owner: Optional[str] = None
     momentum_direction: Optional[str] = None
