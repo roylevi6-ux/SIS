@@ -446,3 +446,21 @@ class UserActionLog(Base):
         Index("ix_action_logs_type_date", "action_type", "created_at"),
         Index("ix_action_logs_account", "account_id", "created_at"),
     )
+
+
+# ─── quotas ─────────────────────────────────────────────────────────────
+
+
+class Quota(Base):
+    __tablename__ = "quotas"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    user_id = Column(Text, ForeignKey("users.id"), nullable=False)
+    period = Column(Text, nullable=False)    # "2026" for annual
+    amount = Column(Float, nullable=False)   # Annual quota in USD
+    created_at = Column(Text, default=_now)
+    updated_at = Column(Text, default=_now)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "period", name="uq_quota_user_period"),
+    )
