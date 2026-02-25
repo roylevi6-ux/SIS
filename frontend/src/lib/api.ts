@@ -5,6 +5,8 @@ import type {
   AgentAnalysisResponse,
   AnalysisHistoryItem,
   AnalysisRunResponse,
+  BatchAnalysisResponse,
+  BatchItemRequest,
   CalibrationSnapshot,
   CarryForwardAction,
   ChatMessage,
@@ -123,6 +125,11 @@ export const api = {
       apiFetch<TimelineEntry[]>(`/api/analyses/timeline/${accountId}`),
     carryForwardActions: (accountId: string) =>
       apiFetch<CarryForwardAction[]>(`/api/analyses/carry-forward/${accountId}`),
+    batch: (items: BatchItemRequest[]) =>
+      apiFetch<BatchAnalysisResponse>('/api/analyses/batch', {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+      }),
   },
   dashboard: {
     pipeline: (team?: string) =>
