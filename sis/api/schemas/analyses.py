@@ -86,3 +86,44 @@ class AnalysisStatusResponse(BaseModel):
     run_id: str
     status: str
     progress: Optional[Dict[str, Any]] = None
+
+
+# ── Batch Analysis ──────────────────────────────────────────────────
+
+
+class BatchItemRequest(BaseModel):
+    """Single account in a batch analysis request."""
+    account_name: str
+    drive_path: str
+    max_calls: int = 5
+    deal_type: Optional[str] = None
+    mrr_estimate: Optional[float] = None
+    owner_id: Optional[str] = None
+
+
+class BatchAnalysisRequest(BaseModel):
+    """Request to import + analyze multiple accounts."""
+    items: List[BatchItemRequest]
+
+
+class BatchItemResponse(BaseModel):
+    """Single account status in batch response."""
+    account_name: str
+    status: str
+    account_id: Optional[str] = None
+    run_id: Optional[str] = None
+    error: Optional[str] = None
+    imported_count: int = 0
+    skipped_count: int = 0
+    elapsed_seconds: Optional[float] = None
+    cost_usd: Optional[float] = None
+
+
+class BatchAnalysisResponse(BaseModel):
+    """Response after starting a batch analysis."""
+    batch_id: str
+    status: str
+    total_items: int
+    completed_count: int
+    failed_count: int
+    items: List[BatchItemResponse]
