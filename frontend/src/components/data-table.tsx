@@ -161,7 +161,7 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
   {
     accessorKey: 'momentum_direction',
     header: 'Momentum',
-    cell: ({ getValue }) => <MomentumIndicator direction={getValue() as string | null} />,
+    cell: ({ getValue }) => <MomentumIndicator direction={getValue() as 'Improving' | 'Stable' | 'Declining' | null} />,
     size: 90,
   },
   {

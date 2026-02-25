@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { usePipeline } from '@/lib/hooks/use-dashboard';
+import { useState, useMemo, useCallback } from 'react';
+import { useCommandCenter } from '@/lib/hooks/use-command-center';
 import { usePermissions } from '@/lib/permissions';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -12,224 +11,223 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DealTable } from '@/components/deal-table';
-import { PipelineMovers } from '@/components/pipeline-movers';
-import { TeamRollupCards } from '@/components/team-rollup-cards';
-import type { PipelineOverviewResponse } from '@/lib/pipeline-types';
-import { api } from '@/lib/api';
+import { NumberLine } from '@/components/number-line';
+import { AttentionStrip } from '@/components/attention-strip';
+import { PipelineChanges } from '@/components/pipeline-changes';
+import {
+  FilterChips,
+  type ForecastFilter,
+  type HealthFilter,
+  type FlagFilter,
+} from '@/components/filter-chips';
+import { DataTable } from '@/components/data-table';
+import { TeamForecastGrid } from '@/components/team-forecast-grid';
+import type { PipelineDeal } from '@/lib/pipeline-types';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Quarter helper
 // ---------------------------------------------------------------------------
 
-function formatMrrSummary(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toLocaleString()}`;
+function currentQuarter(): string {
+  const m = new Date().getMonth();
+  if (m < 3) return 'Q1';
+  if (m < 6) return 'Q2';
+  if (m < 9) return 'Q3';
+  return 'Q4';
 }
 
-function pluralize(count: number, singular: string, plural: string): string {
-  return count === 1 ? `${count} ${singular}` : `${count} ${plural}`;
-}
+const QUARTER_OPTIONS = [
+  { value: 'Q1', label: 'Q1 2026' },
+  { value: 'Q2', label: 'Q2 2026' },
+  { value: 'Q3', label: 'Q3 2026' },
+  { value: 'Q4', label: 'Q4 2026' },
+  { value: 'FY', label: 'Full Year 2026' },
+];
 
 // ---------------------------------------------------------------------------
-// Skeleton loading state
+// Skeleton
 // ---------------------------------------------------------------------------
-
-function SkeletonCard() {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent>
-        <div className="h-8 w-16 animate-pulse rounded bg-muted mb-1" />
-        <div className="h-3 w-12 animate-pulse rounded bg-muted" />
-      </CardContent>
-    </Card>
-  );
-}
-
-function SkeletonTable() {
-  return (
-    <div className="space-y-3 pt-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex gap-4 px-2">
-          <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-12 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-10 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-14 animate-pulse rounded bg-muted" />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
+      <div className="h-32 animate-pulse rounded-xl bg-muted" />
+      <div className="flex gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-8 w-20 animate-pulse rounded-full bg-muted" />
+        ))}
       </div>
-      <SkeletonTable />
+      <div className="h-64 animate-pulse rounded-lg bg-muted" />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Summary cards
+// Deal filtering logic
 // ---------------------------------------------------------------------------
 
-interface SummaryCardProps {
-  title: string;
-  count: number;
-  mrr?: number;
-  colorClass: string;
-  accentBorder: string;
+function healthTier(score: number | null): 'healthy' | 'at_risk' | 'critical' | null {
+  if (score === null) return null;
+  if (score >= 70) return 'healthy';
+  if (score >= 45) return 'at_risk';
+  return 'critical';
 }
 
-function SummaryCard({ title, count, mrr, colorClass, accentBorder }: SummaryCardProps) {
-  return (
-    <Card className={accentBorder}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className={`text-2xl font-bold ${colorClass}`}>
-          {count}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {pluralize(count, 'deal', 'deals')}
-          {mrr !== undefined && mrr > 0 && ` \u00B7 ${formatMrrSummary(mrr)}`}
-        </p>
-      </CardContent>
-    </Card>
-  );
+function isStale(deal: PipelineDeal): boolean {
+  if (!deal.last_call_date) return true;
+  const d = new Date(deal.last_call_date);
+  const diff = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+  return diff >= 14;
 }
 
-// ---------------------------------------------------------------------------
-// Team filter: derive unique teams from the data
-// ---------------------------------------------------------------------------
+function filterDeals(
+  deals: PipelineDeal[],
+  forecastFilter: ForecastFilter,
+  healthFilters: HealthFilter[],
+  flagFilters: FlagFilter[],
+): PipelineDeal[] {
+  return deals.filter((d) => {
+    // Forecast filter
+    if (forecastFilter !== 'all') {
+      const cat = (d.ai_forecast_category || '').toLowerCase().replace(' ', '_').replace('at_risk', 'risk');
+      if (cat !== forecastFilter) return false;
+    }
 
-function deriveTeams(data: PipelineOverviewResponse): string[] {
-  const allDeals = [
-    ...data.healthy,
-    ...data.at_risk,
-    ...data.critical,
-    ...data.unscored,
-  ];
-  const teams = new Set<string>();
-  for (const deal of allDeals) {
-    if (deal.team_name) teams.add(deal.team_name);
-  }
-  return Array.from(teams).sort();
-}
+    // Health filter (any selected must match)
+    if (healthFilters.length > 0) {
+      const tier = healthTier(d.health_score);
+      if (!tier || !healthFilters.includes(tier)) return false;
+    }
 
-// ---------------------------------------------------------------------------
-// VP/GM Roll-up section
-// ---------------------------------------------------------------------------
+    // Flag filters (all selected must match)
+    if (flagFilters.length > 0) {
+      for (const flag of flagFilters) {
+        if (flag === 'divergent' && !d.divergence_flag) return false;
+        if (flag === 'declining' && d.momentum_direction !== 'declining') return false;
+        if (flag === 'stale' && !isStale(d)) return false;
+      }
+    }
 
-function RollupSection({ onTeamFilter }: { onTeamFilter: (team: string | undefined) => void }) {
-  const [rollup, setRollup] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch team rollup data on mount
-  useState(() => {
-    api.dashboard.teamRollup()
-      .then((data) => setRollup(data))
-      .catch(() => setRollup(null))
-      .finally(() => setLoading(false));
+    return true;
   });
-
-  if (loading || !rollup || rollup.length === 0) return null;
-
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-semibold">Team Overview</h2>
-      <TeamRollupCards
-        rollup={rollup}
-        onTeamClick={(teamName) => onTeamFilter(teamName)}
-      />
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
-type TabValue = 'all' | 'healthy' | 'at_risk' | 'critical' | 'unscored';
-
-export default function PipelinePage() {
+export default function PipelineCommandCenter() {
+  const [quarter, setQuarter] = useState(currentQuarter());
   const [team, setTeam] = useState<string | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState<TabValue>('all');
-  const { canSeeRollup } = usePermissions();
+  const [forecastFilter, setForecastFilter] = useState<ForecastFilter>('all');
+  const [healthFilters, setHealthFilters] = useState<HealthFilter[]>([]);
+  const [flagFilters, setFlagFilters] = useState<FlagFilter[]>([]);
 
-  const { data, isLoading, isError, error } = usePipeline(team);
-  const pipeline = data as PipelineOverviewResponse | undefined;
+  const { isVpOrAbove } = usePermissions();
 
-  const teams = useMemo(() => {
-    if (!pipeline) return [];
-    return deriveTeams(pipeline);
-  }, [pipeline]);
+  const { data, isLoading, isError, error } = useCommandCenter({
+    quarter: quarter === 'FY' ? undefined : quarter,
+    team,
+  });
+
+  // Compute health & flag counts from all deals (before filtering)
+  const counts = useMemo(() => {
+    if (!data) return { health: { healthy: 0, at_risk: 0, critical: 0 }, flags: { divergent: 0, stale: 0, declining: 0 } };
+    const deals = data.deals;
+    return {
+      health: {
+        healthy: deals.filter((d) => healthTier(d.health_score) === 'healthy').length,
+        at_risk: deals.filter((d) => healthTier(d.health_score) === 'at_risk').length,
+        critical: deals.filter((d) => healthTier(d.health_score) === 'critical').length,
+      },
+      flags: {
+        divergent: deals.filter((d) => d.divergence_flag).length,
+        stale: deals.filter((d) => isStale(d)).length,
+        declining: deals.filter((d) => d.momentum_direction === 'declining').length,
+      },
+    };
+  }, [data]);
+
+  // Filtered deals for the table
+  const filteredDeals = useMemo(() => {
+    if (!data) return [];
+    return filterDeals(data.deals, forecastFilter, healthFilters, flagFilters);
+  }, [data, forecastFilter, healthFilters, flagFilters]);
+
+  const handleHealthToggle = useCallback((h: HealthFilter) => {
+    setHealthFilters((prev) =>
+      prev.includes(h) ? prev.filter((x) => x !== h) : [...prev, h]
+    );
+  }, []);
+
+  const handleFlagToggle = useCallback((f: FlagFilter) => {
+    setFlagFilters((prev) =>
+      prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]
+    );
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setForecastFilter('all');
+    setHealthFilters([]);
+    setFlagFilters([]);
+  }, []);
+
+  const handleTeamClick = useCallback((teamLead: string) => {
+    setTeam(teamLead);
+  }, []);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pipeline Overview</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Pipeline Command Center</h1>
           <p className="text-sm text-muted-foreground">
-            {pipeline
-              ? `${pipeline.total_deals} total deals across all tiers`
-              : 'Loading pipeline data...'}
+            {data
+              ? `${data.pipeline.total_deals} deals across your pipeline`
+              : 'Loading...'}
           </p>
         </div>
 
-        {teams.length > 0 && (
-          <Select
-            value={team ?? 'all'}
-            onValueChange={(v) => setTeam(v === 'all' ? undefined : v)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Teams" />
+        <div className="flex items-center gap-2">
+          {/* Quarter filter */}
+          <Select value={quarter} onValueChange={setQuarter}>
+            <SelectTrigger className="w-[140px] bg-brand-50 border-brand-200">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Teams</SelectItem>
-              {teams.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
+              {QUARTER_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
+
+          {/* Team filter */}
+          <Select
+            value={team ?? 'all'}
+            onValueChange={(v) => setTeam(v === 'all' ? undefined : v)}
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All Teams" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {/* TODO: populate from backend team hierarchy (Task 21) */}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* VP/GM Roll-up cards */}
-      {canSeeRollup && (
-        <RollupSection onTeamFilter={(t) => setTeam(t)} />
-      )}
-
-      {/* Loading state */}
+      {/* ── Loading ── */}
       {isLoading && <LoadingSkeleton />}
 
-      {/* Error state */}
+      {/* ── Error ── */}
       {isError && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
-            <p className="text-destructive font-medium">
-              Failed to load pipeline data
-            </p>
+            <p className="text-destructive font-medium">Failed to load pipeline data</p>
             <p className="text-sm text-muted-foreground mt-1">
               {error instanceof Error ? error.message : 'An unexpected error occurred.'}
             </p>
@@ -237,102 +235,49 @@ export default function PipelinePage() {
         </Card>
       )}
 
-      {/* Data loaded */}
-      {pipeline && !isLoading && (
+      {/* ── Data ── */}
+      {data && !isLoading && (
         <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <SummaryCard
-              title="Healthy"
-              count={pipeline.summary.healthy_count}
-              mrr={pipeline.summary.total_mrr_healthy}
-              colorClass="text-healthy"
-              accentBorder="border-l-4 border-l-healthy"
-            />
-            <SummaryCard
-              title="At Risk"
-              count={pipeline.summary.at_risk_count}
-              mrr={pipeline.summary.total_mrr_at_risk}
-              colorClass="text-at-risk"
-              accentBorder="border-l-4 border-l-at-risk"
-            />
-            <SummaryCard
-              title="Critical"
-              count={pipeline.summary.critical_count}
-              mrr={pipeline.summary.total_mrr_critical}
-              colorClass="text-critical"
-              accentBorder="border-l-4 border-l-critical"
-            />
-            <SummaryCard
-              title="Unscored"
-              count={pipeline.summary.unscored_count}
-              colorClass="text-muted-foreground"
-              accentBorder="border-l-4 border-l-muted"
+          {/* 1. Number Line — sticky on scroll */}
+          <div className="sticky top-0 lg:top-0 z-10">
+            <NumberLine
+              quota={data.quota}
+              pipeline={data.pipeline}
+              forecast={data.forecast_breakdown}
             />
           </div>
 
-          {/* Pipeline movements */}
-          <PipelineMovers />
+          {/* 2. Attention Strip */}
+          <AttentionStrip items={data.attention_items} />
 
-          {/* Tabbed deal table */}
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as TabValue)}
-          >
-            <TabsList>
-              <TabsTrigger value="all">
-                All ({pipeline.total_deals})
-              </TabsTrigger>
-              <TabsTrigger value="healthy">
-                Healthy ({pipeline.summary.healthy_count})
-              </TabsTrigger>
-              <TabsTrigger value="at_risk">
-                At Risk ({pipeline.summary.at_risk_count})
-              </TabsTrigger>
-              <TabsTrigger value="critical">
-                Critical ({pipeline.summary.critical_count})
-              </TabsTrigger>
-              <TabsTrigger value="unscored">
-                Unscored ({pipeline.summary.unscored_count})
-              </TabsTrigger>
-            </TabsList>
+          {/* 3. Pipeline Changes (weekly delta) */}
+          <PipelineChanges changes={data.changes_this_week} />
 
-            <TabsContent value="all" className="mt-4">
-              <Card>
-                <CardContent className="p-0">
-                  <DealTable deals={[...pipeline.healthy, ...pipeline.at_risk, ...pipeline.critical, ...pipeline.unscored]} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="healthy" className="mt-4">
-              <Card>
-                <CardContent className="p-0">
-                  <DealTable deals={pipeline.healthy} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="at_risk" className="mt-4">
-              <Card>
-                <CardContent className="p-0">
-                  <DealTable deals={pipeline.at_risk} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="critical" className="mt-4">
-              <Card>
-                <CardContent className="p-0">
-                  <DealTable deals={pipeline.critical} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="unscored" className="mt-4">
-              <Card>
-                <CardContent className="p-0">
-                  <DealTable deals={pipeline.unscored} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {/* 4. Filter Chips */}
+          <FilterChips
+            forecast={data.forecast_breakdown}
+            totalDeals={data.pipeline.total_deals}
+            activeForecast={forecastFilter}
+            activeHealth={healthFilters}
+            activeFlags={flagFilters}
+            onForecastChange={setForecastFilter}
+            onHealthToggle={handleHealthToggle}
+            onFlagToggle={handleFlagToggle}
+            onClearAll={clearAllFilters}
+            healthCounts={counts.health}
+            flagCounts={counts.flags}
+          />
+
+          {/* 5. Deal Table */}
+          <DataTable deals={filteredDeals} />
+
+          {/* 6. Team Forecast Grid (VP+ only) */}
+          {isVpOrAbove && (
+            <TeamForecastGrid
+              deals={data.deals}
+              onTeamClick={handleTeamClick}
+            />
+          )}
         </>
       )}
     </div>
