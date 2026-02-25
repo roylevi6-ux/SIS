@@ -326,6 +326,105 @@ def get_forecast_migration(
     return {"migrations": migrations, "migration_summary": summary, "divergence_trend": divergence_trend}
 
 
+def get_velocity_trends(
+    db: Session,
+    weeks: int = 4,
+    visible_user_ids: set[str] | None = None,
+) -> dict:
+    """Stage durations, stalled deals, stage progression events."""
+    rows = _get_assessments_in_window(db, weeks, visible_user_ids)
+    if not rows:
+        return {"stage_durations": [], "stalled_deals": [], "stage_events": []}
+
+    from statistics import median
+
+    now = datetime.now(timezone.utc)
+
+    by_account: dict[str, list[tuple[DealAssessment, Account]]] = {}
+    for da, acct in rows:
+        by_account.setdefault(da.account_id, []).append((da, acct))
+
+    stage_days: dict[int, list[float]] = {}
+    stage_names: dict[int, str] = {}
+    events: list[dict] = []
+    current_stages: list[dict] = []
+
+    for aid, items in by_account.items():
+        prev_stage = None
+        stage_entry_date = None
+        acct = items[-1][1]
+
+        for da, _ in items:
+            stage = da.inferred_stage
+            stage_names[stage] = da.stage_name
+            entry_dt = datetime.fromisoformat(da.created_at.replace("Z", "+00:00"))
+
+            if prev_stage is None:
+                prev_stage = stage
+                stage_entry_date = entry_dt
+                continue
+
+            if stage != prev_stage:
+                days = (entry_dt - stage_entry_date).total_seconds() / 86400
+                stage_days.setdefault(prev_stage, []).append(days)
+                events.append({
+                    "account_id": aid,
+                    "account_name": acct.account_name,
+                    "from_stage": prev_stage,
+                    "to_stage": stage,
+                    "from_stage_name": stage_names.get(prev_stage, f"Stage {prev_stage}"),
+                    "to_stage_name": da.stage_name,
+                    "event_date": da.created_at[:10],
+                    "direction": "advance" if stage > prev_stage else "regression",
+                })
+                prev_stage = stage
+                stage_entry_date = entry_dt
+            else:
+                prev_stage = stage
+
+        if stage_entry_date and prev_stage is not None:
+            days = (now - stage_entry_date).total_seconds() / 86400
+            stage_days.setdefault(prev_stage, []).append(days)
+            current_stages.append({
+                "account_id": aid,
+                "account_name": acct.account_name,
+                "mrr_estimate": acct.mrr_estimate or 0,
+                "current_stage": prev_stage,
+                "stage_name": stage_names.get(prev_stage, f"Stage {prev_stage}"),
+                "days_in_stage": round(days, 1),
+                "health_score": items[-1][0].health_score,
+            })
+
+    events.sort(key=lambda e: e["event_date"], reverse=True)
+
+    stage_durations = []
+    for stage_num in sorted(stage_days.keys()):
+        days_list = stage_days[stage_num]
+        med = round(median(days_list), 1) if days_list else 0
+        avg = round(sum(days_list) / len(days_list), 1) if days_list else 0
+        stage_durations.append({
+            "stage": stage_num,
+            "stage_name": stage_names.get(stage_num, f"Stage {stage_num}"),
+            "avg_days": avg,
+            "median_days": med,
+            "deal_count": len(days_list),
+        })
+
+    median_by_stage = {sd["stage"]: sd["median_days"] for sd in stage_durations}
+    stalled = []
+    for deal in current_stages:
+        stage_med = median_by_stage.get(deal["current_stage"], 0)
+        if stage_med > 0 and deal["days_in_stage"] > stage_med * 1.5:
+            stalled.append({
+                **deal,
+                "median_for_stage": stage_med,
+                "excess_days": round(deal["days_in_stage"] - stage_med, 1),
+            })
+    stalled.sort(key=lambda s: -s["excess_days"])
+
+    return {"stage_durations": stage_durations, "stalled_deals": stalled, "stage_events": events[:20]}
+
+
 def get_deal_trends(
     account_id: Optional[str] = None,
     weeks: int = 4,
