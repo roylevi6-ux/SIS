@@ -8,6 +8,7 @@ import { useICUsers } from '@/lib/hooks/use-admin';
 import { api } from '@/lib/api';
 import type { ICUser } from '@/lib/api-types';
 import { AnalysisProgressDetail } from '@/components/analysis-progress-detail';
+import { BatchProgressView } from '@/components/batch-progress-view';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,7 +130,15 @@ export default function UploadPage() {
 // Tab 1: Google Drive Import
 // ---------------------------------------------------------------------------
 
-function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void }) {
+interface BatchRow {
+  account: DriveAccount;
+  selected: boolean;
+  maxCalls: number;
+  dealType: string;
+  ownerId: string;
+}
+
+function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportComplete?: () => void }) {
   const [drivePath, setDrivePath] = useState('');
   const [pathValidated, setPathValidated] = useState(false);
   const [pathMessage, setPathMessage] = useState('');
@@ -138,31 +147,13 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
   const [driveAccounts, setDriveAccounts] = useState<DriveAccount[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
-  const [selectedAccount, setSelectedAccount] = useState<DriveAccount | null>(null);
-  const [recentCalls, setRecentCalls] = useState<DriveCall[]>([]);
-  const [isLoadingCalls, setIsLoadingCalls] = useState(false);
-
-  const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [importError, setImportError] = useState('');
-
-  const [maxCalls, setMaxCalls] = useState<number>(5);
-
-  const [analysisRunId, setAnalysisRunId] = useState<string | null>(null);
-  const [analysisAccountId, setAnalysisAccountId] = useState<string | null>(null);
-
-  const [dealType, setDealType] = useState<string>('');
-  const [mrrEstimate, setMrrEstimate] = useState<string>('');
-  const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
-  const [selectedIC, setSelectedIC] = useState<ICUser | null>(null);
+  const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [batchError, setBatchError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const MAX_BATCH_SIZE = 10;
 
   const { data: icUsers = [] } = useICUsers();
-
-  function handleICSelect(userId: string) {
-    setSelectedOwnerId(userId);
-    const ic = icUsers.find((u: ICUser) => u.id === userId) ?? null;
-    setSelectedIC(ic);
-  }
 
   // Load saved config on mount
   useEffect(() => {
@@ -179,9 +170,7 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
     setPathValidated(false);
     setPathMessage('');
     setDriveAccounts([]);
-    setSelectedAccount(null);
-    setRecentCalls([]);
-    setImportResult(null);
+    setBatchRows([]);
 
     try {
       const result = await api.gdrive.validate(drivePath.trim());
@@ -192,6 +181,13 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
         setIsLoadingAccounts(true);
         const accounts = await api.gdrive.listAccounts(drivePath.trim());
         setDriveAccounts(accounts);
+        setBatchRows(accounts.map((a) => ({
+          account: a,
+          selected: false,
+          maxCalls: Math.min(5, a.call_count),
+          dealType: '',
+          ownerId: '',
+        })));
         setIsLoadingAccounts(false);
       }
     } catch (err) {
@@ -201,32 +197,10 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
     }
   }
 
-  async function handleSelectAccount(accountName: string) {
-    const account = driveAccounts.find((a) => a.name === accountName);
-    if (!account) return;
-
-    setSelectedAccount(account);
-    setRecentCalls([]);
-    setImportResult(null);
-    setImportError('');
-    setIsLoadingCalls(true);
-
-    try {
-      const calls = await api.gdrive.listCalls(account.name, account.path, maxCalls);
-      setRecentCalls(calls as unknown as DriveCall[]);
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Failed to load calls');
-    } finally {
-      setIsLoadingCalls(false);
-    }
-  }
-
   async function handleRescan() {
     if (!drivePath.trim()) return;
     setIsLoadingAccounts(true);
-    setSelectedAccount(null);
-    setRecentCalls([]);
-    setImportResult(null);
+    setBatchRows([]);
     try {
       const result = await api.gdrive.validate(drivePath.trim());
       setPathValidated(result.is_valid);
@@ -234,6 +208,13 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
       if (result.is_valid) {
         const accounts = await api.gdrive.listAccounts(drivePath.trim());
         setDriveAccounts(accounts);
+        setBatchRows(accounts.map((a) => ({
+          account: a,
+          selected: false,
+          maxCalls: Math.min(5, a.call_count),
+          dealType: '',
+          ownerId: '',
+        })));
       }
     } catch (err) {
       setPathMessage(err instanceof Error ? err.message : 'Rescan failed');
@@ -242,61 +223,44 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
     }
   }
 
-  async function handleImport() {
-    if (!selectedAccount) return;
+  const selectedCount = batchRows.filter((r) => r.selected).length;
 
-    setIsImporting(true);
-    setImportError('');
-    setImportResult(null);
-    setAnalysisRunId(null);
-    setAnalysisAccountId(null);
+  function updateRow(index: number, updates: Partial<BatchRow>) {
+    setBatchRows((prev) => prev.map((r, i) => i === index ? { ...r, ...updates } : r));
+  }
+
+  const canSubmit = selectedCount > 0 && batchRows.every((r) =>
+    !r.selected || (r.dealType && r.ownerId)
+  );
+
+  async function handleBatchSubmit() {
+    const selected = batchRows.filter((r) => r.selected);
+    if (selected.length === 0) return;
+
+    setIsSubmitting(true);
+    setBatchError('');
 
     try {
-      const dealArgs = {
-        deal_type: dealType || undefined,
-        mrr_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
-        owner_id: selectedOwnerId || undefined,
-      };
-      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
-      setImportResult(result as unknown as ImportResult);
-      onImportComplete?.();
+      const items = selected.map((r) => ({
+        account_name: r.account.name,
+        drive_path: r.account.path,
+        max_calls: r.maxCalls,
+        deal_type: r.dealType || undefined,
+        owner_id: r.ownerId || undefined,
+      }));
 
-      // Trigger analysis pipeline — returns real run_id immediately
-      const analysisResult = await api.analyses.run(result.account_id);
-      setAnalysisRunId(analysisResult.run_id);
-      setAnalysisAccountId(result.account_id);
+      const result = await api.analyses.batch(items);
+      setBatchId(result.batch_id);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Import & Analysis failed');
+      setBatchError(err instanceof Error ? err.message : 'Batch submission failed');
     } finally {
-      setIsImporting(false);
+      setIsSubmitting(false);
     }
   }
 
-  // If analysis is running, show only the progress component
-  if (analysisRunId && analysisAccountId) {
-    return (
-      <div className="space-y-4">
-        {importResult && (
-          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                Imported {importResult.imported_count} call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
-                {importResult.skipped_count > 0 && (
-                  <span className="text-amber-600 dark:text-amber-400">
-                    {' '}({importResult.skipped_count} skipped)
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-        )}
-        <AnalysisProgressDetail
-          runId={analysisRunId}
-          accountId={analysisAccountId}
-        />
-      </div>
-    );
+  // If batch submitted, show batch progress view
+  if (batchId) {
+    return <BatchProgressView batchId={batchId} />;
   }
 
   return (
@@ -323,7 +287,7 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
                 setDrivePath(e.target.value);
                 setPathValidated(false);
                 setDriveAccounts([]);
-                setSelectedAccount(null);
+                setBatchRows([]);
               }}
               className="flex-1"
             />
@@ -346,201 +310,132 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
           )}
         </div>
 
-        {/* Step 2: Account selector */}
-        {(isLoadingAccounts || driveAccounts.length > 0) && (
-          <div className="space-y-1.5">
+        {/* Step 2: Account selection table */}
+        {(isLoadingAccounts || batchRows.length > 0) && (
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Select Account</label>
-              {pathValidated && !isLoadingAccounts && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRescan}
-                  disabled={isLoadingAccounts}
-                  className="text-xs"
-                >
-                  Rescan
-                </Button>
-              )}
+              <label className="text-sm font-medium">
+                Select accounts to import ({selectedCount} of {batchRows.length} selected)
+              </label>
+              <Button variant="ghost" size="sm" onClick={handleRescan} disabled={isLoadingAccounts} className="text-xs">
+                Rescan
+              </Button>
             </div>
+
             {isLoadingAccounts ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Scanning folders...
               </div>
             ) : (
-              <Select onValueChange={handleSelectAccount}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose an account to import" />
-                </SelectTrigger>
-                <SelectContent>
-                  {driveAccounts.map((a) => (
-                    <SelectItem key={a.name} value={a.name}>
-                      {a.name} ({a.call_count} calls)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        )}
-
-        {/* Max calls input */}
-        {selectedAccount && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium">Max calls to import</label>
-            <Input
-              type="number"
-              min={1}
-              max={20}
-              value={maxCalls}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                if (!isNaN(v) && v >= 1 && v <= 20) setMaxCalls(v);
-              }}
-              className="w-24"
-            />
-          </div>
-        )}
-
-        {/* Step 3: Recent calls table */}
-        {isLoadingCalls && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading recent calls...
-          </div>
-        )}
-
-        {recentCalls.length > 0 && selectedAccount && (
-          <div className="space-y-3">
-            <p className="text-sm font-medium">
-              {recentCalls.length} most recent calls for{' '}
-              <strong>{selectedAccount.name}</strong>:
-            </p>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead className="text-center">Transcript</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentCalls.map((call, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-mono text-xs">{call.date}</TableCell>
-                    <TableCell>{call.title}</TableCell>
-                    <TableCell className="text-center">
-                      {call.has_transcript ? (
-                        <Badge variant="default" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                          ✓
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">—</Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {/* Deal Configuration */}
-            <div className="space-y-4 py-4 border-y border-border/50 my-4">
-              <h3 className="text-sm font-semibold">Deal Configuration</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Deal Type</label>
-                  <Select value={dealType} onValueChange={setDealType}>
-                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                    <SelectContent>
-                      {DEAL_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">MRR Estimate ($)</label>
-                  <Input type="number" min="0" step="1000" placeholder="Optional" value={mrrEstimate} onChange={e => setMrrEstimate(e.target.value)} />
-                </div>
-                <div className="col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium">AE Owner</label>
-                  <Select value={selectedOwnerId} onValueChange={handleICSelect}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select AE owner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {icUsers.map((ic: ICUser) => (
-                        <SelectItem key={ic.id} value={ic.id}>
-                          {ic.name}{ic.team_name ? ` (${ic.team_name})` : ''}
-                        </SelectItem>
+              <>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead>Account</TableHead>
+                        <TableHead className="w-32">Calls</TableHead>
+                        <TableHead className="w-40">Deal Type</TableHead>
+                        <TableHead className="w-44">AE Owner</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {batchRows.map((row, index) => (
+                        <TableRow key={row.account.name} className={row.selected ? 'bg-muted/30' : ''}>
+                          <TableCell className="whitespace-normal">
+                            <input
+                              type="checkbox"
+                              checked={row.selected}
+                              disabled={!row.selected && selectedCount >= MAX_BATCH_SIZE}
+                              onChange={(e) => updateRow(index, { selected: e.target.checked })}
+                              className="size-4 rounded border-border"
+                            />
+                          </TableCell>
+                          <TableCell className="whitespace-normal font-medium">{row.account.name}</TableCell>
+                          <TableCell className="whitespace-normal">
+                            {row.selected ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={row.account.call_count}
+                                  value={row.maxCalls}
+                                  onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    if (!isNaN(v) && v >= 1 && v <= row.account.call_count) {
+                                      updateRow(index, { maxCalls: v });
+                                    }
+                                  }}
+                                  className="w-16 h-8 text-xs"
+                                />
+                                <span className="text-xs text-muted-foreground">of {row.account.call_count}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">{row.account.call_count} avail</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-normal">
+                            {row.selected && (
+                              <Select value={row.dealType} onValueChange={(v) => updateRow(index, { dealType: v })}>
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DEAL_TYPES.map((t) => (
+                                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-normal">
+                            {row.selected && (
+                              <Select value={row.ownerId} onValueChange={(v) => updateRow(index, { ownerId: v })}>
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Select AE" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {icUsers.map((ic: ICUser) => (
+                                    <SelectItem key={ic.id} value={ic.id}>
+                                      {ic.name}{ic.team_name ? ` (${ic.team_name})` : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </TableBody>
+                  </Table>
                 </div>
-                {selectedIC && (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Team Lead</label>
-                      <p className="text-sm">{selectedIC.team_lead || '—'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Team Name</label>
-                      <p className="text-sm">{selectedIC.team_name || '—'}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
 
-            <Button
-              onClick={handleImport}
-              disabled={isImporting}
-              className="w-full"
-            >
-              {isImporting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin mr-2" />
-                  Importing & Analyzing...
-                </>
-              ) : (
-                <>
-                  <Play className="size-4 mr-2" />
-                  Import & Run Analysis
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-
-        {/* Import error */}
-        {importError && (
-          <div className="rounded-md border border-destructive bg-destructive/5 p-3">
-            <p className="text-sm text-destructive">{importError}</p>
-          </div>
-        )}
-
-        {/* Import success */}
-        {importResult && (
-          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-2">
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                  Imported {importResult.imported_count} new call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
-                  {importResult.skipped_count > 0 && (
-                    <span className="text-amber-600 dark:text-amber-400">
-                      {' '}({importResult.skipped_count} already imported)
-                    </span>
+                {/* Submit button */}
+                <Button
+                  onClick={handleBatchSubmit}
+                  disabled={!canSubmit || isSubmitting}
+                  className="w-full"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin mr-2" />
+                      Submitting batch...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="size-4 mr-2" />
+                      Import &amp; Analyze {selectedCount} Account{selectedCount !== 1 ? 's' : ''}
+                    </>
                   )}
-                </p>
-              </div>
-            </div>
-            <div className="ml-7 space-y-1">
-              {importResult.calls.map((c, i) => (
-                <p key={i} className={`text-sm ${c.status === 'skipped' ? 'text-muted-foreground line-through' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  {c.date}: {c.title}
-                  {c.status === 'imported' && c.token_count != null && ` (${c.token_count.toLocaleString()} tokens)`}
-                  {c.status === 'skipped' && ' (skipped)'}
-                </p>
-              ))}
-            </div>
+                </Button>
+
+                {batchError && (
+                  <div className="rounded-md border border-destructive bg-destructive/5 p-3">
+                    <p className="text-sm text-destructive">{batchError}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </CardContent>
