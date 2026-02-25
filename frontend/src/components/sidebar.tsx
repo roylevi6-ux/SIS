@@ -5,13 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard,
-  FileText,
-  GitCompare,
   Users,
-  TrendingUp,
   Award,
   Upload,
-  Play,
   MessageSquare,
   Calendar,
   ThumbsUp,
@@ -75,11 +71,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Analytics',
     items: [
-      { label: 'Pipeline Overview', href: '/pipeline', icon: LayoutDashboard },
-      { label: 'Deal Detail', href: '/deals', icon: FileText },
-      { label: 'Divergence', href: '/divergence', icon: GitCompare },
+      { label: 'Pipeline', href: '/pipeline', icon: LayoutDashboard },
       { label: 'Team Rollup', href: '/team-rollup', icon: Users, minRole: 'vp' },
-      { label: 'Forecast', href: '/forecast', icon: TrendingUp },
       { label: 'Rep Scorecard', href: '/rep-scorecard', icon: Award, minRole: 'team_lead' },
       { label: 'Methodology', href: '/methodology', icon: BookOpen },
     ],
@@ -179,15 +172,15 @@ function NavGroupSection({
 
 function SidebarLogo() {
   return (
-    <div className="flex items-center gap-3 px-3 py-4 border-b border-sidebar-border">
-      <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-sm shrink-0">
-        S
+    <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
+      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 text-white font-bold text-sm tracking-tight shadow-lg shadow-brand-500/25 shrink-0">
+        SIS
       </div>
       <div className="flex flex-col">
-        <span className="text-sm font-bold text-sidebar-foreground leading-tight">
+        <span className="text-sm font-semibold text-sidebar-foreground leading-tight">
           SIS
         </span>
-        <span className="text-xs text-sidebar-foreground/60 leading-tight">
+        <span className="text-[11px] text-sidebar-muted leading-tight">
           Sales Intelligence
         </span>
       </div>
