@@ -126,6 +126,19 @@ def trends_pipeline_flow(
     return trend_service.get_pipeline_flow(db=db, weeks=weeks, visible_user_ids=visible_ids)
 
 
+@router.get("/trends/forecast-migration")
+def trends_forecast_migration(
+    weeks: int = 4,
+    team: Optional[str] = None,
+    deal_type: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Forecast category migrations and divergence trending."""
+    visible_ids = _resolve_scoping(user, db)
+    return trend_service.get_forecast_migration(db=db, weeks=weeks, visible_user_ids=visible_ids)
+
+
 @router.get("/command-center")
 def command_center(
     team: Optional[str] = None,
