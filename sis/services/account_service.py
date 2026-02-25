@@ -16,21 +16,24 @@ from sis.db.models import (
 logger = logging.getLogger(__name__)
 
 # Whitelist of fields that can be updated via update_account
-UPDATABLE_FIELDS = {"account_name", "mrr_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id"}
+UPDATABLE_FIELDS = {"account_name", "cp_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id", "sf_stage", "sf_forecast_category", "sf_close_quarter"}
 
 # Whitelist of fields that can be used for sorting
-SORTABLE_FIELDS = {"account_name", "mrr_estimate", "team_name", "created_at", "updated_at"}
+SORTABLE_FIELDS = {"account_name", "cp_estimate", "team_name", "created_at", "updated_at"}
 
 
 def create_account(
     name: str,
-    mrr: Optional[float] = None,
+    cp_estimate: Optional[float] = None,
     team_lead: Optional[str] = None,
     ae_owner: Optional[str] = None,
     team: Optional[str] = None,
     deal_type: str = "new_logo",
     prior_contract_value: Optional[float] = None,
     owner_id: Optional[str] = None,
+    sf_stage: Optional[int] = None,
+    sf_forecast_category: Optional[str] = None,
+    sf_close_quarter: Optional[str] = None,
 ) -> Account:
     """Create a new account.
 
@@ -54,13 +57,16 @@ def create_account(
 
         account = Account(
             account_name=name,
-            mrr_estimate=mrr,
+            cp_estimate=cp_estimate,
             team_lead=team_lead,
             ae_owner=ae_owner,
             team_name=team,
             deal_type=deal_type,
             prior_contract_value=prior_contract_value,
             owner_id=owner_id,
+            sf_stage=sf_stage,
+            sf_forecast_category=sf_forecast_category,
+            sf_close_quarter=sf_close_quarter,
         )
         session.add(account)
         session.flush()
@@ -171,11 +177,14 @@ def list_accounts(
                 "id": acct.id,
                 "account_id": acct.id,
                 "account_name": acct.account_name,
-                "mrr_estimate": acct.mrr_estimate,
+                "cp_estimate": acct.cp_estimate,
                 "team_lead": acct.team_lead,
                 "ae_owner": acct.ae_owner,
                 "team_name": acct.team_name,
                 "ic_forecast_category": acct.ic_forecast_category,
+                "sf_stage": acct.sf_stage,
+                "sf_forecast_category": acct.sf_forecast_category,
+                "sf_close_quarter": acct.sf_close_quarter,
             }
 
             if latest_assessment:
@@ -188,6 +197,9 @@ def list_accounts(
                     "overall_confidence": latest_assessment.overall_confidence,
                     "divergence_flag": bool(latest_assessment.divergence_flag),
                     "last_assessed": latest_assessment.created_at,
+                    "stage_gap_direction": latest_assessment.stage_gap_direction,
+                    "stage_gap_magnitude": latest_assessment.stage_gap_magnitude,
+                    "forecast_gap_direction": latest_assessment.forecast_gap_direction,
                 })
             else:
                 summary.update({
@@ -199,6 +211,9 @@ def list_accounts(
                     "overall_confidence": None,
                     "divergence_flag": False,
                     "last_assessed": None,
+                    "stage_gap_direction": None,
+                    "stage_gap_magnitude": None,
+                    "forecast_gap_direction": None,
                 })
 
             result.append(summary)
@@ -304,11 +319,14 @@ def get_account_detail(account_id: str) -> dict:
         detail = {
             "id": account.id,
             "account_name": account.account_name,
-            "mrr_estimate": account.mrr_estimate,
+            "cp_estimate": account.cp_estimate,
             "team_lead": account.team_lead,
             "ae_owner": account.ae_owner,
             "team_name": account.team_name,
             "ic_forecast_category": account.ic_forecast_category,
+            "sf_stage": account.sf_stage,
+            "sf_forecast_category": account.sf_forecast_category,
+            "sf_close_quarter": account.sf_close_quarter,
             "transcripts": transcripts,
             "assessment": None,
         }
@@ -334,6 +352,14 @@ def get_account_detail(account_id: str) -> dict:
                 "contradiction_map": json.loads(latest_assessment.contradiction_map) if latest_assessment.contradiction_map else [],
                 "divergence_flag": bool(latest_assessment.divergence_flag),
                 "divergence_explanation": latest_assessment.divergence_explanation,
+                "sf_stage_at_run": latest_assessment.sf_stage_at_run,
+                "sf_forecast_at_run": latest_assessment.sf_forecast_at_run,
+                "sf_close_quarter_at_run": latest_assessment.sf_close_quarter_at_run,
+                "cp_estimate_at_run": latest_assessment.cp_estimate_at_run,
+                "stage_gap_direction": latest_assessment.stage_gap_direction,
+                "stage_gap_magnitude": latest_assessment.stage_gap_magnitude,
+                "forecast_gap_direction": latest_assessment.forecast_gap_direction,
+                "sf_gap_interpretation": latest_assessment.sf_gap_interpretation,
                 "created_at": latest_assessment.created_at,
             }
 
