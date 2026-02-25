@@ -144,7 +144,11 @@ class AnalysisPipeline:
         sf_data: dict | None = None,
     ) -> PipelineResult:
         """Run the full pipeline synchronously (wraps async version)."""
-        return asyncio.run(self.run_async(account_id, transcript_texts, timeline_entries, deal_context, sf_data))
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(self.run_async(account_id, transcript_texts, timeline_entries, deal_context, sf_data))
+        finally:
+            loop.close()
 
     async def run_async(
         self,

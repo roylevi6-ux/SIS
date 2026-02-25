@@ -744,7 +744,11 @@ def resynthesize(run_id: str) -> dict:
 
     # Run synthesis
     call_kwargs = synthesis_build_call(agent_outputs, stage_context, sf_data)
-    agent10_result = asyncio.run(run_agent_async(**call_kwargs))
+    loop = asyncio.new_event_loop()
+    try:
+        agent10_result = loop.run_until_complete(run_agent_async(**call_kwargs))
+    finally:
+        loop.close()
     syn = agent10_result.output.model_dump()
 
     # Update the DealAssessment
@@ -772,6 +776,12 @@ def resynthesize(run_id: str) -> dict:
             existing.top_positive_signals = json.dumps(syn.get("top_positive_signals", []))
             existing.top_risks = json.dumps(syn.get("top_risks", []))
             existing.recommended_actions = json.dumps(syn.get("recommended_actions", []))
+
+        # Mark the run as completed now that Agent 10 has succeeded
+        run = session.query(AnalysisRun).filter_by(id=run_id).first()
+        if run and run.status != "completed":
+            run.status = "completed"
+
         session.flush()
 
     return {
