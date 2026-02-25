@@ -83,6 +83,100 @@ def _latest_per_account_per_week(
     return result
 
 
+def get_deal_health_trends(
+    db: Session,
+    weeks: int = 4,
+    visible_user_ids: set[str] | None = None,
+) -> dict:
+    """Health distribution, biggest movers, component averages, weighted health."""
+    rows = _get_assessments_in_window(db, weeks, visible_user_ids)
+    if not rows:
+        return {
+            "distribution_over_time": [],
+            "biggest_movers": [],
+            "component_averages": [],
+            "weighted_health": {"current": 0, "previous": 0, "delta": 0},
+        }
+
+    by_week = _group_by_week(rows)
+    weekly_latest = _latest_per_account_per_week(by_week)
+    sorted_weeks = sorted(weekly_latest.keys())
+
+    # 1. Distribution over time
+    distribution = []
+    for wk in sorted_weeks:
+        deals = weekly_latest[wk]
+        healthy = sum(1 for da, _ in deals.values() if da.health_score >= 70)
+        at_risk = sum(1 for da, _ in deals.values() if 45 <= da.health_score < 70)
+        critical = sum(1 for da, _ in deals.values() if da.health_score < 45)
+        distribution.append({"week": wk, "healthy": healthy, "at_risk": at_risk, "critical": critical})
+
+    # 2. Biggest movers (first vs last score)
+    by_account: dict[str, list[tuple[DealAssessment, Account]]] = {}
+    for da, acct in rows:
+        by_account.setdefault(da.account_id, []).append((da, acct))
+
+    movers = []
+    for aid, items in by_account.items():
+        da_first, _ = items[0]
+        da_last, acct = items[-1]
+        delta = da_last.health_score - da_first.health_score
+        direction = "Improving" if delta >= 10 else ("Declining" if delta <= -10 else "Stable")
+        sparkline = [da.health_score for da, _ in items]
+        movers.append({
+            "account_id": aid,
+            "account_name": acct.account_name,
+            "mrr_estimate": acct.mrr_estimate or 0,
+            "current_score": da_last.health_score,
+            "delta": delta,
+            "direction": direction,
+            "sparkline": sparkline,
+        })
+    movers.sort(key=lambda m: -abs(m["delta"]))
+    biggest_movers = movers[:10]
+
+    # 3. Component averages from latest assessments
+    latest = _latest_per_account(rows)
+    comp_totals: dict[str, list[float]] = {}
+    for da, _ in latest.values():
+        try:
+            breakdown = json.loads(da.health_breakdown) if isinstance(da.health_breakdown, str) else da.health_breakdown
+            if isinstance(breakdown, list):
+                for comp in breakdown:
+                    name = comp.get("component", comp.get("name", "Unknown"))
+                    score = comp.get("score", 0)
+                    max_score = comp.get("max_score", 1)
+                    pct = (score / max_score * 100) if max_score > 0 else 0
+                    comp_totals.setdefault(name, []).append(pct)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    component_averages = []
+    for name, scores in comp_totals.items():
+        component_averages.append({
+            "component": name,
+            "avg_score": round(sum(scores) / len(scores), 1) if scores else 0,
+            "trend_delta": 0,
+        })
+    component_averages.sort(key=lambda c: c["avg_score"])
+
+    # 4. Weighted health (MRR-weighted average health score)
+    current_weighted = 0.0
+    current_total_mrr = 0.0
+    for da, acct in latest.values():
+        mrr = acct.mrr_estimate or 0
+        current_weighted += da.health_score * mrr
+        current_total_mrr += mrr
+    current_wh = round(current_weighted / current_total_mrr, 1) if current_total_mrr > 0 else 0
+
+    return {
+        "distribution_over_time": distribution,
+        "biggest_movers": biggest_movers,
+        "component_averages": component_averages,
+        "weighted_health": {"current": current_wh, "previous": 0, "delta": 0},
+    }
+
+
 def get_deal_trends(
     account_id: Optional[str] = None,
     weeks: int = 4,
