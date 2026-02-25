@@ -11,7 +11,6 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from sis.db.session import get_session
 from sis.db.models import Account, DealAssessment, User, Team, Quota
 
 
@@ -160,20 +159,35 @@ def get_deal_health_trends(
         })
     component_averages.sort(key=lambda c: c["avg_score"])
 
-    # 4. Weighted health (MRR-weighted average health score)
+    # 4. Weighted health (CP-weighted average health score)
     current_weighted = 0.0
-    current_total_mrr = 0.0
+    current_total_cp = 0.0
     for da, acct in latest.values():
-        mrr = acct.cp_estimate or 0
-        current_weighted += da.health_score * mrr
-        current_total_mrr += mrr
-    current_wh = round(current_weighted / current_total_mrr, 1) if current_total_mrr > 0 else 0
+        cp = acct.cp_estimate or 0
+        current_weighted += da.health_score * cp
+        current_total_cp += cp
+    current_wh = round(current_weighted / current_total_cp, 1) if current_total_cp > 0 else 0
+
+    # Compute previous week's weighted health for delta
+    previous_wh = 0.0
+    if len(sorted_weeks) >= 2:
+        prev_week = sorted_weeks[-2]
+        prev_deals = weekly_latest[prev_week]
+        prev_weighted = 0.0
+        prev_total_cp = 0.0
+        for da, acct in prev_deals.values():
+            cp = acct.cp_estimate or 0
+            prev_weighted += da.health_score * cp
+            prev_total_cp += cp
+        previous_wh = round(prev_weighted / prev_total_cp, 1) if prev_total_cp > 0 else 0
 
     return {
         "distribution_over_time": distribution,
         "biggest_movers": biggest_movers,
         "component_averages": component_averages,
-        "weighted_health": {"current": current_wh, "previous": 0, "delta": 0},
+        "weighted_health": {"current": current_wh, "previous": previous_wh, "delta": round(current_wh - previous_wh, 1)},
+        "avg_health_score": round(sum(da.health_score for da, _ in latest.values()) / len(latest), 1) if latest else 0,
+        "total_deals": len(latest),
     }
 
 
@@ -242,7 +256,8 @@ def get_pipeline_flow(
 
     # 3. Coverage ratio trend
     total_quota = 0.0
-    quota_query = db.query(Quota).filter(Quota.period == "2026")
+    current_year = str(datetime.now().year)
+    quota_query = db.query(Quota).filter(Quota.period == current_year)
     if visible_user_ids is not None:
         quota_query = quota_query.filter(Quota.user_id.in_(visible_user_ids))
     for q in quota_query.all():
@@ -254,10 +269,14 @@ def get_pipeline_flow(
         ratio = round(pv / total_quota, 2) if total_quota > 0 else None
         coverage_trend.append({"week": wk, "coverage_ratio": ratio, "pipeline_value": round(pv, 2), "quota": round(total_quota, 2)})
 
+    # Count active deals in the latest week
+    latest_week_deals = len(weekly_latest[sorted_weeks[-1]]) if sorted_weeks else 0
+
     return {
         "waterfall": waterfall,
         "coverage_trend": coverage_trend,
         "pipeline_by_category": pipeline_by_category,
+        "total_deals": latest_week_deals,
     }
 
 
@@ -344,7 +363,7 @@ def get_velocity_trends(
     for da, acct in rows:
         by_account.setdefault(da.account_id, []).append((da, acct))
 
-    stage_days: dict[int, list[float]] = {}
+    completed_stage_days: dict[int, list[float]] = {}  # only completed transitions (for benchmarks)
     stage_names: dict[int, str] = {}
     events: list[dict] = []
     current_stages: list[dict] = []
@@ -366,7 +385,7 @@ def get_velocity_trends(
 
             if stage != prev_stage:
                 days = (entry_dt - stage_entry_date).total_seconds() / 86400
-                stage_days.setdefault(prev_stage, []).append(days)
+                completed_stage_days.setdefault(prev_stage, []).append(days)
                 events.append({
                     "account_id": aid,
                     "account_name": acct.account_name,
@@ -382,9 +401,9 @@ def get_velocity_trends(
             else:
                 prev_stage = stage
 
+        # Track current in-progress deals separately (NOT included in benchmark medians)
         if stage_entry_date and prev_stage is not None:
             days = (now - stage_entry_date).total_seconds() / 86400
-            stage_days.setdefault(prev_stage, []).append(days)
             current_stages.append({
                 "account_id": aid,
                 "account_name": acct.account_name,
@@ -398,8 +417,8 @@ def get_velocity_trends(
     events.sort(key=lambda e: e["event_date"], reverse=True)
 
     stage_durations = []
-    for stage_num in sorted(stage_days.keys()):
-        days_list = stage_days[stage_num]
+    for stage_num in sorted(completed_stage_days.keys()):
+        days_list = completed_stage_days[stage_num]
         med = round(median(days_list), 1) if days_list else 0
         avg = round(sum(days_list) / len(days_list), 1) if days_list else 0
         stage_durations.append({
@@ -492,8 +511,10 @@ def get_team_comparison(
 
 
 def get_deal_trends(
+    db: Session,
     account_id: Optional[str] = None,
     weeks: int = 4,
+    visible_user_ids: set[str] | None = None,
 ) -> list[dict]:
     """Per-deal health trajectory over N weeks.
 
@@ -501,67 +522,68 @@ def get_deal_trends(
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(weeks=weeks)).isoformat()
 
-    with get_session() as session:
-        query = (
-            session.query(DealAssessment, Account.account_name, Account.team_name, Account.ae_owner)
-            .join(Account, DealAssessment.account_id == Account.id)
-            .filter(DealAssessment.created_at >= cutoff)
-            .order_by(DealAssessment.account_id, DealAssessment.created_at)
-        )
-        if account_id:
-            query = query.filter(DealAssessment.account_id == account_id)
+    query = (
+        db.query(DealAssessment, Account.account_name, Account.team_name, Account.ae_owner)
+        .join(Account, DealAssessment.account_id == Account.id)
+        .filter(DealAssessment.created_at >= cutoff)
+        .order_by(DealAssessment.account_id, DealAssessment.created_at)
+    )
+    if account_id:
+        query = query.filter(DealAssessment.account_id == account_id)
+    if visible_user_ids is not None:
+        query = query.filter(Account.owner_id.in_(visible_user_ids))
 
-        rows = query.all()
+    rows = query.all()
 
-        # Group by account
-        by_account: dict[str, dict] = {}
-        for assessment, acct_name, team_name, ae_owner in rows:
-            aid = assessment.account_id
-            if aid not in by_account:
-                by_account[aid] = {
-                    "account_id": aid,
-                    "account_name": acct_name,
-                    "team_name": team_name or "Unassigned",
-                    "ae_owner": ae_owner or "Unassigned",
-                    "data_points": [],
-                }
-            by_account[aid]["data_points"].append({
-                "date": assessment.created_at[:10],
-                "health_score": assessment.health_score,
-                "momentum": assessment.momentum_direction,
-                "forecast": assessment.ai_forecast_category,
-            })
+    # Group by account
+    by_account: dict[str, dict] = {}
+    for assessment, acct_name, team_name, ae_owner in rows:
+        aid = assessment.account_id
+        if aid not in by_account:
+            by_account[aid] = {
+                "account_id": aid,
+                "account_name": acct_name,
+                "team_name": team_name or "Unassigned",
+                "ae_owner": ae_owner or "Unassigned",
+                "data_points": [],
+            }
+        by_account[aid]["data_points"].append({
+            "date": assessment.created_at[:10],
+            "health_score": assessment.health_score,
+            "momentum": assessment.momentum_direction,
+            "forecast": assessment.ai_forecast_category,
+        })
 
-        # Compute trends
-        trends = []
-        for deal in by_account.values():
-            points = deal["data_points"]
-            first_score = points[0]["health_score"]
-            last_score = points[-1]["health_score"]
-            delta = last_score - first_score
+    # Compute trends
+    trends = []
+    for deal in by_account.values():
+        points = deal["data_points"]
+        first_score = points[0]["health_score"]
+        last_score = points[-1]["health_score"]
+        delta = last_score - first_score
 
-            if delta >= 10:
-                direction = "Improving"
-            elif delta <= -10:
-                direction = "Declining"
-            else:
-                direction = "Stable"
+        if delta >= 10:
+            direction = "Improving"
+        elif delta <= -10:
+            direction = "Declining"
+        else:
+            direction = "Stable"
 
-            trends.append({
-                "account_id": deal["account_id"],
-                "account_name": deal["account_name"],
-                "team_name": deal["team_name"],
-                "ae_owner": deal["ae_owner"],
-                "data_points": points,
-                "first_score": first_score,
-                "last_score": last_score,
-                "delta": delta,
-                "trend_direction": direction,
-            })
+        trends.append({
+            "account_id": deal["account_id"],
+            "account_name": deal["account_name"],
+            "team_name": deal["team_name"],
+            "ae_owner": deal["ae_owner"],
+            "data_points": points,
+            "first_score": first_score,
+            "last_score": last_score,
+            "delta": delta,
+            "trend_direction": direction,
+        })
 
-        # Sort by biggest movers first (abs delta descending)
-        trends.sort(key=lambda t: -abs(t["delta"]))
-        return trends
+    # Sort by biggest movers first (abs delta descending)
+    trends.sort(key=lambda t: -abs(t["delta"]))
+    return trends
 
 
 def get_team_trends(
@@ -571,10 +593,10 @@ def get_team_trends(
     """Aggregate deal trends per team.
 
     Returns list of team trend dicts sorted worst-trending first.
-    Pass deal_trends to avoid redundant DB queries.
+    Callers must pass deal_trends (from get_deal_trends with scoping).
     """
     if deal_trends is None:
-        deal_trends = get_deal_trends(weeks=weeks)
+        return []
 
     by_team: dict[str, list[dict]] = {}
     for deal in deal_trends:
@@ -624,10 +646,10 @@ def get_portfolio_summary(
 ) -> dict:
     """Portfolio-wide trend summary.
 
-    Pass deal_trends to avoid redundant DB queries.
+    Callers must pass deal_trends (from get_deal_trends with scoping).
     """
     if deal_trends is None:
-        deal_trends = get_deal_trends(weeks=weeks)
+        deal_trends = []
 
     if not deal_trends:
         return {

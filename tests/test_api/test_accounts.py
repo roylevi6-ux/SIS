@@ -121,11 +121,14 @@ class TestCreateAccount:
         }, headers=auth_headers)
         mock_svc.create_account.assert_called_once_with(
             name="TestCorp",
-            mrr=50000.0,
+            cp_estimate=50000.0,
             team_lead="TL One",
             ae_owner="AE One",
             team="Team Alpha",
             owner_id=None,
+            sf_stage=None,
+            sf_forecast_category=None,
+            sf_close_quarter=None,
         )
 
     @patch("sis.api.routes.accounts.account_service")
@@ -136,7 +139,8 @@ class TestCreateAccount:
         resp = client.post("/api/accounts/", json={"name": "Minimal"}, headers=auth_headers)
         assert resp.status_code == 200
         mock_svc.create_account.assert_called_once_with(
-            name="Minimal", mrr=None, team_lead=None, ae_owner=None, team=None, owner_id=None,
+            name="Minimal", cp_estimate=None, team_lead=None, ae_owner=None, team=None, owner_id=None,
+            sf_stage=None, sf_forecast_category=None, sf_close_quarter=None,
         )
 
     def test_create_account_missing_name_returns_422(self, client, auth_headers):

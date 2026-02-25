@@ -30,6 +30,9 @@ class AccountCreate(BaseModel):
     deal_type: str = "new_logo"
     prior_contract_value: Optional[float] = None
     owner_id: Optional[str] = None
+    sf_stage: Optional[int] = None
+    sf_forecast_category: Optional[str] = None
+    sf_close_quarter: Optional[str] = None
 
 
 class AccountUpdate(BaseModel):
@@ -41,6 +44,9 @@ class AccountUpdate(BaseModel):
     deal_type: Optional[str] = None
     prior_contract_value: Optional[float] = None
     owner_id: Optional[str] = None
+    sf_stage: Optional[int] = None
+    sf_forecast_category: Optional[str] = None
+    sf_close_quarter: Optional[str] = None
 
 
 class ICForecastUpdate(BaseModel):
@@ -85,6 +91,14 @@ class AssessmentDetail(BaseModel):
     contradiction_map: List[Any] = []
     divergence_flag: bool = False
     divergence_explanation: Optional[str] = None
+    sf_stage_at_run: Optional[int] = None
+    sf_forecast_at_run: Optional[str] = None
+    sf_close_quarter_at_run: Optional[str] = None
+    cp_estimate_at_run: Optional[float] = None
+    stage_gap_direction: Optional[str] = None
+    stage_gap_magnitude: Optional[int] = None
+    forecast_gap_direction: Optional[str] = None
+    sf_gap_interpretation: Optional[str] = None
     created_at: str
 
 
@@ -109,6 +123,12 @@ class AccountSummary(BaseModel):
     overall_confidence: Optional[float] = None
     divergence_flag: bool = False
     last_assessed: Optional[str] = None
+    sf_stage: Optional[int] = None
+    sf_forecast_category: Optional[str] = None
+    sf_close_quarter: Optional[str] = None
+    stage_gap_direction: Optional[str] = None
+    stage_gap_magnitude: Optional[int] = None
+    forecast_gap_direction: Optional[str] = None
 
 
 class AccountDetail(BaseModel):

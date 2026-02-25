@@ -498,6 +498,7 @@ export interface PipelineFlowResponse {
   waterfall: WaterfallData | null;
   coverage_trend: CoverageTrendPoint[];
   pipeline_by_category: PipelineByCategoryPoint[];
+  total_deals: number;
 }
 
 export interface ForecastMigration {
@@ -565,6 +566,8 @@ export interface DealHealthResponse {
   biggest_movers: BiggestMover[];
   component_averages: ComponentAverage[];
   weighted_health: WeightedHealth;
+  avg_health_score: number;
+  total_deals: number;
 }
 
 export interface StageDuration {

@@ -81,30 +81,31 @@ def pipeline_insights(
 
 
 @router.get("/trends/deals")
-def deal_trends(account_id: Optional[str] = None, weeks: int = 4, user: dict = Depends(get_current_user)):
+def deal_trends(account_id: Optional[str] = None, weeks: int = 4, user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Per-deal health trajectory over N weeks."""
-    return trend_service.get_deal_trends(account_id=account_id, weeks=weeks)
+    visible_ids = _resolve_scoping(user, db)
+    return trend_service.get_deal_trends(db=db, account_id=account_id, weeks=weeks, visible_user_ids=visible_ids)
 
 
 @router.get("/trends/teams")
-def team_trends(weeks: int = 4, user: dict = Depends(get_current_user)):
+def team_trends(weeks: int = 4, user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Aggregated deal trends per team."""
-    deal_data = trend_service.get_deal_trends(weeks=weeks)
+    visible_ids = _resolve_scoping(user, db)
+    deal_data = trend_service.get_deal_trends(db=db, weeks=weeks, visible_user_ids=visible_ids)
     return trend_service.get_team_trends(weeks=weeks, deal_trends=deal_data)
 
 
 @router.get("/trends/portfolio")
-def portfolio_summary(weeks: int = 4, user: dict = Depends(get_current_user)):
+def portfolio_summary(weeks: int = 4, user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Portfolio-wide trend summary."""
-    deal_data = trend_service.get_deal_trends(weeks=weeks)
+    visible_ids = _resolve_scoping(user, db)
+    deal_data = trend_service.get_deal_trends(db=db, weeks=weeks, visible_user_ids=visible_ids)
     return trend_service.get_portfolio_summary(weeks=weeks, deal_trends=deal_data)
 
 
 @router.get("/trends/deal-health")
 def trends_deal_health(
     weeks: int = 4,
-    team: Optional[str] = None,
-    deal_type: Optional[str] = None,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -116,8 +117,6 @@ def trends_deal_health(
 @router.get("/trends/pipeline-flow")
 def trends_pipeline_flow(
     weeks: int = 4,
-    team: Optional[str] = None,
-    deal_type: Optional[str] = None,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -129,8 +128,6 @@ def trends_pipeline_flow(
 @router.get("/trends/forecast-migration")
 def trends_forecast_migration(
     weeks: int = 4,
-    team: Optional[str] = None,
-    deal_type: Optional[str] = None,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -142,8 +139,6 @@ def trends_forecast_migration(
 @router.get("/trends/velocity")
 def trends_velocity(
     weeks: int = 4,
-    team: Optional[str] = None,
-    deal_type: Optional[str] = None,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -155,7 +150,6 @@ def trends_velocity(
 @router.get("/trends/team-comparison")
 def trends_team_comparison(
     weeks: int = 4,
-    deal_type: Optional[str] = None,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

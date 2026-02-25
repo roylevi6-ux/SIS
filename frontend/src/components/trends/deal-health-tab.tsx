@@ -33,9 +33,7 @@ export function DealHealthTab({ weeks }: { weeks: number }) {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {data.biggest_movers.length > 0
-                ? Math.round(data.biggest_movers.reduce((s, m) => s + m.current_score, 0) / data.biggest_movers.length)
-                : '--'}
+              {data.avg_health_score ?? '--'}
             </p>
           </CardContent>
         </Card>
