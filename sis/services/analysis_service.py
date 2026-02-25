@@ -694,6 +694,7 @@ def resynthesize(run_id: str) -> dict:
         if not run:
             raise ValueError(f"Analysis run not found: {run_id}")
         account_id = run.account_id
+        deal_type = run.deal_type_at_run or "new_logo"
 
         agent_rows = (
             session.query(AgentAnalysis)
@@ -751,31 +752,56 @@ def resynthesize(run_id: str) -> dict:
         loop.close()
     syn = agent10_result.output.model_dump()
 
-    # Update the DealAssessment
+    # Create or update the DealAssessment
     with get_session() as session:
-        existing = (
+        assessment = (
             session.query(DealAssessment)
             .filter_by(analysis_run_id=run_id)
             .first()
         )
-        if existing:
-            existing.deal_memo = syn.get("deal_memo", "")
-            existing.contradiction_map = json.dumps(syn.get("contradiction_map", []))
-            existing.inferred_stage = syn.get("inferred_stage", 0)
-            existing.stage_name = syn.get("inferred_stage_name", "")
-            existing.stage_confidence = syn.get("inferred_stage_confidence", 0.0)
-            existing.health_score = syn.get("health_score", 0)
-            existing.health_breakdown = json.dumps(syn.get("health_score_breakdown", []))
-            existing.overall_confidence = syn.get("confidence_interval", {}).get("overall_confidence", 0.0)
-            existing.confidence_rationale = syn.get("confidence_interval", {}).get("rationale")
-            existing.key_unknowns = json.dumps(syn.get("confidence_interval", {}).get("key_unknowns", []))
-            existing.momentum_direction = syn.get("momentum_direction", "Unknown")
-            existing.momentum_trend = syn.get("momentum_trend")
-            existing.ai_forecast_category = syn.get("forecast_category", "Realistic")
-            existing.forecast_rationale = syn.get("forecast_rationale")
-            existing.top_positive_signals = json.dumps(syn.get("top_positive_signals", []))
-            existing.top_risks = json.dumps(syn.get("top_risks", []))
-            existing.recommended_actions = json.dumps(syn.get("recommended_actions", []))
+        if not assessment:
+            assessment = DealAssessment(
+                analysis_run_id=run_id,
+                account_id=account_id,
+                deal_type=deal_type,
+                stage_model="expansion_7stage" if is_expansion_deal(deal_type) else "new_logo_7stage",
+            )
+            session.add(assessment)
+
+        assessment.deal_memo = syn.get("deal_memo", "")
+        assessment.contradiction_map = json.dumps(syn.get("contradiction_map", []))
+        assessment.inferred_stage = syn.get("inferred_stage", 0)
+        assessment.stage_name = syn.get("inferred_stage_name", "")
+        assessment.stage_confidence = syn.get("inferred_stage_confidence", 0.0)
+        assessment.health_score = syn.get("health_score", 0)
+        assessment.health_breakdown = json.dumps(syn.get("health_score_breakdown", []))
+        assessment.overall_confidence = syn.get("confidence_interval", {}).get("overall_confidence", 0.0)
+        assessment.confidence_rationale = syn.get("confidence_interval", {}).get("rationale")
+        assessment.key_unknowns = json.dumps(syn.get("confidence_interval", {}).get("key_unknowns", []))
+        assessment.momentum_direction = syn.get("momentum_direction", "Unknown")
+        assessment.momentum_trend = syn.get("momentum_trend")
+        assessment.ai_forecast_category = syn.get("forecast_category", "Realistic")
+        assessment.forecast_rationale = syn.get("forecast_rationale")
+        assessment.top_positive_signals = json.dumps(syn.get("top_positive_signals", []))
+        assessment.top_risks = json.dumps(syn.get("top_risks", []))
+        assessment.recommended_actions = json.dumps(syn.get("recommended_actions", []))
+
+        # Snapshot SF indication fields and compute gap
+        if sf_data:
+            assessment.sf_stage_at_run = sf_data.get("sf_stage")
+            assessment.sf_forecast_at_run = sf_data.get("sf_forecast_category")
+            assessment.sf_close_quarter_at_run = sf_data.get("sf_close_quarter")
+            assessment.cp_estimate_at_run = sf_data.get("cp_estimate")
+            if sf_data.get("sf_stage") is not None:
+                sf_stage = sf_data["sf_stage"]
+                sis_stage = syn.get("inferred_stage", 0)
+                if sf_stage == sis_stage:
+                    assessment.stage_gap_direction = "Aligned"
+                elif sf_stage > sis_stage:
+                    assessment.stage_gap_direction = "SF-ahead"
+                else:
+                    assessment.stage_gap_direction = "SIS-ahead"
+                assessment.stage_gap_magnitude = abs(sf_stage - sis_stage)
 
         # Mark the run as completed now that Agent 10 has succeeded
         run = session.query(AnalysisRun).filter_by(id=run_id).first()
