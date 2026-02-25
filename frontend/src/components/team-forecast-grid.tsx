@@ -36,7 +36,7 @@ function buildTeamRows(deals: PipelineDeal[]): TeamRow[] {
       map.set(lead, { team_lead: lead, commit: 0, realistic: 0, upside: 0, risk: 0, total: 0, deals: 0 });
     }
     const row = map.get(lead)!;
-    const mrr = deal.mrr_estimate || 0;
+    const mrr = deal.cp_estimate || 0;
     const cat = (deal.ai_forecast_category || '').toLowerCase().replace(' ', '_').replace('at_risk', 'risk');
 
     if (cat === 'commit') row.commit += mrr;

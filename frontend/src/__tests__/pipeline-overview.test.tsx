@@ -38,21 +38,21 @@ const MOCK_COMMAND_CENTER = {
   changes_this_week: { added: 1, dropped: 0, net: 1, stage_advances: 0, forecast_flips: 0, new_risks: 0 },
   deals: [
     {
-      account_id: 'a1', account_name: 'Acme Corp', mrr_estimate: 120000, team_lead: 'Alice',
+      account_id: 'a1', account_name: 'Acme Corp', cp_estimate: 120000, team_lead: 'Alice',
       ae_owner: 'Bob', team_name: 'Team Alpha', ic_forecast_category: 'Commit',
       last_call_date: '2026-02-20', health_score: 82, momentum_direction: 'Improving',
       ai_forecast_category: 'Commit', inferred_stage: 4, stage_name: 'Proposal',
       overall_confidence: 0.85, divergence_flag: false, deal_memo_preview: null, deal_type: 'New',
     },
     {
-      account_id: 'a2', account_name: 'Beta Industries', mrr_estimate: 100000, team_lead: 'Alice',
+      account_id: 'a2', account_name: 'Beta Industries', cp_estimate: 100000, team_lead: 'Alice',
       ae_owner: 'Carol', team_name: 'Team Alpha', ic_forecast_category: 'Realistic',
       last_call_date: '2026-02-18', health_score: 55, momentum_direction: 'Stable',
       ai_forecast_category: 'Realistic', inferred_stage: 3, stage_name: 'Evaluation',
       overall_confidence: 0.60, divergence_flag: false, deal_memo_preview: null, deal_type: 'Expansion',
     },
     {
-      account_id: 'a3', account_name: 'Gamma Solutions', mrr_estimate: 80000, team_lead: 'Dave',
+      account_id: 'a3', account_name: 'Gamma Solutions', cp_estimate: 80000, team_lead: 'Dave',
       ae_owner: 'Eve', team_name: 'Team Beta', ic_forecast_category: 'Upside',
       last_call_date: '2026-02-01', health_score: 32, momentum_direction: 'Declining',
       ai_forecast_category: 'Upside', inferred_stage: 2, stage_name: 'Discovery',

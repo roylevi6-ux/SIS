@@ -71,7 +71,7 @@ interface Assessment {
 interface AccountDetail {
   id: string;
   account_name: string;
-  mrr_estimate: number | null;
+  cp_estimate: number | null;
   team_lead: string | null;
   ae_owner: string | null;
   team_name: string | null;
@@ -532,12 +532,12 @@ export default function DealDetailPage({
               {account.ae_owner && <span>AE: {account.ae_owner}</span>}
               {account.team_lead && <span>TL: {account.team_lead}</span>}
               {account.team_name && <span>Team: {account.team_name}</span>}
-              {account.mrr_estimate !== null && (
+              {account.cp_estimate !== null && (
                 <span>
-                  MRR: $
-                  {account.mrr_estimate >= 1000
-                    ? `${(account.mrr_estimate / 1000).toFixed(1)}K`
-                    : account.mrr_estimate.toLocaleString()}
+                  CP Est.: $
+                  {account.cp_estimate >= 1000
+                    ? `${(account.cp_estimate / 1000).toFixed(1)}K`
+                    : account.cp_estimate.toLocaleString()}
                 </span>
               )}
               {account.prior_contract_value != null && (

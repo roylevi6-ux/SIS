@@ -84,8 +84,8 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
     size: 200,
   },
   {
-    accessorKey: 'mrr_estimate',
-    header: 'MRR',
+    accessorKey: 'cp_estimate',
+    header: 'CP Est.',
     cell: ({ getValue }) => (
       <span className="font-mono tabular-nums text-right block">
         {formatMrr(getValue() as number | null)}
@@ -186,7 +186,7 @@ interface DataTableProps {
 
 export function DataTable({ deals, pageSize = 25 }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'mrr_estimate', desc: true },
+    { id: 'cp_estimate', desc: true },
   ]);
 
   const table = useReactTable({

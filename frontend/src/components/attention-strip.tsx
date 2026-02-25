@@ -30,7 +30,7 @@ export function AttentionStrip({ items }: AttentionStripProps) {
     );
   }
 
-  const totalAtRisk = items.reduce((sum, i) => sum + i.mrr_estimate, 0);
+  const totalAtRisk = items.reduce((sum, i) => sum + i.cp_estimate, 0);
 
   return (
     <div className="rounded-lg border-l-4 border-l-at-risk border bg-card">
@@ -62,7 +62,7 @@ export function AttentionStrip({ items }: AttentionStripProps) {
                 {item.account_name}
               </a>
               <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                {formatMrr(item.mrr_estimate)}
+                {formatMrr(item.cp_estimate)}
               </span>
               <span className="text-xs text-muted-foreground flex-1">
                 — {item.reason}
