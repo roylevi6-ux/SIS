@@ -426,3 +426,35 @@ export interface CostSummary {
     retries: number;
   }>;
 }
+
+// ── Batch Analysis ──
+export interface BatchItemRequest {
+  account_name: string;
+  drive_path: string;
+  max_calls: number;
+  deal_type?: string;
+  mrr_estimate?: number;
+  owner_id?: string;
+}
+
+export interface BatchItem {
+  index: number;
+  account_name: string;
+  status: 'queued' | 'uploading' | 'analyzing' | 'completed' | 'failed';
+  account_id: string | null;
+  run_id: string | null;
+  error: string | null;
+  imported_count: number;
+  skipped_count: number;
+  elapsed_seconds: number | null;
+  cost_usd: number | null;
+}
+
+export interface BatchAnalysisResponse {
+  batch_id: string;
+  status: 'running' | 'completed' | 'partial' | 'failed';
+  total_items: number;
+  completed_count: number;
+  failed_count: number;
+  items: BatchItem[];
+}
