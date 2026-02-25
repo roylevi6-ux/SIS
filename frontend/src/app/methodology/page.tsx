@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   BookOpen,
   Brain,
   ShieldAlert,
@@ -32,6 +33,7 @@ import {
   Target,
   Users,
   Gauge,
+  ArrowUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,21 +51,151 @@ const TOC_ITEMS = [
   { id: 'confidence-penalties', label: 'Confidence Penalties', icon: Gauge },
 ];
 
-function TableOfContents() {
+// ---------------------------------------------------------------------------
+// Scroll spy hook — tracks which section is currently visible
+// ---------------------------------------------------------------------------
+
+function useScrollSpy(sectionIds: string[]) {
+  const [activeId, setActiveId] = useState<string>(sectionIds[0] ?? '');
+
+  useEffect(() => {
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter(Boolean) as HTMLElement[];
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the topmost visible section
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) {
+          setActiveId(visible[0].target.id);
+        }
+      },
+      {
+        // Section is "active" when its top is in the upper 30% of viewport
+        rootMargin: '-20% 0px -70% 0px',
+        threshold: 0,
+      }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [sectionIds]);
+
+  return activeId;
+}
+
+// ---------------------------------------------------------------------------
+// Desktop TOC — sticky right-rail with scroll spy active state
+// ---------------------------------------------------------------------------
+
+function TableOfContents({ activeId }: { activeId: string }) {
+  const handleClick = useCallback((id: string) => {
+    const target = document.getElementById(id);
+    if (target) {
+      target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+    }
+  }, []);
+
   return (
-    <Card>
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-medium">On this page</CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
-        <nav className="flex flex-col gap-1">
+    <nav aria-label="On this page" className="max-h-[calc(100vh-6rem)] overflow-y-auto">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        On this page
+      </p>
+      <div className="flex flex-col gap-0.5">
+        {TOC_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeId === item.id;
+          return (
+            <a
+              key={item.id}
+              href={`#${item.id}`}
+              data-toc-id={item.id}
+              aria-current={isActive ? 'page' : undefined}
+              onClick={() => handleClick(item.id)}
+              className={cn(
+                'flex items-center gap-2 py-1.5 text-sm transition-colors duration-150',
+                isActive
+                  ? 'border-l-2 border-primary pl-3 text-foreground font-medium'
+                  : 'pl-3.5 text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Icon className="size-3.5 shrink-0" />
+              <span className="line-clamp-1">{item.label}</span>
+            </a>
+          );
+        })}
+      </div>
+      {/* Back to top */}
+      <a
+        href="#top"
+        className="flex items-center gap-2 mt-4 pt-3 border-t pl-3.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowUp className="size-3 shrink-0" />
+        Back to top
+      </a>
+    </nav>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mobile TOC — sticky collapsible bar showing current section
+// ---------------------------------------------------------------------------
+
+function MobileToc({ activeId }: { activeId: string }) {
+  const [open, setOpen] = useState(false);
+  const activeItem = TOC_ITEMS.find((item) => item.id === activeId) ?? TOC_ITEMS[0];
+  const ActiveIcon = activeItem.icon;
+
+  const handleClick = useCallback((id: string) => {
+    setOpen(false);
+    const target = document.getElementById(id);
+    if (target) {
+      target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+    }
+  }, []);
+
+  return (
+    <div className="xl:hidden sticky top-0 z-30 bg-background/95 backdrop-blur border-b -mx-4 sm:-mx-6 px-4 sm:px-6">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full py-2.5 text-sm"
+        aria-expanded={open}
+        aria-controls="mobile-toc-list"
+      >
+        <span className="flex items-center gap-2 font-medium text-foreground">
+          <ActiveIcon className="size-4 text-primary shrink-0" />
+          {activeItem.label}
+        </span>
+        {open ? (
+          <ChevronUp className="size-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="size-4 text-muted-foreground" />
+        )}
+      </button>
+      {open && (
+        <nav id="mobile-toc-list" aria-label="On this page" className="pb-2">
           {TOC_ITEMS.map((item) => {
             const Icon = item.icon;
+            const isActive = activeId === item.id;
             return (
               <a
                 key={item.id}
                 href={`#${item.id}`}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => handleClick(item.id)}
+                className={cn(
+                  'flex items-center gap-2 py-2 px-2 text-sm rounded-md transition-colors',
+                  isActive
+                    ? 'text-foreground bg-muted font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                )}
               >
                 <Icon className="size-3.5 shrink-0" />
                 {item.label}
@@ -71,8 +203,8 @@ function TableOfContents() {
             );
           })}
         </nav>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -96,7 +228,7 @@ function Section({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <section id={id} className="scroll-mt-6">
+    <section id={id} className="scroll-mt-16 xl:scroll-mt-6">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="flex w-full items-center gap-3 py-2 group">
           <Icon className="size-5 text-primary shrink-0" />
@@ -1134,10 +1266,14 @@ function ConfidencePenaltiesSection() {
 // Main Page
 // ---------------------------------------------------------------------------
 
+const SECTION_IDS = TOC_ITEMS.map((item) => item.id);
+
 export default function MethodologyPage() {
+  const activeId = useScrollSpy(SECTION_IDS);
+
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
-      <div>
+    <div id="top" className="p-4 sm:p-6 max-w-full overflow-x-hidden scroll-smooth">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Methodology</h1>
         <p className="text-sm text-muted-foreground">
           How SIS scores deals, forecasts outcomes, and what each agent analyzes.
@@ -1145,8 +1281,12 @@ export default function MethodologyPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_200px] max-w-full overflow-hidden">
-        <div className="min-w-0 overflow-hidden space-y-2">
+      {/* Mobile TOC — sticky bar (visible below xl) */}
+      <MobileToc activeId={activeId} />
+
+      <div className="flex gap-8 max-w-full overflow-x-hidden mt-4">
+        {/* Main content */}
+        <div className="flex-1 min-w-0 overflow-x-hidden space-y-2">
           <ResearchSection />
           <HealthScoreSection />
           <StagesSection />
@@ -1156,12 +1296,12 @@ export default function MethodologyPage() {
           <ConfidencePenaltiesSection />
         </div>
 
-        {/* Sticky TOC on desktop */}
-        <div className="hidden lg:block">
+        {/* Desktop TOC — sticky right rail (visible at xl+) */}
+        <aside className="hidden xl:block w-56 shrink-0">
           <div className="sticky top-6">
-            <TableOfContents />
+            <TableOfContents activeId={activeId} />
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
