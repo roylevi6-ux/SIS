@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from sis.db.models import AnalysisRun
 from sis.db.session import get_session
 from sis.orchestrator.progress_store import get_snapshot
+from sis.orchestrator.batch_store import get_snapshot as get_batch_snapshot
 
 router = APIRouter(prefix="/api/sse", tags=["sse"])
 
@@ -43,6 +44,32 @@ async def analysis_progress(run_id: str):
         else:
             # Timed out — send a final timeout event
             yield f"data: {json.dumps({'run_id': run_id, 'status': 'timeout', 'agents': {}})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.get("/batch/{batch_id}")
+async def batch_progress(batch_id: str):
+    """SSE stream for batch analysis progress.
+
+    Streams the full batch snapshot (all items with statuses) at 1s intervals.
+    Closes when all items reach a terminal status or after timeout.
+    """
+
+    async def event_stream():
+        elapsed = 0
+        while elapsed < SSE_TIMEOUT_SECONDS:
+            snapshot = get_batch_snapshot(batch_id)
+            if not snapshot:
+                yield f"data: {json.dumps({'batch_id': batch_id, 'status': 'not_found', 'items': []})}\n\n"
+                break
+            yield f"data: {json.dumps(snapshot)}\n\n"
+            if snapshot["status"] in ("completed", "failed", "partial"):
+                break
+            await asyncio.sleep(1)
+            elapsed += 1
+        else:
+            yield f"data: {json.dumps({'batch_id': batch_id, 'status': 'timeout', 'items': []})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
