@@ -81,7 +81,7 @@ function isStale(deal: PipelineDeal): boolean {
   if (!deal.last_call_date) return true;
   const d = new Date(deal.last_call_date);
   const diff = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-  return diff >= 14;
+  return diff >= 30;
 }
 
 function filterDeals(
