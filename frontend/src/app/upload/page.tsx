@@ -169,7 +169,12 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
   const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
-  const [batchId, setBatchId] = useState<string | null>(null);
+  const [batchId, setBatchId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('sis_batch_id');
+    }
+    return null;
+  });
   const [batchError, setBatchError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const MAX_BATCH_SIZE = 10;
@@ -275,6 +280,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
       }));
 
       const result = await api.analyses.batch(items);
+      sessionStorage.setItem('sis_batch_id', result.batch_id);
       setBatchId(result.batch_id);
     } catch (err) {
       setBatchError(err instanceof Error ? err.message : 'Batch submission failed');
@@ -285,7 +291,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
 
   // If batch submitted, show batch progress view
   if (batchId) {
-    return <BatchProgressView batchId={batchId} />;
+    return <BatchProgressView batchId={batchId} onDismiss={() => setBatchId(null)} />;
   }
 
   return (
@@ -636,6 +642,10 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
 
   async function handleImport() {
     if (!selectedAccount) return;
+    if (!selectedOwnerId) {
+      setImportError('Please select an AE before importing');
+      return;
+    }
     setIsImporting(true);
     setImportError('');
     setImportResult(null);
@@ -924,7 +934,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
               </div>
             </div>
 
-            <Button onClick={handleImport} disabled={isImporting} className="w-full">
+            <Button onClick={handleImport} disabled={isImporting || !selectedOwnerId} className="w-full">
               {isImporting ? (
                 <><Loader2 className="size-4 animate-spin mr-2" /> Importing & Analyzing...</>
               ) : (
