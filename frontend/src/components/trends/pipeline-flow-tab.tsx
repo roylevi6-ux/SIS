@@ -70,7 +70,7 @@ export function PipelineFlowTab({ weeks }: { weeks: number }) {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {latestCategory ? data.pipeline_by_category.length : '--'}
+              {data.total_deals ?? '--'}
             </p>
           </CardContent>
         </Card>
