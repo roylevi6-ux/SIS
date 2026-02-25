@@ -20,6 +20,7 @@ import {
   Mail,
   Database,
   BookOpen,
+  TrendingUp,
   ChevronDown,
   ChevronRight,
   Menu,
@@ -72,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Analytics',
     items: [
       { label: 'Pipeline', href: '/pipeline', icon: LayoutDashboard },
+      { label: 'Deal Trends', href: '/trends', icon: TrendingUp },
       { label: 'Team Rollup', href: '/team-rollup', icon: Users, minRole: 'vp' },
       { label: 'Rep Scorecard', href: '/rep-scorecard', icon: Award, minRole: 'team_lead' },
       { label: 'Methodology', href: '/methodology', icon: BookOpen },
