@@ -21,10 +21,12 @@ def create_team(
 def list_teams() -> list[dict]:
     with get_session() as session:
         teams = session.query(Team).order_by(Team.name).all()
+        users = {u.id: u.name for u in session.query(User).all()}
         return [
             {
                 "id": t.id, "name": t.name, "level": t.level,
                 "parent_id": t.parent_id, "leader_id": t.leader_id,
+                "leader_name": users.get(t.leader_id),
             }
             for t in teams
         ]
