@@ -122,6 +122,67 @@ class TestTeamRollup:
         mock_svc.get_team_rollup.assert_called_once_with(team="Team Alpha", visible_user_ids=None)
 
 
+# ── GET /api/dashboard/team-rollup/hierarchy ─────────────────────────
+
+
+class TestTeamRollupHierarchy:
+
+    @patch("sis.api.routes.dashboard.dashboard_service")
+    def test_hierarchy_returns_nested_structure(self, mock_svc, client, auth_headers):
+        mock_svc.get_team_rollup_hierarchy.return_value = [
+            {
+                "team_id": "t1",
+                "team_name": "Team Alpha",
+                "team_lead": "TL One",
+                "total_deals": 2,
+                "avg_health_score": 68.5,
+                "healthy_count": 1,
+                "at_risk_count": 1,
+                "critical_count": 0,
+                "total_mrr": 75000,
+                "divergent_count": 0,
+                "reps": [
+                    {
+                        "rep_id": "u1",
+                        "rep_name": "AE One",
+                        "total_deals": 2,
+                        "avg_health_score": 68.5,
+                        "healthy_count": 1,
+                        "at_risk_count": 1,
+                        "critical_count": 0,
+                        "total_mrr": 75000,
+                        "deals": [
+                            {
+                                "account_id": "a1",
+                                "account_name": "HealthyCo",
+                                "mrr_estimate": 50000,
+                                "health_score": 82,
+                                "momentum_direction": "Improving",
+                                "ai_forecast_category": "Commit",
+                                "stage_name": "Scope",
+                                "divergence_flag": False,
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        resp = client.get("/api/dashboard/team-rollup/hierarchy", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["team_name"] == "Team Alpha"
+        assert len(data[0]["reps"]) == 1
+        assert data[0]["reps"][0]["rep_name"] == "AE One"
+        assert len(data[0]["reps"][0]["deals"]) == 1
+
+    @patch("sis.api.routes.dashboard.dashboard_service")
+    def test_hierarchy_passes_team_filter(self, mock_svc, client, auth_headers):
+        mock_svc.get_team_rollup_hierarchy.return_value = []
+        client.get("/api/dashboard/team-rollup/hierarchy?team=Team+Alpha", headers=auth_headers)
+        mock_svc.get_team_rollup_hierarchy.assert_called_once_with(team="Team Alpha", visible_user_ids=None)
+
+
 # ── GET /api/dashboard/insights ───────────────────────────────────────
 
 

@@ -61,6 +61,7 @@ def create_account(body: AccountCreate, user: dict = Depends(get_current_user)):
         team_lead=body.team_lead,
         ae_owner=body.ae_owner,
         team=body.team_name,
+        owner_id=body.owner_id,
     )
     return {"id": account.id, "account_name": account.account_name}
 

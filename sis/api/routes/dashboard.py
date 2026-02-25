@@ -59,6 +59,17 @@ def team_rollup(
     return dashboard_service.get_team_rollup(team=team, visible_user_ids=visible_ids)
 
 
+@router.get("/team-rollup/hierarchy")
+def team_rollup_hierarchy(
+    team: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Hierarchical team rollup: Team → Reps → Deals with aggregates."""
+    visible_ids = _resolve_scoping(user, db)
+    return dashboard_service.get_team_rollup_hierarchy(team=team, visible_user_ids=visible_ids)
+
+
 @router.get("/insights")
 def pipeline_insights(
     user: dict = Depends(get_current_user),

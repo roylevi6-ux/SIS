@@ -152,3 +152,77 @@ class TestDashboardService:
         team_names = {r["team_name"] for r in rollup}
         assert "Team Alpha" in team_names
         assert "Team Beta" in team_names
+
+    def test_get_team_rollup_hierarchy(self, seeded_db, mock_get_session):
+        """Hierarchy rollup returns nested Team → Rep → Deals, sorted by critical count."""
+        from sis.services.dashboard_service import get_team_rollup_hierarchy
+        hierarchy = get_team_rollup_hierarchy()
+        assert len(hierarchy) == 2
+
+        # Verify structure: each team has reps, each rep has deals
+        for team_entry in hierarchy:
+            assert "reps" in team_entry
+            assert "team_name" in team_entry
+            for rep in team_entry["reps"]:
+                assert "deals" in rep
+                assert "rep_name" in rep
+
+        # Risk-first sort: Team Beta (critical_count=1) should come before Team Alpha (critical_count=0)
+        team_names = [t["team_name"] for t in hierarchy]
+        assert team_names[0] == "Team Beta"
+        assert team_names[1] == "Team Alpha"
+
+        # Verify aggregates
+        alpha = next(t for t in hierarchy if t["team_name"] == "Team Alpha")
+        assert alpha["total_deals"] == 2
+        assert alpha["healthy_count"] == 1
+        assert alpha["at_risk_count"] == 1
+        assert alpha["critical_count"] == 0
+
+        beta = next(t for t in hierarchy if t["team_name"] == "Team Beta")
+        assert beta["total_deals"] == 1
+        assert beta["critical_count"] == 1
+
+    def test_get_team_rollup_hierarchy_with_team_filter(self, seeded_db, mock_get_session):
+        """Team filter narrows to one team."""
+        from sis.services.dashboard_service import get_team_rollup_hierarchy
+        hierarchy = get_team_rollup_hierarchy(team="Team Alpha")
+        assert len(hierarchy) == 1
+        assert hierarchy[0]["team_name"] == "Team Alpha"
+
+
+class TestAccountServiceOwnerHierarchy:
+    def test_create_account_with_owner_id_resolves_hierarchy(self, seeded_db, mock_get_session):
+        """When owner_id is provided, ae_owner/team_lead/team_name auto-resolve."""
+        from sis.services.account_service import create_account
+        acct = create_account(
+            name="NewDealCorp",
+            owner_id=seeded_db["user_ids"]["ae1"],
+        )
+        assert acct.ae_owner == "AE One"
+        assert acct.team_name == "Team Alpha"
+        assert acct.team_lead == "TL One"
+        assert acct.owner_id == seeded_db["user_ids"]["ae1"]
+
+    def test_create_account_without_owner_id_no_auto_resolve(self, seeded_db, mock_get_session):
+        """Without owner_id, hierarchy fields stay None."""
+        from sis.services.account_service import create_account
+        acct = create_account(name="ManualDeal")
+        assert acct.ae_owner is None
+        assert acct.team_name is None
+        assert acct.team_lead is None
+        assert acct.owner_id is None
+
+
+class TestTeamServiceICs:
+    def test_list_ics_with_hierarchy(self, seeded_db, mock_get_session):
+        """Returns IC users with resolved team name and team lead."""
+        from sis.services.team_service import list_ics_with_hierarchy
+        ics = list_ics_with_hierarchy()
+        assert len(ics) == 3  # 3 IC users in seed data
+        names = {ic["name"] for ic in ics}
+        assert "AE One" in names
+
+        ae1 = next(ic for ic in ics if ic["name"] == "AE One")
+        assert ae1["team_name"] == "Team Alpha"
+        assert ae1["team_lead"] == "TL One"

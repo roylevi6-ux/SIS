@@ -55,3 +55,33 @@ class TestTeamEndpoints:
         """IC role should be denied team creation."""
         res = client.post("/api/teams/", json={"name": "Rogue Team", "level": "team"}, headers=ic_auth_headers)
         assert res.status_code == 403
+
+
+class TestICListing:
+
+    @patch("sis.api.routes.teams.team_service")
+    def test_list_ics_returns_data(self, mock_svc, client, auth_headers):
+        mock_svc.list_ics_with_hierarchy.return_value = [
+            {
+                "id": "u1",
+                "name": "AE One",
+                "email": "ae1@co.com",
+                "team_id": "t1",
+                "team_name": "Team Alpha",
+                "team_lead": "TL One",
+            },
+        ]
+        resp = client.get("/api/users/ics", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "AE One"
+        assert data[0]["team_name"] == "Team Alpha"
+
+    @patch("sis.api.routes.teams.team_service")
+    def test_list_ics_non_admin_allowed(self, mock_svc, client, ic_auth_headers):
+        """IC users (non-admin) should also be able to list ICs."""
+        mock_svc.list_ics_with_hierarchy.return_value = []
+        resp = client.get("/api/users/ics", headers=ic_auth_headers)
+        assert resp.status_code == 200
+        assert resp.json() == []

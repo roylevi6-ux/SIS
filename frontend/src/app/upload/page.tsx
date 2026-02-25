@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Upload, CheckCircle2, FolderOpen, FileText, Loader2, HardDrive, Play, Trash2, Eye } from 'lucide-react';
 import { useAccounts, useUploadTranscript } from '@/lib/hooks';
+import { useICUsers } from '@/lib/hooks/use-admin';
 import { api } from '@/lib/api';
+import type { ICUser } from '@/lib/api-types';
 import { AnalysisProgressDetail } from '@/components/analysis-progress-detail';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -151,9 +153,16 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
 
   const [dealType, setDealType] = useState<string>('');
   const [mrrEstimate, setMrrEstimate] = useState<string>('');
-  const [aeOwner, setAeOwner] = useState<string>('');
-  const [teamLead, setTeamLead] = useState<string>('');
-  const [teamName, setTeamName] = useState<string>('');
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
+  const [selectedIC, setSelectedIC] = useState<ICUser | null>(null);
+
+  const { data: icUsers = [] } = useICUsers();
+
+  function handleICSelect(userId: string) {
+    setSelectedOwnerId(userId);
+    const ic = icUsers.find((u: ICUser) => u.id === userId) ?? null;
+    setSelectedIC(ic);
+  }
 
   // Load saved config on mount
   useEffect(() => {
@@ -246,9 +255,7 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
       const dealArgs = {
         deal_type: dealType || undefined,
         mrr_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
-        ae_owner: aeOwner || undefined,
-        team_lead: teamLead || undefined,
-        team_name: teamName || undefined,
+        owner_id: selectedOwnerId || undefined,
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result as unknown as ImportResult);
@@ -452,14 +459,33 @@ function DriveImportTab({ onImportComplete }: { onImportComplete?: () => void })
                   <label className="text-xs font-medium">MRR Estimate ($)</label>
                   <Input type="number" min="0" step="1000" placeholder="Optional" value={mrrEstimate} onChange={e => setMrrEstimate(e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
+                <div className="col-span-2 space-y-1.5">
                   <label className="text-xs font-medium">AE Owner</label>
-                  <Input placeholder="Optional" value={aeOwner} onChange={e => setAeOwner(e.target.value)} />
+                  <Select value={selectedOwnerId} onValueChange={handleICSelect}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select AE owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {icUsers.map((ic: ICUser) => (
+                        <SelectItem key={ic.id} value={ic.id}>
+                          {ic.name}{ic.team_name ? ` (${ic.team_name})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Team Lead</label>
-                  <Input placeholder="Optional" value={teamLead} onChange={e => setTeamLead(e.target.value)} />
-                </div>
+                {selectedIC && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Team Lead</label>
+                      <p className="text-sm">{selectedIC.team_lead || '—'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Team Name</label>
+                      <p className="text-sm">{selectedIC.team_name || '—'}</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -550,9 +576,16 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
 
   const [dealType, setDealType] = useState<string>('');
   const [mrrEstimate, setMrrEstimate] = useState<string>('');
-  const [aeOwner, setAeOwner] = useState<string>('');
-  const [teamLead, setTeamLead] = useState<string>('');
-  const [teamName, setTeamName] = useState<string>('');
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
+  const [selectedIC, setSelectedIC] = useState<ICUser | null>(null);
+
+  const { data: icUsers = [] } = useICUsers();
+
+  function handleICSelect(userId: string) {
+    setSelectedOwnerId(userId);
+    const ic = icUsers.find((u: ICUser) => u.id === userId) ?? null;
+    setSelectedIC(ic);
+  }
 
   async function handleScanFolder() {
     if (!folderPath.trim()) return;
@@ -635,9 +668,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
       const dealArgs = {
         deal_type: dealType || undefined,
         mrr_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
-        ae_owner: aeOwner || undefined,
-        team_lead: teamLead || undefined,
-        team_name: teamName || undefined,
+        owner_id: selectedOwnerId || undefined,
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result as unknown as ImportResult);
@@ -831,14 +862,33 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
                   <label className="text-xs font-medium">MRR Estimate ($)</label>
                   <Input type="number" min="0" step="1000" placeholder="Optional" value={mrrEstimate} onChange={e => setMrrEstimate(e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
+                <div className="col-span-2 space-y-1.5">
                   <label className="text-xs font-medium">AE Owner</label>
-                  <Input placeholder="Optional" value={aeOwner} onChange={e => setAeOwner(e.target.value)} />
+                  <Select value={selectedOwnerId} onValueChange={handleICSelect}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select AE owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {icUsers.map((ic: ICUser) => (
+                        <SelectItem key={ic.id} value={ic.id}>
+                          {ic.name}{ic.team_name ? ` (${ic.team_name})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Team Lead</label>
-                  <Input placeholder="Optional" value={teamLead} onChange={e => setTeamLead(e.target.value)} />
-                </div>
+                {selectedIC && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Team Lead</label>
+                      <p className="text-sm">{selectedIC.team_lead || '—'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Team Name</label>
+                      <p className="text-sm">{selectedIC.team_name || '—'}</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

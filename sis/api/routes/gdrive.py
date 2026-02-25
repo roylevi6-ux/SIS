@@ -31,6 +31,7 @@ class ImportRequest(BaseModel):
     ae_owner: Optional[str] = None
     team_lead: Optional[str] = None
     team_name: Optional[str] = None
+    owner_id: Optional[str] = None
 
 
 # ── Routes ───────────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ def import_from_drive(body: ImportRequest, user: dict = Depends(get_current_user
             ae_owner=body.ae_owner,
             team_lead=body.team_lead,
             team=body.team_name,
+            owner_id=body.owner_id,
         )
         account_id = acct_obj.id
 

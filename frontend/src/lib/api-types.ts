@@ -363,6 +363,54 @@ export interface GDriveImportResult {
   skipped: number;
 }
 
+// ── IC Users ──
+export interface ICUser {
+  id: string;
+  name: string;
+  email: string;
+  team_id: string | null;
+  team_name: string | null;
+  team_lead: string | null;
+}
+
+// ── Team Rollup Hierarchy ──
+export interface TeamRollupHierarchyDeal {
+  account_id: string;
+  account_name: string;
+  mrr_estimate: number | null;
+  health_score: number | null;
+  momentum_direction: string | null;
+  ai_forecast_category: string | null;
+  stage_name: string | null;
+  divergence_flag: boolean;
+}
+
+export interface TeamRollupHierarchyRep {
+  rep_id: string | null;
+  rep_name: string;
+  total_deals: number;
+  avg_health_score: number | null;
+  healthy_count: number;
+  at_risk_count: number;
+  critical_count: number;
+  total_mrr: number;
+  deals: TeamRollupHierarchyDeal[];
+}
+
+export interface TeamRollupHierarchyTeam {
+  team_id: string | null;
+  team_name: string;
+  team_lead: string | null;
+  total_deals: number;
+  avg_health_score: number | null;
+  healthy_count: number;
+  at_risk_count: number;
+  critical_count: number;
+  total_mrr: number;
+  divergent_count: number;
+  reps: TeamRollupHierarchyRep[];
+}
+
 // ── Cost ──
 export interface CostSummary {
   total_input_tokens: number;

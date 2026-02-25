@@ -29,6 +29,7 @@ class AccountCreate(BaseModel):
     team_name: Optional[str] = None
     deal_type: str = "new_logo"
     prior_contract_value: Optional[float] = None
+    owner_id: Optional[str] = None
 
 
 class AccountUpdate(BaseModel):
@@ -39,6 +40,7 @@ class AccountUpdate(BaseModel):
     team_name: Optional[str] = None
     deal_type: Optional[str] = None
     prior_contract_value: Optional[float] = None
+    owner_id: Optional[str] = None
 
 
 class ICForecastUpdate(BaseModel):
