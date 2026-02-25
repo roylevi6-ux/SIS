@@ -53,6 +53,7 @@ from sis.api.routes import (  # noqa: E402
     sse,
     gdrive,
     teams,
+    quotas,
 )
 
 app.include_router(auth.router)
@@ -68,3 +69,4 @@ app.include_router(chat.router)
 app.include_router(sse.router)
 app.include_router(gdrive.router)
 app.include_router(teams.router)
+app.include_router(quotas.router)
