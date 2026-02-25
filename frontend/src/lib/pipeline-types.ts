@@ -16,6 +16,9 @@ export interface PipelineDeal {
   divergence_flag: boolean;
   deal_memo_preview: string | null;
   deal_type?: string | null;
+  stage_gap_direction?: string | null;
+  stage_gap_magnitude?: number | null;
+  forecast_gap_direction?: string | null;
 }
 
 // ---------------------------------------------------------------------------

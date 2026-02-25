@@ -147,6 +147,63 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
     size: 120,
   },
   {
+    id: 'sf_gap',
+    header: 'SF Gap',
+    cell: ({ row }) => {
+      const deal = row.original;
+      const stageDir = deal.stage_gap_direction;
+      const forecastDir = deal.forecast_gap_direction;
+
+      if (!stageDir && !forecastDir) {
+        return <span className="text-muted-foreground">—</span>;
+      }
+
+      const stageText = !stageDir
+        ? null
+        : stageDir === 'Aligned'
+          ? '='
+          : stageDir === 'SF-ahead'
+            ? `SF +${deal.stage_gap_magnitude}`
+            : `SIS +${deal.stage_gap_magnitude}`;
+
+      const forecastText = !forecastDir
+        ? null
+        : forecastDir === 'Aligned'
+          ? '='
+          : forecastDir === 'SF-more-optimistic'
+            ? 'SF > AI'
+            : 'AI > SF';
+
+      return (
+        <div className="text-xs space-y-0.5 text-muted-foreground">
+          {stageText && (
+            <div>
+              <span className="text-[10px] uppercase tracking-wider opacity-60">Stg</span>{' '}
+              <span className={cn(
+                'font-medium',
+                stageText !== '=' ? 'text-foreground' : '',
+              )}>
+                {stageText}
+              </span>
+            </div>
+          )}
+          {forecastText && (
+            <div>
+              <span className="text-[10px] uppercase tracking-wider opacity-60">Fct</span>{' '}
+              <span className={cn(
+                'font-medium',
+                forecastText !== '=' ? 'text-foreground' : '',
+              )}>
+                {forecastText}
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    },
+    size: 90,
+  },
+  {
     accessorKey: 'health_score',
     header: 'Health',
     cell: ({ getValue }) => <HealthBadge score={getValue() as number | null} />,

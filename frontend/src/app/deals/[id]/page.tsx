@@ -66,6 +66,14 @@ interface Assessment {
   divergence_flag: boolean;
   divergence_explanation: string | null;
   created_at: string;
+  sf_stage_at_run: number | null;
+  sf_forecast_at_run: string | null;
+  sf_close_quarter_at_run: string | null;
+  cp_estimate_at_run: number | null;
+  stage_gap_direction: string | null;
+  stage_gap_magnitude: number | null;
+  forecast_gap_direction: string | null;
+  sf_gap_interpretation: string | null;
 }
 
 interface AccountDetail {
@@ -144,6 +152,95 @@ function formatDuration(minutes: number | null): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+// ---------------------------------------------------------------------------
+// SF Gap Analysis card
+// ---------------------------------------------------------------------------
+
+const STAGE_NAMES: Record<number, string> = {
+  1: 'Qualify', 2: 'Discover', 3: 'Scope', 4: 'Validate',
+  5: 'Negotiate', 6: 'Prove', 7: 'Close',
+};
+
+function SFGapCard({ assessment }: { assessment: Assessment }) {
+  if (!assessment.sf_stage_at_run && !assessment.sf_forecast_at_run) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">SF Gap Analysis</CardTitle>
+        <p className="text-xs text-muted-foreground">SF indication at day of last analysis</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Stage gap row */}
+        {assessment.sf_stage_at_run != null && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Stage</span>
+            <div className="flex items-center gap-2">
+              <span>SIS: {STAGE_NAMES[assessment.inferred_stage] ?? assessment.inferred_stage} ({assessment.inferred_stage})</span>
+              <span className="text-muted-foreground">vs</span>
+              <span>SF: {STAGE_NAMES[assessment.sf_stage_at_run] ?? assessment.sf_stage_at_run} ({assessment.sf_stage_at_run})</span>
+              {assessment.stage_gap_direction && assessment.stage_gap_direction !== 'Aligned' && (
+                <Badge variant="outline" className="text-xs">
+                  {assessment.stage_gap_direction === 'SF-ahead'
+                    ? `SF +${assessment.stage_gap_magnitude}`
+                    : `SIS +${assessment.stage_gap_magnitude}`}
+                </Badge>
+              )}
+              {assessment.stage_gap_direction === 'Aligned' && (
+                <Badge variant="outline" className="text-xs">=</Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Forecast gap row */}
+        {assessment.sf_forecast_at_run && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Forecast</span>
+            <div className="flex items-center gap-2">
+              <span>AI: {assessment.ai_forecast_category}</span>
+              <span className="text-muted-foreground">vs</span>
+              <span>SF: {assessment.sf_forecast_at_run}</span>
+              {assessment.forecast_gap_direction && assessment.forecast_gap_direction !== 'Aligned' && (
+                <Badge variant="outline" className="text-xs">
+                  {assessment.forecast_gap_direction === 'SF-more-optimistic' ? 'SF > AI' : 'AI > SF'}
+                </Badge>
+              )}
+              {assessment.forecast_gap_direction === 'Aligned' && (
+                <Badge variant="outline" className="text-xs">=</Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Close Quarter */}
+        {assessment.sf_close_quarter_at_run && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Close Quarter</span>
+            <span>{assessment.sf_close_quarter_at_run}</span>
+          </div>
+        )}
+
+        {/* CP Estimate at run */}
+        {assessment.cp_estimate_at_run != null && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">CP Estimate (at run)</span>
+            <span>${(assessment.cp_estimate_at_run / 1000).toFixed(0)}K</span>
+          </div>
+        )}
+
+        {/* Agent 10's interpretation */}
+        {assessment.sf_gap_interpretation && (
+          <>
+            <Separator />
+            <p className="text-sm text-muted-foreground">{assessment.sf_gap_interpretation}</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -656,6 +753,9 @@ export default function DealDetailPage({
               </CardContent>
             </Card>
           )}
+
+          {/* SF Gap Analysis */}
+          <SFGapCard assessment={assessment} />
 
           <Separator />
 
