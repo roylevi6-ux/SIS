@@ -503,7 +503,7 @@ export interface PipelineFlowResponse {
 export interface ForecastMigration {
   account_id: string;
   account_name: string;
-  mrr_estimate: number;
+  cp_estimate: number;
   previous_category: string;
   current_category: string;
   changed_at: string;
@@ -541,7 +541,7 @@ export interface HealthDistributionPoint {
 export interface BiggestMover {
   account_id: string;
   account_name: string;
-  mrr_estimate: number;
+  cp_estimate: number;
   current_score: number;
   delta: number;
   direction: string;
@@ -578,7 +578,7 @@ export interface StageDuration {
 export interface StalledDeal {
   account_id: string;
   account_name: string;
-  mrr_estimate: number;
+  cp_estimate: number;
   current_stage: number;
   stage_name: string;
   days_in_stage: number;

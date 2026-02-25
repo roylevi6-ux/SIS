@@ -10,7 +10,7 @@ export const mockPipelineData = {
     {
       account_id: 'acc-001',
       account_name: 'Acme Corp',
-      mrr_estimate: 12000,
+      cp_estimate: 12000,
       team_lead: 'Sarah Chen',
       ae_owner: 'Mike Johnson',
       team_name: 'Enterprise',
@@ -30,7 +30,7 @@ export const mockPipelineData = {
     {
       account_id: 'acc-002',
       account_name: 'Beta Industries',
-      mrr_estimate: 8500,
+      cp_estimate: 8500,
       team_lead: 'Sarah Chen',
       ae_owner: 'Lisa Park',
       team_name: 'Enterprise',
@@ -50,7 +50,7 @@ export const mockPipelineData = {
     {
       account_id: 'acc-003',
       account_name: 'Gamma Solutions',
-      mrr_estimate: 5000,
+      cp_estimate: 5000,
       team_lead: 'David Kim',
       ae_owner: 'Anna Lee',
       team_name: 'Mid-Market',
@@ -70,7 +70,7 @@ export const mockPipelineData = {
     {
       account_id: 'acc-004',
       account_name: 'Delta Tech',
-      mrr_estimate: null,
+      cp_estimate: null,
       team_lead: null,
       ae_owner: 'Mike Johnson',
       team_name: 'Enterprise',
@@ -100,7 +100,7 @@ export const mockPipelineData = {
 export const mockAccountDetail = {
   id: 'acc-001',
   account_name: 'Acme Corp',
-  mrr_estimate: 12000,
+  cp_estimate: 12000,
   team_lead: 'Sarah Chen',
   ae_owner: 'Mike Johnson',
   team_name: 'Enterprise',

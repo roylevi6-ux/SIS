@@ -47,7 +47,7 @@ interface AccountDetail {
   account_name: string;
   ae_owner: string | null;
   team_name: string | null;
-  mrr_estimate: number | null;
+  cp_estimate: number | null;
   ic_forecast_category: string | null;
   assessment: Assessment | null;
 }
@@ -211,12 +211,12 @@ function AccountOverview({ account }: { account: AccountDetail }) {
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {account.ae_owner && <span>AE: {account.ae_owner}</span>}
             {account.team_name && <span>Team: {account.team_name}</span>}
-            {account.mrr_estimate !== null && (
+            {account.cp_estimate !== null && (
               <span>
-                MRR: $
-                {account.mrr_estimate >= 1000
-                  ? `${(account.mrr_estimate / 1000).toFixed(1)}K`
-                  : account.mrr_estimate.toLocaleString()}
+                CP Est.: $
+                {account.cp_estimate >= 1000
+                  ? `${(account.cp_estimate / 1000).toFixed(1)}K`
+                  : account.cp_estimate.toLocaleString()}
               </span>
             )}
           </div>

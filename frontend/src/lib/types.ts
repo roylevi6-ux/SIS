@@ -944,8 +944,8 @@ export interface components {
         AccountCreate: {
             /** Name */
             name: string;
-            /** Mrr Estimate */
-            mrr_estimate?: number | null;
+            /** Cp Estimate */
+            cp_estimate?: number | null;
             /** Team Lead */
             team_lead?: string | null;
             /** Ae Owner */
@@ -957,8 +957,8 @@ export interface components {
         AccountUpdate: {
             /** Name */
             name?: string | null;
-            /** Mrr Estimate */
-            mrr_estimate?: number | null;
+            /** Cp Estimate */
+            cp_estimate?: number | null;
             /** Team Lead */
             team_lead?: string | null;
             /** Ae Owner */

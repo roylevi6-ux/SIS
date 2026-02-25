@@ -30,7 +30,7 @@ import { ForecastBadge } from '@/components/forecast-badge';
 interface DivergenceItem {
   account_id: string;
   account_name: string;
-  mrr_estimate: number | null;
+  cp_estimate: number | null;
   team_lead: string | null;
   ai_forecast_category: string | null;
   ic_forecast_category: string | null;
@@ -80,7 +80,7 @@ export default function DivergencePage() {
     if (!rawData) return [];
     const list = rawData as DivergenceItem[];
     // Sort by MRR descending — highest value impact first
-    return [...list].sort((a, b) => (b.mrr_estimate ?? 0) - (a.mrr_estimate ?? 0));
+    return [...list].sort((a, b) => (b.cp_estimate ?? 0) - (a.cp_estimate ?? 0));
   }, [rawData]);
 
   return (
@@ -178,7 +178,7 @@ export default function DivergencePage() {
                           </Link>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatMrr(item.mrr_estimate)}
+                          {formatMrr(item.cp_estimate)}
                         </TableCell>
                         <TableCell>
                           <ForecastBadge category={item.ai_forecast_category} />

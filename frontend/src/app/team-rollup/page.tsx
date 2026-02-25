@@ -388,7 +388,7 @@ export default function TeamRollupPage() {
                                       )}
                                     </TableCell>
                                     <TableCell className="text-right tabular-nums text-xs">
-                                      {formatMrr(deal.mrr_estimate)}
+                                      {formatMrr(deal.cp_estimate)}
                                     </TableCell>
                                   </TableRow>
                                 ))}

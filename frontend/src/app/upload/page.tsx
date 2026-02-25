@@ -562,7 +562,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
     try {
       const dealArgs = {
         deal_type: dealType || undefined,
-        mrr_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
+        cp_estimate: mrrEstimate ? parseFloat(mrrEstimate) : undefined,
         owner_id: selectedOwnerId || undefined,
       };
       const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);

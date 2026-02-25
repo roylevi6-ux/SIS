@@ -1,7 +1,7 @@
 export interface PipelineDeal {
   account_id: string;
   account_name: string;
-  mrr_estimate: number | null;
+  cp_estimate: number | null;
   team_lead: string | null;
   ae_owner: string | null;
   team_name: string | null;
@@ -50,7 +50,7 @@ export interface ForecastBreakdown {
 export interface AttentionItem {
   account_id: string;
   account_name: string;
-  mrr_estimate: number;
+  cp_estimate: number;
   reason: string;
   type: 'declining' | 'divergent' | 'stale';
 }
