@@ -32,7 +32,7 @@ def load_forecast_data(team: Optional[str] = None) -> list[dict]:
             rows.append({
                 "account_id": acct.id,
                 "account_name": acct.account_name,
-                "mrr": acct.mrr_estimate or 0,
+                "cp_estimate": acct.cp_estimate or 0,
                 "team_name": acct.team_name or "Unassigned",
                 "ae_owner": acct.ae_owner or "N/A",
                 "ai_forecast": latest.ai_forecast_category,

@@ -13,7 +13,7 @@ import pytest
 def _make_account_orm(
     id: str = "acct-1",
     account_name: str = "TestCorp",
-    mrr_estimate: float = 50000.0,
+    cp_estimate: float = 50000.0,
     team_lead: str = "TL One",
     ae_owner: str = "AE One",
     team_name: str = "Team Alpha",
@@ -22,7 +22,7 @@ def _make_account_orm(
     obj = MagicMock()
     obj.id = id
     obj.account_name = account_name
-    obj.mrr_estimate = mrr_estimate
+    obj.cp_estimate = cp_estimate
     obj.team_lead = team_lead
     obj.ae_owner = ae_owner
     obj.team_name = team_name
@@ -37,7 +37,7 @@ class TestListAccounts:
     @patch("sis.api.routes.accounts.account_service")
     def test_list_accounts_returns_200(self, mock_svc, client, auth_headers):
         mock_svc.list_accounts.return_value = [
-            {"id": "1", "account_name": "Acme", "mrr_estimate": 10000},
+            {"id": "1", "account_name": "Acme", "cp_estimate": 10000},
         ]
         resp = client.get("/api/accounts/", headers=auth_headers)
         assert resp.status_code == 200
@@ -48,9 +48,9 @@ class TestListAccounts:
     @patch("sis.api.routes.accounts.account_service")
     def test_list_accounts_passes_params(self, mock_svc, client, auth_headers):
         mock_svc.list_accounts.return_value = []
-        client.get("/api/accounts/?sort_by=mrr_estimate&team=Team+Alpha", headers=auth_headers)
+        client.get("/api/accounts/?sort_by=cp_estimate&team=Team+Alpha", headers=auth_headers)
         mock_svc.list_accounts.assert_called_once_with(
-            team="Team Alpha", sort_by="mrr_estimate", visible_user_ids=None
+            team="Team Alpha", sort_by="cp_estimate", visible_user_ids=None
         )
 
     @patch("sis.api.routes.accounts.account_service")
@@ -99,7 +99,7 @@ class TestCreateAccount:
         )
         resp = client.post("/api/accounts/", json={
             "name": "NewCo",
-            "mrr_estimate": 25000.0,
+            "cp_estimate": 25000.0,
             "team_lead": "TL One",
             "ae_owner": "AE One",
             "team_name": "Team Alpha",
@@ -114,7 +114,7 @@ class TestCreateAccount:
         mock_svc.create_account.return_value = _make_account_orm()
         client.post("/api/accounts/", json={
             "name": "TestCorp",
-            "mrr_estimate": 50000.0,
+            "cp_estimate": 50000.0,
             "team_lead": "TL One",
             "ae_owner": "AE One",
             "team_name": "Team Alpha",
@@ -163,9 +163,9 @@ class TestUpdateAccount:
     @patch("sis.api.routes.accounts.account_service")
     def test_update_account_maps_name_to_account_name(self, mock_svc, client, auth_headers):
         mock_svc.update_account.return_value = _make_account_orm()
-        client.put("/api/accounts/acct-1", json={"name": "NewName", "mrr_estimate": 99999}, headers=auth_headers)
+        client.put("/api/accounts/acct-1", json={"name": "NewName", "cp_estimate": 99999}, headers=auth_headers)
         mock_svc.update_account.assert_called_once_with(
-            "acct-1", account_name="NewName", mrr_estimate=99999,
+            "acct-1", account_name="NewName", cp_estimate=99999,
         )
 
     @patch("sis.api.routes.accounts.account_service")
@@ -177,8 +177,8 @@ class TestUpdateAccount:
     @patch("sis.api.routes.accounts.account_service")
     def test_update_account_excludes_none_fields(self, mock_svc, client, auth_headers):
         mock_svc.update_account.return_value = _make_account_orm()
-        client.put("/api/accounts/acct-1", json={"mrr_estimate": 75000}, headers=auth_headers)
-        mock_svc.update_account.assert_called_once_with("acct-1", mrr_estimate=75000)
+        client.put("/api/accounts/acct-1", json={"cp_estimate": 75000}, headers=auth_headers)
+        mock_svc.update_account.assert_called_once_with("acct-1", cp_estimate=75000)
 
 
 # ── POST /api/accounts/{account_id}/ic-forecast ────────────────────

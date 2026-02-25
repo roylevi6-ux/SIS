@@ -23,7 +23,7 @@ IC_FORECAST_CATEGORIES = {
 
 class AccountCreate(BaseModel):
     name: str
-    mrr_estimate: Optional[float] = None
+    cp_estimate: Optional[float] = None
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
@@ -34,7 +34,7 @@ class AccountCreate(BaseModel):
 
 class AccountUpdate(BaseModel):
     name: Optional[str] = None
-    mrr_estimate: Optional[float] = None
+    cp_estimate: Optional[float] = None
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
@@ -95,7 +95,7 @@ class AccountSummary(BaseModel):
 
     id: str
     account_name: str
-    mrr_estimate: Optional[float] = None
+    cp_estimate: Optional[float] = None
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
@@ -118,7 +118,7 @@ class AccountDetail(BaseModel):
 
     id: str
     account_name: str
-    mrr_estimate: Optional[float] = None
+    cp_estimate: Optional[float] = None
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None

@@ -157,18 +157,18 @@ def seeded_db(mock_get_session):
     session.flush()
 
     accounts = [
-        Account(id=healthy_id, account_name="HealthyCorp", mrr_estimate=50000.0,
+        Account(id=healthy_id, account_name="HealthyCorp", cp_estimate=50000.0,
                 team_lead="TL One", ae_owner="AE One", team_name="Team Alpha",
                 ic_forecast_category="Commit", deal_type="new_logo",
                 owner_id=user_ae1.id,
                 created_at=_now(30), updated_at=_now(1)),
-        Account(id=at_risk_id, account_name="AtRiskCo", mrr_estimate=25000.0,
+        Account(id=at_risk_id, account_name="AtRiskCo", cp_estimate=25000.0,
                 team_lead="TL One", ae_owner="AE Two", team_name="Team Alpha",
                 ic_forecast_category="Realistic", deal_type="expansion_upsell",
                 prior_contract_value=15000.0,
                 owner_id=user_ae2.id,
                 created_at=_now(30), updated_at=_now(1)),
-        Account(id=critical_id, account_name="CriticalInc", mrr_estimate=10000.0,
+        Account(id=critical_id, account_name="CriticalInc", cp_estimate=10000.0,
                 team_lead="TL Two", ae_owner="AE Three", team_name="Team Beta",
                 ic_forecast_category="At Risk", deal_type="new_logo",
                 owner_id=user_ae3.id,

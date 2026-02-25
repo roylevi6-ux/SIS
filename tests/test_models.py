@@ -63,13 +63,13 @@ def test_user_and_team_models(session):
 
 class TestAccountModel:
     def test_create_account(self, session):
-        acct = Account(account_name="TestCo", mrr_estimate=10000.0, team_name="Team A")
+        acct = Account(account_name="TestCo", cp_estimate=10000.0, team_name="Team A")
         session.add(acct)
         session.flush()
 
         assert acct.id is not None
         assert acct.account_name == "TestCo"
-        assert acct.mrr_estimate == 10000.0
+        assert acct.cp_estimate == 10000.0
         assert acct.created_at is not None
 
     def test_account_relationships(self, seeded_db, mock_get_session):

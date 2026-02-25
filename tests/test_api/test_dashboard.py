@@ -59,7 +59,7 @@ class TestDivergenceReport:
             {
                 "account_id": "a1",
                 "account_name": "DivergentCo",
-                "mrr_estimate": 80000,
+                "cp_estimate": 80000,
                 "team_lead": "TL One",
                 "ai_forecast_category": "Commit",
                 "ic_forecast_category": "At Risk",
@@ -155,7 +155,7 @@ class TestTeamRollupHierarchy:
                             {
                                 "account_id": "a1",
                                 "account_name": "HealthyCo",
-                                "mrr_estimate": 50000,
+                                "cp_estimate": 50000,
                                 "health_score": 82,
                                 "momentum_direction": "Improving",
                                 "ai_forecast_category": "Commit",

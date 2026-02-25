@@ -27,7 +27,7 @@ class ImportRequest(BaseModel):
     account_path: str
     max_calls: int = 5
     deal_type: Optional[str] = None
-    mrr_estimate: Optional[float] = None
+    cp_estimate: Optional[float] = None
     ae_owner: Optional[str] = None
     team_lead: Optional[str] = None
     team_name: Optional[str] = None
@@ -102,7 +102,7 @@ def import_from_drive(body: ImportRequest, user: dict = Depends(get_current_user
         acct_obj = create_account(
             name=body.account_name,
             deal_type=normalize_deal_type(body.deal_type),
-            mrr=body.mrr_estimate,
+            cp_estimate=body.cp_estimate,
             ae_owner=body.ae_owner,
             team_lead=body.team_lead,
             team=body.team_name,

@@ -53,7 +53,7 @@ def get_pipeline_overview(
             deal = {
                 "account_id": acct.id,
                 "account_name": acct.account_name,
-                "mrr_estimate": acct.mrr_estimate,
+                "cp_estimate": acct.cp_estimate,
                 "team_lead": acct.team_lead,
                 "ae_owner": acct.ae_owner,
                 "team_name": acct.team_name,
@@ -103,9 +103,9 @@ def get_pipeline_overview(
                 "at_risk_count": len(at_risk),
                 "critical_count": len(critical),
                 "unscored_count": len(unscored),
-                "total_mrr_healthy": sum(d["mrr_estimate"] or 0 for d in healthy),
-                "total_mrr_at_risk": sum(d["mrr_estimate"] or 0 for d in at_risk),
-                "total_mrr_critical": sum(d["mrr_estimate"] or 0 for d in critical),
+                "total_mrr_healthy": sum(d["cp_estimate"] or 0 for d in healthy),
+                "total_mrr_at_risk": sum(d["cp_estimate"] or 0 for d in at_risk),
+                "total_mrr_critical": sum(d["cp_estimate"] or 0 for d in critical),
             },
         }
 
@@ -138,7 +138,7 @@ def get_divergence_report(
             divergent.append({
                 "account_id": account.id,
                 "account_name": account.account_name,
-                "mrr_estimate": account.mrr_estimate,
+                "cp_estimate": account.cp_estimate,
                 "team_lead": account.team_lead,
                 "ai_forecast_category": assessment.ai_forecast_category,
                 "ic_forecast_category": account.ic_forecast_category,
@@ -147,8 +147,8 @@ def get_divergence_report(
                 "forecast_rationale": assessment.forecast_rationale,
             })
 
-        # Sort by MRR impact (highest value divergences first)
-        divergent.sort(key=lambda d: -(d["mrr_estimate"] or 0))
+        # Sort by CP Estimate impact (highest value divergences first)
+        divergent.sort(key=lambda d: -(d["cp_estimate"] or 0))
         return divergent
 
 
@@ -198,7 +198,7 @@ def get_team_rollup(
                 "healthy_count": sum(1 for m in scored if m["assessment"].health_score >= 70),
                 "at_risk_count": sum(1 for m in scored if 45 <= m["assessment"].health_score < 70),
                 "critical_count": sum(1 for m in scored if m["assessment"].health_score < 45),
-                "total_mrr": sum(m["account"].mrr_estimate or 0 for m in members),
+                "total_mrr": sum(m["account"].cp_estimate or 0 for m in members),
                 "divergent_count": sum(1 for m in scored if m["assessment"].divergence_flag),
             })
 
@@ -244,7 +244,7 @@ def get_team_rollup_hierarchy(
             deal = {
                 "account_id": acct.id,
                 "account_name": acct.account_name,
-                "mrr_estimate": acct.mrr_estimate,
+                "cp_estimate": acct.cp_estimate,
                 "health_score": latest.health_score if latest else None,
                 "momentum_direction": latest.momentum_direction if latest else None,
                 "ai_forecast_category": latest.ai_forecast_category if latest else None,
@@ -305,7 +305,7 @@ def get_team_rollup_hierarchy(
                 "healthy_count": sum(1 for d in scored if d["health_score"] >= 70),
                 "at_risk_count": sum(1 for d in scored if 45 <= d["health_score"] < 70),
                 "critical_count": sum(1 for d in scored if d["health_score"] < 45),
-                "total_mrr": sum(d["mrr_estimate"] or 0 for d in all_deals),
+                "total_mrr": sum(d["cp_estimate"] or 0 for d in all_deals),
                 "divergent_count": sum(1 for d in scored if d["divergence_flag"]),
                 "reps": [],
             }
@@ -324,7 +324,7 @@ def get_team_rollup_hierarchy(
                     "healthy_count": sum(1 for d in rep_scored if d["health_score"] >= 70),
                     "at_risk_count": sum(1 for d in rep_scored if 45 <= d["health_score"] < 70),
                     "critical_count": sum(1 for d in rep_scored if d["health_score"] < 45),
-                    "total_mrr": sum(d["mrr_estimate"] or 0 for d in deals),
+                    "total_mrr": sum(d["cp_estimate"] or 0 for d in deals),
                     "deals": deals,
                 }
                 team_entry["reps"].append(rep_entry)
@@ -573,7 +573,7 @@ def get_command_center(
         deal: dict = {
             "account_id": acct.id,
             "account_name": acct.account_name,
-            "mrr_estimate": acct.mrr_estimate,
+            "cp_estimate": acct.cp_estimate,
             "team_lead": acct.team_lead,
             "ae_owner": acct.ae_owner,
             "team_name": acct.team_name,
@@ -619,11 +619,11 @@ def get_command_center(
         cat_deals = [d for d in deals if d.get("ai_forecast_category") == db_cat]
         forecast[fe_key] = {
             "count": len(cat_deals),
-            "value": sum(d["mrr_estimate"] or 0 for d in cat_deals),
+            "value": sum(d["cp_estimate"] or 0 for d in cat_deals),
         }
 
     # ── 4. Pipeline totals ────────────────────────────────────────────────
-    total_mrr = sum(d["mrr_estimate"] or 0 for d in deals)
+    total_mrr = sum(d["cp_estimate"] or 0 for d in deals)
 
     # Weighted pipeline per design spec: Commit×0.90 + Realistic×0.60 + Upside×0.30 + Risk×0.10
     _WEIGHTS = {"commit": 0.90, "realistic": 0.60, "upside": 0.30, "risk": 0.10}
@@ -659,13 +659,13 @@ def get_command_center(
             d for d in scored_deals
             if (d.get("momentum_direction") or "").lower() == "declining"
         ],
-        key=lambda d: -(d["mrr_estimate"] or 0),
+        key=lambda d: -(d["cp_estimate"] or 0),
     )[:5]
 
     # Divergent forecast — divergence_flag True
     divergent_attn = sorted(
         [d for d in scored_deals if d.get("divergence_flag")],
-        key=lambda d: -(d["mrr_estimate"] or 0),
+        key=lambda d: -(d["cp_estimate"] or 0),
     )[:5]
 
     # Stale — no call in 14+ days
@@ -677,7 +677,7 @@ def get_command_center(
                 or d["last_call_date"][:10] < stale_cutoff_14
             )
         ],
-        key=lambda d: -(d["mrr_estimate"] or 0),
+        key=lambda d: -(d["cp_estimate"] or 0),
     )[:5]
 
     attention = {
@@ -695,7 +695,7 @@ def get_command_center(
         attention_items.append({
             "account_id": d["account_id"],
             "account_name": d["account_name"],
-            "mrr_estimate": d["mrr_estimate"] or 0,
+            "cp_estimate": d["cp_estimate"] or 0,
             "reason": f"Health declining — momentum {d.get('momentum_direction', 'unknown')}",
             "type": "declining",
         })
@@ -703,7 +703,7 @@ def get_command_center(
         attention_items.append({
             "account_id": d["account_id"],
             "account_name": d["account_name"],
-            "mrr_estimate": d["mrr_estimate"] or 0,
+            "cp_estimate": d["cp_estimate"] or 0,
             "reason": f"AI/IC forecast divergence — AI: {d.get('ai_forecast_category', '?')}, IC: {d.get('ic_forecast_category', '?')}",
             "type": "divergent",
         })
@@ -711,12 +711,12 @@ def get_command_center(
         attention_items.append({
             "account_id": d["account_id"],
             "account_name": d["account_name"],
-            "mrr_estimate": d["mrr_estimate"] or 0,
+            "cp_estimate": d["cp_estimate"] or 0,
             "reason": f"No call in 14+ days (last: {d.get('last_call_date', 'never')[:10] if d.get('last_call_date') else 'never'})",
             "type": "stale",
         })
-    # Sort by MRR descending and limit to top 10
-    attention_items.sort(key=lambda x: -x["mrr_estimate"])
+    # Sort by CP Estimate descending and limit to top 10
+    attention_items.sort(key=lambda x: -x["cp_estimate"])
     attention_items = attention_items[:10]
 
     # ── Return shape matching frontend CommandCenterResponse ──────────────
@@ -745,7 +745,7 @@ def _compute_weekly_changes(db, accounts: list) -> dict:
 
     one_week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     account_ids = [a.id for a in accounts]
-    acct_mrr = {a.id: (a.mrr_estimate or 0) for a in accounts}
+    acct_mrr = {a.id: (a.cp_estimate or 0) for a in accounts}
 
     if not account_ids:
         return {"added": 0, "dropped": 0, "net": 0, "stage_advances": 0, "forecast_flips": 0, "new_risks": 0}
