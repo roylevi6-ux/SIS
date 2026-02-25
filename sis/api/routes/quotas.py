@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from sis.api.deps import get_current_user, get_db
-from sis.db.models import Quota, Team, User
+from sis.db.models import Team, User
+from sis.services.quota_service import rollup_quota, upsert_quota
 
 router = APIRouter(prefix="/api/quotas", tags=["quotas"])
 
@@ -24,31 +25,6 @@ class QuotaCreate(BaseModel):
     amount: float
 
 
-def _rollup_quota(db: Session, user_id: str, period: str, _depth: int = 0) -> float:
-    """Compute quota for a user: own quota if IC, sum of subordinates otherwise."""
-    if _depth > 10:
-        return 0.0
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        return 0.0
-
-    own = db.query(Quota).filter(
-        Quota.user_id == user_id, Quota.period == period
-    ).first()
-
-    if user.role == "ic":
-        return own.amount if own else 0.0
-
-    led_teams = db.query(Team).filter(Team.leader_id == user_id).all()
-    total = 0.0
-    for team in led_teams:
-        members = db.query(User).filter(User.team_id == team.id).all()
-        for member in members:
-            total += _rollup_quota(db, member.id, period, _depth + 1)
-    return total
-
-
 @router.get("/{user_id}")
 def get_quota(
     user_id: str,
@@ -56,7 +32,7 @@ def get_quota(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> QuotaResponse:
-    amount = _rollup_quota(db, user_id, period)
+    amount = rollup_quota(db, user_id, period)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -74,24 +50,17 @@ def get_team_quota(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
     members = db.query(User).filter(User.team_id == team_id).all()
-    total = sum(_rollup_quota(db, m.id, period) for m in members)
+    total = sum(rollup_quota(db, m.id, period) for m in members)
     return {"team_id": team_id, "team_name": team.name, "period": period, "amount": total}
 
 
 @router.post("/")
-def upsert_quota(
+def upsert_quota_endpoint(
     data: QuotaCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> dict:
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    existing = db.query(Quota).filter(
-        Quota.user_id == data.user_id, Quota.period == data.period
-    ).first()
-    if existing:
-        existing.amount = data.amount
-    else:
-        db.add(Quota(user_id=data.user_id, period=data.period, amount=data.amount))
-    db.commit()
+    upsert_quota(db, data.user_id, data.period, data.amount)
     return {"ok": True}

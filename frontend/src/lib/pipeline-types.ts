@@ -72,22 +72,3 @@ export interface CommandCenterResponse {
   changes_this_week: WeeklyChanges;
   deals: PipelineDeal[];
 }
-
-export interface PipelineSummary {
-  healthy_count: number;
-  at_risk_count: number;
-  critical_count: number;
-  unscored_count: number;
-  total_mrr_healthy: number;
-  total_mrr_at_risk: number;
-  total_mrr_critical: number;
-}
-
-export interface PipelineOverviewResponse {
-  total_deals: number;
-  healthy: PipelineDeal[];
-  at_risk: PipelineDeal[];
-  critical: PipelineDeal[];
-  unscored: PipelineDeal[];
-  summary: PipelineSummary;
-}
