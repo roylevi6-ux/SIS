@@ -18,6 +18,7 @@ from .models import (
     PromptVersion,
     ChatSession,
     ChatMessage,
+    Quota,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "PromptVersion",
     "ChatSession",
     "ChatMessage",
+    "Quota",
 ]
