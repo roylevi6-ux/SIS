@@ -654,21 +654,130 @@ def get_command_center(
         "stale_deals": stale_attn,
     }
 
-    # ── 7. Weekly changes (stub — real logic in future sprint) ────────────
-    weekly_changes = {
-        "added": 0,
-        "dropped": 0,
-        "net": 0,
-        "stage_advances": 0,
-        "forecast_flips": 0,
-        "new_risks": 0,
-    }
+    # ── 7. Weekly changes (compare current vs 7-day-old assessments) ─────
+    weekly_changes = _compute_weekly_changes(db, accounts)
 
+    # ── 8. Flatten attention items into single list ────────────────────────
+    attention_items = []
+    for d in declining_attn:
+        attention_items.append({
+            "account_id": d["account_id"],
+            "account_name": d["account_name"],
+            "mrr_estimate": d["mrr_estimate"] or 0,
+            "reason": f"Health declining — momentum {d.get('momentum_direction', 'unknown')}",
+            "type": "declining",
+        })
+    for d in divergent_attn:
+        attention_items.append({
+            "account_id": d["account_id"],
+            "account_name": d["account_name"],
+            "mrr_estimate": d["mrr_estimate"] or 0,
+            "reason": f"AI/IC forecast divergence — AI: {d.get('ai_forecast_category', '?')}, IC: {d.get('ic_forecast_category', '?')}",
+            "type": "divergent",
+        })
+    for d in stale_attn:
+        attention_items.append({
+            "account_id": d["account_id"],
+            "account_name": d["account_name"],
+            "mrr_estimate": d["mrr_estimate"] or 0,
+            "reason": f"No call in 14+ days (last: {d.get('last_call_date', 'never')[:10] if d.get('last_call_date') else 'never'})",
+            "type": "stale",
+        })
+    # Sort by MRR descending and limit to top 10
+    attention_items.sort(key=lambda x: -x["mrr_estimate"])
+    attention_items = attention_items[:10]
+
+    # ── Return shape matching frontend CommandCenterResponse ──────────────
     return {
         "deals": deals,
-        "forecast": forecast,
-        "pipeline": pipeline_totals,
-        "quota_amount": quota_for_period,
-        "attention": attention,
-        "weekly_changes": weekly_changes,
+        "forecast_breakdown": forecast,
+        "pipeline": {
+            "total_value": total_mrr,
+            "total_deals": len(deals),
+            "coverage": round(coverage, 2) if coverage is not None else 0,
+            "weighted_value": round(weighted_mrr, 2),
+            "gap": round(gap, 2),
+        },
+        "quota": {
+            "amount": round(quota_for_period, 2),
+            "period": quarter or period,
+        },
+        "attention_items": attention_items,
+        "changes_this_week": weekly_changes,
+    }
+
+
+def _compute_weekly_changes(db, accounts: list) -> dict:
+    """Compare current vs 7-day-old assessments for weekly pipeline movement."""
+    from sqlalchemy import func, and_
+
+    one_week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    account_ids = [a.id for a in accounts]
+
+    if not account_ids:
+        return {"added": 0, "dropped": 0, "net": 0, "stage_advances": 0, "forecast_flips": 0, "new_risks": 0}
+
+    # Latest assessment per account
+    current = {}
+    for acct in accounts:
+        latest = (
+            db.query(DealAssessment)
+            .filter_by(account_id=acct.id)
+            .order_by(DealAssessment.created_at.desc())
+            .first()
+        )
+        if latest:
+            current[acct.id] = {
+                "mrr": acct.mrr_estimate or 0,
+                "stage": latest.inferred_stage,
+                "forecast": latest.ai_forecast_category,
+                "health": latest.health_score,
+                "created_at": latest.created_at,
+            }
+
+    # Previous assessment: latest created before 7 days ago
+    previous = {}
+    for acct in accounts:
+        prev = (
+            db.query(DealAssessment)
+            .filter(
+                DealAssessment.account_id == acct.id,
+                DealAssessment.created_at < one_week_ago,
+            )
+            .order_by(DealAssessment.created_at.desc())
+            .first()
+        )
+        if prev:
+            previous[acct.id] = {
+                "stage": prev.inferred_stage,
+                "forecast": prev.ai_forecast_category,
+                "health": prev.health_score,
+            }
+
+    # Compute deltas
+    added = sum(d["mrr"] for aid, d in current.items() if aid not in previous)
+    stage_advances = 0
+    forecast_flips = 0
+    new_risks = 0
+
+    for aid, cur in current.items():
+        prev = previous.get(aid)
+        if not prev:
+            continue
+        if cur["stage"] and prev["stage"] and cur["stage"] > prev["stage"]:
+            stage_advances += 1
+        if cur["forecast"] != prev["forecast"]:
+            forecast_flips += 1
+        cur_health = cur.get("health") or 100
+        prev_health = prev.get("health") or 100
+        if cur_health < 45 and prev_health >= 45:
+            new_risks += 1
+
+    return {
+        "added": round(added, 0),
+        "dropped": 0,
+        "net": round(added, 0),
+        "stage_advances": stage_advances,
+        "forecast_flips": forecast_flips,
+        "new_risks": new_risks,
     }

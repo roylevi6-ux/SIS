@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useCommandCenter } from '@/lib/hooks/use-command-center';
 import { usePermissions } from '@/lib/permissions';
+import { api } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -125,6 +129,12 @@ export default function PipelineCommandCenter() {
 
   const { isVpOrAbove } = usePermissions();
 
+  const { data: teamsData } = useQuery<{ id: string; name: string; level: string; leader_name: string | null }[]>({
+    queryKey: ['teams'],
+    queryFn: () => api.teams.list(),
+    staleTime: 5 * 60_000,
+  });
+
   const { data, isLoading, isError, error } = useCommandCenter({
     quarter: quarter === 'FY' ? undefined : quarter,
     team,
@@ -209,12 +219,39 @@ export default function PipelineCommandCenter() {
             value={team ?? 'all'}
             onValueChange={(v) => setTeam(v === 'all' ? undefined : v)}
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Teams" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
-              {/* TODO: populate from backend team hierarchy (Task 21) */}
+              {teamsData && teamsData.length > 0 && (
+                <>
+                  {teamsData.filter((t) => t.level === 'division').length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] uppercase tracking-wider">VPs</SelectLabel>
+                      {teamsData
+                        .filter((t) => t.level === 'division')
+                        .map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.leader_name || t.name}
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                  )}
+                  {teamsData.filter((t) => t.level === 'team').length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] uppercase tracking-wider">Teams</SelectLabel>
+                      {teamsData
+                        .filter((t) => t.level === 'team')
+                        .map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.leader_name || t.name}
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                  )}
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
