@@ -84,7 +84,7 @@ class Account(Base):
 
     id = Column(Text, primary_key=True, default=_uuid)
     account_name = Column(Text, nullable=False)
-    cp_estimate = Column(Float, nullable=True)  # Contribution Profit estimate ($)
+    mrr_estimate = Column(Float, nullable=True)
     ic_forecast_category = Column(Text, nullable=True)  # Commit/Realistic/Upside/At Risk
     team_lead = Column(Text, nullable=True)
     ae_owner = Column(Text, nullable=True)

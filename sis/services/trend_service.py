@@ -199,11 +199,11 @@ def get_pipeline_flow(
         cats = {"commit": 0.0, "realistic": 0.0, "upside": 0.0, "risk": 0.0}
         total = 0.0
         for da, acct in deals.values():
-            cp = acct.cp_estimate or 0
-            total += cp
+            mrr = acct.mrr_estimate or 0
+            total += mrr
             cat = (da.ai_forecast_category or "").lower().replace(" ", "_").replace("at_risk", "risk")
             if cat in cats:
-                cats[cat] += cp
+                cats[cat] += mrr
         pipeline_by_category.append({"week": wk, **cats})
         weekly_totals[wk] = total
 
@@ -217,15 +217,15 @@ def get_pipeline_flow(
         prev_ids = set(prev_deals.keys())
         curr_ids = set(curr_deals.keys())
 
-        new_deals = sum((curr_deals[aid][1].cp_estimate or 0) for aid in curr_ids - prev_ids)
-        lost_deals = sum((prev_deals[aid][1].cp_estimate or 0) for aid in prev_ids - curr_ids)
+        new_deals = sum((curr_deals[aid][1].mrr_estimate or 0) for aid in curr_ids - prev_ids)
+        lost_deals = sum((prev_deals[aid][1].mrr_estimate or 0) for aid in prev_ids - curr_ids)
         common = prev_ids & curr_ids
         upgrades = 0.0
         downgrades = 0.0
         for aid in common:
-            prev_cp = prev_deals[aid][1].cp_estimate or 0
-            curr_cp = curr_deals[aid][1].cp_estimate or 0
-            diff = curr_cp - prev_cp
+            prev_mrr = prev_deals[aid][1].mrr_estimate or 0
+            curr_mrr = curr_deals[aid][1].mrr_estimate or 0
+            diff = curr_mrr - prev_mrr
             if diff > 0:
                 upgrades += diff
             elif diff < 0:
