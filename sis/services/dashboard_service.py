@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from sis.db.session import get_session
-from sis.db.models import Account, DealAssessment, AnalysisRun, Transcript, User, Team
+from sis.db.models import Account, DealAssessment, AnalysisRun, Transcript, User, Team, Quota
 from sis.config import STALE_CALL_DAYS_THRESHOLD
 
 
@@ -473,3 +473,202 @@ def get_pipeline_insights(visible_user_ids: Optional[set[str]] = None) -> dict:
             "stale": stale,
             "forecast_flips": forecast_flips,
         }
+
+
+def get_command_center(
+    db,
+    visible_user_ids: Optional[set[str]],
+    period: str = "2026",
+    quarter: Optional[str] = None,
+    team_id: Optional[str] = None,
+    ae_name: Optional[str] = None,
+) -> dict:
+    """Command Center: quota, forecast breakdown, pipeline totals, attention items.
+
+    Args:
+        db: SQLAlchemy session (injected by route via Depends).
+        visible_user_ids: Scoping set from JWT — None means admin/gm sees all.
+        period: Quota period, e.g. "2026" for annual.
+        quarter: Optional quarter filter, e.g. "Q1". Not yet applied to deals
+                 (placeholder for future close-date filtering).
+        team_id: Optional Team.id filter.
+        ae_name: Optional ae_owner string filter.
+
+    Returns:
+        dict with keys: deals, forecast, pipeline, quota_amount, attention, weekly_changes.
+    """
+    now = datetime.now(timezone.utc)
+    stale_cutoff_14 = (now - timedelta(days=14)).strftime("%Y-%m-%d")
+
+    # ── 1. Resolve accounts ───────────────────────────────────────────────
+    query = db.query(Account)
+    if visible_user_ids is not None:
+        query = query.filter(Account.owner_id.in_(visible_user_ids))
+    if team_id is not None:
+        # Filter by accounts whose owner belongs to this team
+        team_user_ids = [
+            u.id for u in db.query(User).filter(User.team_id == team_id).all()
+        ]
+        query = query.filter(Account.owner_id.in_(team_user_ids))
+    if ae_name is not None:
+        query = query.filter(Account.ae_owner == ae_name)
+
+    accounts = query.all()
+
+    # ── 2. Build deal list (same shape as get_pipeline_overview) ─────────
+    deals = []
+    for acct in accounts:
+        latest = (
+            db.query(DealAssessment)
+            .filter_by(account_id=acct.id)
+            .order_by(DealAssessment.created_at.desc())
+            .first()
+        )
+        latest_transcript = (
+            db.query(Transcript)
+            .filter_by(account_id=acct.id, is_active=1)
+            .order_by(Transcript.call_date.desc())
+            .first()
+        )
+
+        deal: dict = {
+            "account_id": acct.id,
+            "account_name": acct.account_name,
+            "mrr_estimate": acct.mrr_estimate,
+            "team_lead": acct.team_lead,
+            "ae_owner": acct.ae_owner,
+            "team_name": acct.team_name,
+            "ic_forecast_category": acct.ic_forecast_category,
+            "last_call_date": latest_transcript.call_date if latest_transcript else None,
+        }
+
+        if latest:
+            deal.update({
+                "health_score": latest.health_score,
+                "momentum_direction": latest.momentum_direction,
+                "ai_forecast_category": latest.ai_forecast_category,
+                "inferred_stage": latest.inferred_stage,
+                "stage_name": latest.stage_name,
+                "overall_confidence": latest.overall_confidence,
+                "divergence_flag": bool(latest.divergence_flag),
+                "deal_memo_preview": (
+                    (latest.deal_memo[:200] + "...")
+                    if latest.deal_memo and len(latest.deal_memo) > 200
+                    else latest.deal_memo
+                ),
+            })
+        else:
+            deal.update({
+                "health_score": None,
+                "momentum_direction": None,
+                "ai_forecast_category": None,
+                "inferred_stage": None,
+                "stage_name": None,
+                "overall_confidence": None,
+                "divergence_flag": False,
+                "deal_memo_preview": None,
+            })
+
+        deals.append(deal)
+
+    # ── 3. Forecast breakdown ─────────────────────────────────────────────
+    _CATEGORIES = ("Commit", "Realistic", "Upside", "At Risk")
+    forecast: dict = {}
+    for cat in _CATEGORIES:
+        cat_deals = [d for d in deals if d.get("ai_forecast_category") == cat]
+        forecast[cat.lower().replace(" ", "_")] = {
+            "count": len(cat_deals),
+            "value": sum(d["mrr_estimate"] or 0 for d in cat_deals),
+        }
+
+    # ── 4. Pipeline totals ────────────────────────────────────────────────
+    scored_deals = [d for d in deals if d["health_score"] is not None]
+    total_mrr = sum(d["mrr_estimate"] or 0 for d in deals)
+
+    # Weighted pipeline: health_score (0-100) used as win-probability proxy
+    weighted_mrr = sum(
+        (d["mrr_estimate"] or 0) * (d["health_score"] / 100)
+        for d in scored_deals
+    )
+
+    # ── 5. Quota lookup ───────────────────────────────────────────────────
+    # Sum quotas for all visible users (or all ICs if no scoping)
+    quota_query = db.query(Quota).filter(Quota.period == period)
+    if visible_user_ids is not None:
+        quota_query = quota_query.filter(Quota.user_id.in_(visible_user_ids))
+    quota_rows = quota_query.all()
+    total_quota = sum(q.amount for q in quota_rows)
+
+    # Divide by 4 for quarterly view
+    if quarter is not None:
+        quota_for_period = total_quota / 4
+    else:
+        quota_for_period = total_quota
+
+    # Pipeline coverage ratio (total pipeline / quota)
+    coverage = (total_mrr / quota_for_period) if quota_for_period > 0 else None
+    # Gap: how much more commit pipeline is needed to hit quota
+    commit_value = forecast.get("commit", {}).get("value", 0)
+    gap = max(0.0, quota_for_period - commit_value)
+
+    pipeline_totals = {
+        "total_value": total_mrr,
+        "weighted_value": round(weighted_mrr, 2),
+        "coverage_ratio": round(coverage, 3) if coverage is not None else None,
+        "gap_to_quota": round(gap, 2),
+        "total_deals": len(deals),
+        "scored_deals": len(scored_deals),
+    }
+
+    # ── 6. Attention items ────────────────────────────────────────────────
+    # Declining health — momentum_direction == "declining" (case-insensitive)
+    declining_attn = sorted(
+        [
+            d for d in scored_deals
+            if (d.get("momentum_direction") or "").lower() == "declining"
+        ],
+        key=lambda d: -(d["mrr_estimate"] or 0),
+    )[:5]
+
+    # Divergent forecast — divergence_flag True
+    divergent_attn = sorted(
+        [d for d in scored_deals if d.get("divergence_flag")],
+        key=lambda d: -(d["mrr_estimate"] or 0),
+    )[:5]
+
+    # Stale — no call in 14+ days
+    stale_attn = sorted(
+        [
+            d for d in deals
+            if (
+                d.get("last_call_date") is None
+                or d["last_call_date"][:10] < stale_cutoff_14
+            )
+        ],
+        key=lambda d: -(d["mrr_estimate"] or 0),
+    )[:5]
+
+    attention = {
+        "declining_health": declining_attn,
+        "divergent_forecast": divergent_attn,
+        "stale_deals": stale_attn,
+    }
+
+    # ── 7. Weekly changes (stub — real logic in future sprint) ────────────
+    weekly_changes = {
+        "added": 0,
+        "dropped": 0,
+        "net": 0,
+        "stage_advances": 0,
+        "forecast_flips": 0,
+        "new_risks": 0,
+    }
+
+    return {
+        "deals": deals,
+        "forecast": forecast,
+        "pipeline": pipeline_totals,
+        "quota_amount": quota_for_period,
+        "attention": attention,
+        "weekly_changes": weekly_changes,
+    }
