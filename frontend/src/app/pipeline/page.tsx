@@ -121,7 +121,7 @@ function filterDeals(
 // ---------------------------------------------------------------------------
 
 export default function PipelineCommandCenter() {
-  const [quarter, setQuarter] = useState(currentQuarter());
+  const [quarter, setQuarter] = useState('FY');
   const [team, setTeam] = useState<string | undefined>(undefined);
   const [teamLeadFilter, setTeamLeadFilter] = useState<string | undefined>(undefined);
   const [forecastFilter, setForecastFilter] = useState<ForecastFilter>('all');
