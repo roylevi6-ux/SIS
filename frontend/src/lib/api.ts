@@ -136,6 +136,8 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ items }),
       }),
+    cancelBatch: (batchId: string) =>
+      apiFetch<{ status: string }>(`/api/analyses/batch/${batchId}/cancel`, { method: 'POST' }),
   },
   dashboard: {
     pipeline: (team?: string) =>

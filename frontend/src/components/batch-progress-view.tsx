@@ -17,6 +17,7 @@ import { AnalysisProgressDetail } from '@/components/analysis-progress-detail';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { api } from '@/lib/api';
 import type { BatchItem } from '@/lib/api-types';
 
 // ---------------------------------------------------------------------------
@@ -247,6 +248,17 @@ export function BatchProgressView({
 }: BatchProgressViewProps) {
   const { batch, error, isTerminal } = useBatchProgress(batchId);
 
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  async function handleCancel() {
+    setIsCancelling(true);
+    try {
+      await api.analyses.cancelBatch(batchId!);
+    } catch {
+      // batch may have already finished — that's fine
+    }
+  }
+
   function handleDismiss() {
     sessionStorage.removeItem('sis_batch_id');
     sessionStorage.removeItem('sis_batch_terminal');
@@ -347,14 +359,26 @@ export function BatchProgressView({
                 {batch.failed_count} failed
               </span>
             )}
-            <Button
-              size="sm"
-              variant={isTerminal ? "default" : "destructive"}
-              className="h-8 px-4 text-xs font-medium"
-              onClick={handleDismiss}
-            >
-              {isTerminal ? 'New Batch' : 'Cancel'}
-            </Button>
+            {isTerminal ? (
+              <Button
+                size="sm"
+                variant="default"
+                className="h-8 px-4 text-xs font-medium"
+                onClick={handleDismiss}
+              >
+                New Batch
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-8 px-4 text-xs font-medium"
+                disabled={isCancelling}
+                onClick={handleCancel}
+              >
+                {isCancelling ? 'Stopping...' : 'Stop'}
+              </Button>
+            )}
           </div>
         </div>
 
