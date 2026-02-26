@@ -125,6 +125,23 @@ def update_item(
         _recompute_batch(entry)
 
 
+def cancel_batch(batch_id: str) -> list[str]:
+    """Cancel all non-terminal items in a batch. Returns list of run_ids to cancel."""
+    run_ids = []
+    with _lock:
+        entry = _store.get(batch_id)
+        if entry is None:
+            return run_ids
+        for item in entry["items"]:
+            if item["status"] not in _TERMINAL_ITEM_STATUSES:
+                if item.get("run_id"):
+                    run_ids.append(item["run_id"])
+                item["status"] = "failed"
+                item["error"] = "Cancelled by user"
+        _recompute_batch(entry)
+    return run_ids
+
+
 def get_snapshot(batch_id: str) -> dict | None:
     """Return a deepcopy of the batch entry, or None if not found."""
     with _lock:

@@ -23,6 +23,7 @@ from sis.api.schemas.analyses import (
 from sis.orchestrator.batch_store import (
     create_batch,
     update_item,
+    cancel_batch,
     get_snapshot as get_batch_snapshot,
 )
 
@@ -221,6 +222,25 @@ async def cancel_analysis(run_id: str, user: dict = Depends(get_current_user)):
 
     cancel_run(run_id)
     return {"status": "cancelling", "run_id": run_id}
+
+
+@router.post("/batch/{batch_id}/cancel")
+async def cancel_batch_analysis(batch_id: str, user: dict = Depends(get_current_user)):
+    """Cancel all running items in a batch and their analysis pipelines."""
+    from sis.orchestrator.progress_store import cancel_run
+
+    snapshot = get_batch_snapshot(batch_id)
+    if not snapshot:
+        raise HTTPException(404, f"Batch {batch_id} not found")
+
+    run_ids = cancel_batch(batch_id)
+    for rid in run_ids:
+        try:
+            cancel_run(rid)
+        except Exception:
+            pass  # run may have already finished
+
+    return {"status": "cancelled", "batch_id": batch_id, "cancelled_runs": len(run_ids)}
 
 
 @router.get("/delta/{account_id}")
