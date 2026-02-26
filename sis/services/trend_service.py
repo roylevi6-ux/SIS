@@ -337,10 +337,43 @@ def get_forecast_migration(
     for wk in sorted_weeks:
         deals = weekly_latest[wk]
         total = len(deals)
-        divergent = sum(1 for da, acct in deals.values()
-                        if acct.ic_forecast_category and da.ai_forecast_category != acct.ic_forecast_category)
-        pct = round(divergent / total * 100, 1) if total > 0 else 0
-        divergence_trend.append({"week": wk, "divergent_count": divergent, "total_deals": total, "divergence_pct": pct})
+
+        stage_gap = stage_sf_ahead = stage_sis_ahead = 0
+        forecast_gap = forecast_sf_opt = forecast_sis_opt = 0
+        any_gap = 0
+
+        for da, _acct in deals.values():
+            has_stage_gap = da.stage_gap_direction and da.stage_gap_direction != "Aligned"
+            has_forecast_gap = da.forecast_gap_direction and da.forecast_gap_direction != "Aligned"
+
+            if has_stage_gap:
+                stage_gap += 1
+                if da.stage_gap_direction == "SF-ahead":
+                    stage_sf_ahead += 1
+                else:
+                    stage_sis_ahead += 1
+            if has_forecast_gap:
+                forecast_gap += 1
+                if da.forecast_gap_direction == "SF-more-optimistic":
+                    forecast_sf_opt += 1
+                else:
+                    forecast_sis_opt += 1
+            if has_stage_gap or has_forecast_gap:
+                any_gap += 1
+
+        alignment_pct = round((total - any_gap) / total * 100, 1) if total > 0 else 100.0
+        divergence_trend.append({
+            "week": wk,
+            "total_deals": total,
+            "stage_gap_count": stage_gap,
+            "stage_sf_ahead": stage_sf_ahead,
+            "stage_sis_ahead": stage_sis_ahead,
+            "forecast_gap_count": forecast_gap,
+            "forecast_sf_optimistic": forecast_sf_opt,
+            "forecast_sis_optimistic": forecast_sis_opt,
+            "any_gap_count": any_gap,
+            "alignment_pct": alignment_pct,
+        })
 
     return {"migrations": migrations, "migration_summary": summary, "divergence_trend": divergence_trend}
 

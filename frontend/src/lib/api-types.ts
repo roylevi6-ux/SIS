@@ -521,9 +521,15 @@ export interface MigrationSummary {
 
 export interface DivergenceTrendPoint {
   week: string;
-  divergent_count: number;
   total_deals: number;
-  divergence_pct: number;
+  stage_gap_count: number;
+  stage_sf_ahead: number;
+  stage_sis_ahead: number;
+  forecast_gap_count: number;
+  forecast_sf_optimistic: number;
+  forecast_sis_optimistic: number;
+  any_gap_count: number;
+  alignment_pct: number;
 }
 
 export interface ForecastMovementResponse {
