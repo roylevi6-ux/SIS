@@ -26,6 +26,7 @@ import type { BatchItem } from '@/lib/api-types';
 interface BatchProgressViewProps {
   batchId: string;
   onRetryItem?: (item: BatchItem) => void;
+  onDismiss?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -242,8 +243,14 @@ function BatchItemRow({
 export function BatchProgressView({
   batchId,
   onRetryItem,
+  onDismiss,
 }: BatchProgressViewProps) {
   const { batch, error, isTerminal } = useBatchProgress(batchId);
+
+  function handleDismiss() {
+    sessionStorage.removeItem('sis_batch_id');
+    onDismiss?.();
+  }
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
     new Set()
   );
@@ -263,17 +270,20 @@ export function BatchProgressView({
   // -- Loading state ---------------------------------------------------------
   if (!batch) {
     if (error) {
-      // Connection error with no data at all
+      // Connection error with no data at all — batch may have expired
       return (
         <Card className="border-destructive">
           <CardContent className="flex items-center gap-3 py-6">
             <XCircle className="size-5 text-destructive shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Connection lost</p>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Batch session expired</p>
               <p className="text-xs text-muted-foreground">
-                Could not connect to the batch progress stream.
+                The batch progress is no longer available. Your analyses may still have completed — check the Deals page.
               </p>
             </div>
+            <Button size="sm" variant="outline" onClick={handleDismiss}>
+              Start New Batch
+            </Button>
           </CardContent>
         </Card>
       );
@@ -317,7 +327,7 @@ export function BatchProgressView({
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-base">{headerTitle}</CardTitle>
 
-          {/* Terminal summary stats */}
+          {/* Terminal summary stats + new batch button */}
           {isTerminal && (
             <div className="flex items-center gap-4 text-xs text-muted-foreground tabular-nums shrink-0">
               {totalElapsed > 0 && (
@@ -331,6 +341,9 @@ export function BatchProgressView({
                   {batch.failed_count} failed
                 </span>
               )}
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleDismiss}>
+                New Batch
+              </Button>
             </div>
           )}
         </div>
