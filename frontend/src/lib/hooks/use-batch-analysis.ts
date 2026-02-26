@@ -39,6 +39,8 @@ export function useBatchProgress(batchId: string | null) {
         setBatch(data);
         if (TERMINAL_STATUSES.has(data.status as string)) {
           es.close();
+          // Mark batch as terminal so the upload page auto-clears it on next visit
+          sessionStorage.setItem('sis_batch_terminal', 'true');
         }
       } catch {
         // Malformed JSON — ignore and wait for next event
@@ -48,6 +50,9 @@ export function useBatchProgress(batchId: string | null) {
     es.onerror = () => {
       es.close();
       setError('Connection to batch progress stream lost');
+      // Auto-clear stale batch from sessionStorage so the upload page
+      // doesn't get stuck on next visit
+      sessionStorage.removeItem('sis_batch_id');
     };
 
     return () => {

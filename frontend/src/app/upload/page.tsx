@@ -171,7 +171,14 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
   const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
   const [batchId, setBatchId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('sis_batch_id');
+      // Auto-clear stale/terminal batches so the upload form is shown
+      const storedId = sessionStorage.getItem('sis_batch_id');
+      if (storedId && sessionStorage.getItem('sis_batch_terminal') === 'true') {
+        sessionStorage.removeItem('sis_batch_id');
+        sessionStorage.removeItem('sis_batch_terminal');
+        return null;
+      }
+      return storedId;
     }
     return null;
   });
