@@ -249,6 +249,7 @@ export function BatchProgressView({
 
   function handleDismiss() {
     sessionStorage.removeItem('sis_batch_id');
+    sessionStorage.removeItem('sis_batch_terminal');
     onDismiss?.();
   }
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
@@ -302,9 +303,12 @@ export function BatchProgressView({
   }
 
   // -- Derived values -------------------------------------------------------
+  const completed = batch.completed_count ?? 0;
+  const total = batch.total_items ?? 0;
+
   const progressPct =
-    batch.total_items > 0
-      ? (batch.completed_count / batch.total_items) * 100
+    total > 0
+      ? (completed / total) * 100
       : 0;
 
   const totalElapsed = batch.items.reduce(
@@ -317,8 +321,8 @@ export function BatchProgressView({
   );
 
   const headerTitle = isTerminal
-    ? `Batch Complete — ${batch.completed_count}/${batch.total_items} succeeded`
-    : `Batch Analysis — ${batch.completed_count}/${batch.total_items} complete`;
+    ? `Batch Complete — ${completed}/${total} succeeded`
+    : `Batch Analysis — ${completed}/${total} complete`;
 
   // -- Main render ----------------------------------------------------------
   return (
@@ -335,12 +339,17 @@ export function BatchProgressView({
             {isTerminal && totalCost > 0 && (
               <span>{formatCost(totalCost)} total</span>
             )}
-            {batch.failed_count > 0 && (
+            {(batch.failed_count ?? 0) > 0 && (
               <span className="text-destructive">
                 {batch.failed_count} failed
               </span>
             )}
-            <Button size="sm" variant={isTerminal ? "outline" : "ghost"} className="h-7 text-xs" onClick={handleDismiss}>
+            <Button
+              size="sm"
+              variant={isTerminal ? "default" : "destructive"}
+              className="h-8 px-4 text-xs font-medium"
+              onClick={handleDismiss}
+            >
               {isTerminal ? 'New Batch' : 'Cancel'}
             </Button>
           </div>
@@ -349,9 +358,9 @@ export function BatchProgressView({
         <Progress value={progressPct} className="h-2 mt-2" />
 
         <p className="text-xs text-muted-foreground mt-1">
-          {batch.completed_count}/{batch.total_items} accounts{' '}
+          {completed}/{total} accounts{' '}
           {isTerminal ? 'finished' : 'complete'}
-          {batch.failed_count > 0 && ` · ${batch.failed_count} failed`}
+          {(batch.failed_count ?? 0) > 0 && ` · ${batch.failed_count} failed`}
         </p>
       </CardHeader>
 
