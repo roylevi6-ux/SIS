@@ -43,21 +43,21 @@ function daysAgoColor(dateStr: string | null): string {
   const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
   if (diff <= 14) return 'text-healthy';
-  if (diff <= 30) return 'text-at-risk';
-  return 'text-critical';
+  if (diff <= 30) return 'text-neutral';
+  return 'text-needs-attention';
 }
 
 function healthTier(score: number | null): string {
   if (score === null) return '';
   if (score >= 70) return 'healthy';
-  if (score >= 45) return 'at_risk';
-  return 'critical';
+  if (score >= 40) return 'neutral';
+  return 'needs_attention';
 }
 
 function rowTintClass(deal: PipelineDeal): string {
   const tier = healthTier(deal.health_score);
-  if (tier === 'critical') return 'bg-critical-light/40';
-  if (tier === 'at_risk') return 'bg-at-risk-light/30';
+  if (tier === 'needs_attention') return 'bg-needs-attention-light/40';
+  if (tier === 'neutral') return 'bg-neutral-light/30';
   return '';
 }
 
@@ -135,11 +135,11 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
       return (
         <div className={cn(
           'flex flex-col gap-0.5',
-          divergent && 'rounded px-1.5 py-0.5 bg-at-risk-light/50'
+          divergent && 'rounded px-1.5 py-0.5 bg-neutral-light/50'
         )}>
           <ForecastBadge category={ai} />
           {divergent && ic && (
-            <span className="text-[10px] text-at-risk">IC: {ic}</span>
+            <span className="text-[10px] text-neutral">IC: {ic}</span>
           )}
         </div>
       );

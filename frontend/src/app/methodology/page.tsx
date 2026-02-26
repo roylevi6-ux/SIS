@@ -356,69 +356,92 @@ const HEALTH_SCORE_COMPONENTS = [
     weight: 14,
     source: 'Agent 3 (Commercial), Agent 9 (Adversarial)',
     description: 'Is the pain buyer-articulated? Is there pricing clarity and ROI alignment? Agent 3 extracts commercial signals; Agent 9 validates they are evidence-backed.',
+    expectedFrom: 'All stages',
   },
   {
     component: 'Momentum Quality',
     weight: 13,
     source: 'Agent 4 (Momentum)',
     description: 'Is buying energy increasing, stable, or fading? Measures buyer-initiated engagement, cadence trends, topic progression, and action completion.',
+    expectedFrom: 'All stages',
   },
   {
     component: 'Champion Strength',
     weight: 12,
     source: 'Agent 2 (Relationship)',
-    description: 'Has a champion been identified showing advocacy behavior: selling internally, driving timelines, defending value, facilitating access? Friendliness alone does not qualify.',
+    description: 'Has a champion been identified showing advocacy behavior: stakeholder introductions, follow-up ownership, "we" language, internal process navigation? Friendliness alone does not qualify.',
+    expectedFrom: 'Stage 3+',
   },
   {
     component: 'Commitment Quality',
     weight: 11,
     source: 'Agent 7 (MSP & Next Steps)',
     description: 'Are there buyer-confirmed next steps with dates, owners, and deliverables? Is there a mutual success plan? Tracks specificity escalation or decline across calls.',
+    expectedFrom: 'Stage 5+',
   },
   {
     component: 'Economic Buyer Engagement',
     weight: 11,
     source: 'Agent 6 (Economic Buyer)',
-    description: 'Has someone with budget authority appeared on calls and demonstrated engagement? Secondhand mentions do not count. Direct appearance is the strongest signal.',
+    description: 'Has someone with budget authority engaged? Scored progressively: Direct-Active (full credit) > Direct-Passive > Champion-Relayed > Secondhand-Vague > No evidence.',
+    expectedFrom: 'Stage 4+',
   },
   {
     component: 'Urgency & Compelling Event',
     weight: 10,
     source: 'Agents 4, 7, 8, 9',
     description: 'Is there a real catalyst forcing a decision? Existential (fraud spike) > Structural (platform migration) > Cosmetic (exploratory RFP). No catalyst = buyer can always delay.',
+    expectedFrom: 'Stage 4+',
   },
   {
     component: 'Stage Appropriateness',
     weight: 9,
     source: 'Agent 1 (Stage)',
     description: 'Is the deal progressing through stages as expected? Detects stage regression (e.g. pricing renegotiation in a late-stage deal) and stalls.',
+    expectedFrom: 'All stages',
   },
   {
     component: 'Multi-threading & Stakeholder Coverage',
     weight: 7,
     source: 'Agent 2 (Relationship)',
     description: 'Are multiple departments engaged (Payments, Fraud, Finance, IT, Legal, Procurement)? Is the deal single-threaded through one contact or properly multi-threaded?',
+    expectedFrom: 'Stage 3+',
   },
   {
     component: 'Competitive Position',
     weight: 7,
     source: 'Agent 8 (Competitive)',
     description: 'What is the buyer replacing? How attached are they to the status quo? Is there a no-decision risk? Tracks competitor mentions, displacement barriers, and catalyst strength.',
+    expectedFrom: 'Stage 3+',
   },
   {
     component: 'Technical Path Clarity',
     weight: 6,
     source: 'Agent 5 (Technical)',
     description: 'Is the integration technically feasible? Are technical stakeholders engaged? Tracks platform/stack details, POC progress, and technical blockers.',
+    expectedFrom: 'Stage 5+',
   },
 ];
 
 function HealthScoreSection() {
   return (
     <Section id="health-score" title="Health Score System" icon={Brain}>
+      {/* Scoring Philosophy */}
+      <Card className="border-l-4 border-l-primary">
+        <CardContent className="pt-4 text-sm text-muted-foreground space-y-2">
+          <p className="font-medium text-foreground">Scoring Philosophy</p>
+          <p>
+            The Health Score measures deal <strong>quality at its current stage</strong> &mdash; not progress through the pipeline.
+            A Stage 1 deal with excellent discovery, clear next steps, and strong buyer engagement is Healthy.
+            A Stage 5 deal missing basic qualification signals Needs Attention.
+            Each deal is evaluated against what&apos;s expected at its stage, using evidence from call transcripts.
+          </p>
+        </CardContent>
+      </Card>
+
       <p className="text-sm text-muted-foreground">
-        The health score is a weighted composite of 10 components, each derived from specialized agent analysis.
-        Total weights sum to 100. Each component is scored 0&ndash;100% of its max weight based on evidence strength.
+        The health score is a weighted composite of 10 components (11 for expansion deals), each derived from specialized agent analysis.
+        Total weights sum to 100. Components are scored based on evidence strength, with stage-aware baselines for missing evidence.
       </p>
 
       <Card>
@@ -427,9 +450,10 @@ function HealthScoreSection() {
             <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[28%] whitespace-normal">Component</TableHead>
-                  <TableHead className="w-[7%] text-right whitespace-normal">Wt.</TableHead>
-                  <TableHead className="w-[18%] whitespace-normal">Source Agent(s)</TableHead>
+                  <TableHead className="w-[24%] whitespace-normal">Component</TableHead>
+                  <TableHead className="w-[6%] text-right whitespace-normal">Wt.</TableHead>
+                  <TableHead className="w-[10%] whitespace-normal">Expected From</TableHead>
+                  <TableHead className="w-[15%] whitespace-normal">Source Agent(s)</TableHead>
                   <TableHead className="whitespace-normal">What it measures</TableHead>
                 </TableRow>
               </TableHeader>
@@ -438,6 +462,11 @@ function HealthScoreSection() {
                   <TableRow key={row.component}>
                     <TableCell className="text-xs font-medium align-top whitespace-normal break-words">{row.component}</TableCell>
                     <TableCell className="text-xs text-right tabular-nums font-semibold align-top">{row.weight}%</TableCell>
+                    <TableCell className="text-xs align-top whitespace-normal">
+                      <Badge variant={row.expectedFrom === 'All stages' ? 'secondary' : 'outline'} className="text-[10px]">
+                        {row.expectedFrom}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground align-top whitespace-normal break-words">{row.source}</TableCell>
                     <TableCell className="text-xs text-muted-foreground align-top whitespace-normal break-words">{row.description}</TableCell>
                   </TableRow>
@@ -452,15 +481,15 @@ function HealthScoreSection() {
         <Card>
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Champion absent ceiling</p>
-            <p className="text-2xl font-bold tabular-nums">65</p>
-            <p className="text-xs text-muted-foreground mt-1">Max health score when no champion identified</p>
+            <p className="text-2xl font-bold tabular-nums">75 <span className="text-sm font-normal text-muted-foreground">at S3+</span></p>
+            <p className="text-xs text-muted-foreground mt-1">Max health score when no champion identified (Stage 3+). No cap at Stage 1-2.</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">EB absent ceiling</p>
-            <p className="text-2xl font-bold tabular-nums">70</p>
-            <p className="text-xs text-muted-foreground mt-1">Max health score when Economic Buyer never appeared on calls</p>
+            <p className="text-2xl font-bold tabular-nums">80 <span className="text-sm font-normal text-muted-foreground">at S4+</span></p>
+            <p className="text-xs text-muted-foreground mt-1">Max health score when no EB engagement (Stage 4+). No cap at Stage 1-3.</p>
           </CardContent>
         </Card>
         <Card>
@@ -490,6 +519,240 @@ function HealthScoreSection() {
             <li>Strained/Critical relationship caps health at 60</li>
             <li>Commit requires Strong or Adequate relationship status</li>
           </ul>
+        </CardContent>
+      </Card>
+
+      {/* Stage-Aware Baselines */}
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Stage-Aware Baselines</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Not all components matter equally at every stage. When a component isn&apos;t expected yet
+            (e.g., Economic Buyer at Stage 1), missing evidence receives a <strong>neutral midpoint score</strong> &mdash;
+            not a penalty. When a component IS expected and evidence is missing, that&apos;s a real gap.
+          </p>
+
+          <div className="overflow-x-auto">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40%] whitespace-normal">Scenario</TableHead>
+                  <TableHead className="whitespace-normal">Score</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="text-xs align-top whitespace-normal">Evidence present (positive)</TableCell>
+                  <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">Scored on merit (full range)</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-xs align-top whitespace-normal">Evidence present (negative)</TableCell>
+                  <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">Scored on merit (low range)</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-xs align-top whitespace-normal">Evidence missing &mdash; component expected at this stage</TableCell>
+                  <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">Low (1-2 pts, ~10-18% of max)</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-xs align-top whitespace-normal">Evidence missing &mdash; component NOT expected at this stage</TableCell>
+                  <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">Neutral midpoint (see table below)</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
+          <p className="text-xs font-medium text-foreground mt-3">Neutral midpoint scores by component:</p>
+          <div className="overflow-x-auto">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[45%] whitespace-normal">Component (Max)</TableHead>
+                  <TableHead className="w-[20%] text-center whitespace-normal">Neutral Score</TableHead>
+                  <TableHead className="whitespace-normal">Expected At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  { name: 'Champion (12)', neutral: '5', expected: 'Stage 3+' },
+                  { name: 'Commitment (11)', neutral: '5', expected: 'Stage 5+' },
+                  { name: 'Economic Buyer (11)', neutral: '4', expected: 'Stage 4+' },
+                  { name: 'Urgency (10)', neutral: '4', expected: 'Stage 4+' },
+                  { name: 'Multi-threading (7)', neutral: '3', expected: 'Stage 3+' },
+                  { name: 'Competitive (7)', neutral: '3', expected: 'Stage 3+' },
+                  { name: 'Technical Path (6)', neutral: '3', expected: 'Stage 5+' },
+                ].map((row) => (
+                  <TableRow key={row.name}>
+                    <TableCell className="text-xs align-top whitespace-normal">{row.name}</TableCell>
+                    <TableCell className="text-xs text-center font-semibold tabular-nums align-top">{row.neutral}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">{row.expected}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-xs text-muted-foreground italic">
+            Components always expected (Pain, Momentum, Stage Fit, Account Health) have no neutral baseline &mdash;
+            they are scored on merit or penalized when missing at any stage.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Stage-Aware Health Points Matrix */}
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Stage-Aware Health Points &mdash; Missing Evidence Impact</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            This matrix shows how each component is scored <strong>when evidence is missing</strong> at each deal stage.
+            When evidence IS present (positive or negative), the component is always scored on merit regardless of stage.
+          </p>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded bg-emerald-500/15 border border-emerald-500/30" />
+              Neutral &mdash; not expected yet, no penalty
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded bg-red-500/15 border border-red-500/30" />
+              Gap &mdash; expected at this stage, penalized
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[28%] whitespace-normal">Component (Max)</TableHead>
+                  <TableHead className="text-center whitespace-normal">S1</TableHead>
+                  <TableHead className="text-center whitespace-normal">S2</TableHead>
+                  <TableHead className="text-center whitespace-normal">S3</TableHead>
+                  <TableHead className="text-center whitespace-normal">S4</TableHead>
+                  <TableHead className="text-center whitespace-normal">S5</TableHead>
+                  <TableHead className="text-center whitespace-normal">S6</TableHead>
+                  <TableHead className="text-center whitespace-normal">S7</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  { name: 'Pain & Commercial (14)', expectedAt: 1, neutral: null },
+                  { name: 'Momentum (13)', expectedAt: 1, neutral: null },
+                  { name: 'Champion (12)', expectedAt: 3, neutral: 5 },
+                  { name: 'Commitment (11)', expectedAt: 5, neutral: 5 },
+                  { name: 'Economic Buyer (11)', expectedAt: 4, neutral: 4 },
+                  { name: 'Urgency (10)', expectedAt: 4, neutral: 4 },
+                  { name: 'Stage Fit (9)', expectedAt: 1, neutral: null },
+                  { name: 'Multi-threading (7)', expectedAt: 3, neutral: 3 },
+                  { name: 'Competitive (7)', expectedAt: 3, neutral: 3 },
+                  { name: 'Technical Path (6)', expectedAt: 5, neutral: 3 },
+                ].map((row) => (
+                  <TableRow key={row.name}>
+                    <TableCell className="text-xs font-medium align-top whitespace-normal">{row.name}</TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7].map((stage) => {
+                      const isExpected = stage >= row.expectedAt;
+                      const label = isExpected ? '1-2' : String(row.neutral);
+                      return (
+                        <TableCell key={stage} className="text-center align-top p-1.5">
+                          <span className={cn(
+                            'inline-flex items-center justify-center h-7 w-full rounded text-xs font-semibold tabular-nums',
+                            isExpected
+                              ? 'bg-red-500/10 text-red-700 dark:text-red-400'
+                              : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                          )}>
+                            {label}
+                          </span>
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-xs text-muted-foreground italic">
+            Green cells: component not yet expected &mdash; missing evidence scores at a neutral midpoint (no penalty).
+            Red cells: component expected at this stage &mdash; missing evidence scores 1-2 points (~10-18% of max).
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Health Tiers */}
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Health Tiers</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="overflow-x-auto">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[20%] whitespace-normal">Tier</TableHead>
+                  <TableHead className="w-[15%] whitespace-normal">Range</TableHead>
+                  <TableHead className="whitespace-normal">Meaning</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="text-xs font-medium align-top">
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Healthy</span>
+                  </TableCell>
+                  <TableCell className="text-xs tabular-nums align-top">70 &ndash; 100</TableCell>
+                  <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">Deal shows strong signals for its current stage</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-xs font-medium align-top">
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Neutral</span>
+                  </TableCell>
+                  <TableCell className="text-xs tabular-nums align-top">40 &ndash; 69</TableCell>
+                  <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">Deal is progressing normally; some areas need development</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-xs font-medium align-top">
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Needs Attention</span>
+                  </TableCell>
+                  <TableCell className="text-xs tabular-nums align-top">0 &ndash; 39</TableCell>
+                  <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">Significant gaps or risks identified that require action</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Methodology Foundations */}
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Methodology Foundations</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            The SIS scoring system draws from five established sales methodologies:
+          </p>
+          <div className="overflow-x-auto">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[25%] whitespace-normal">Framework</TableHead>
+                  <TableHead className="whitespace-normal">How It Informs SIS</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  { fw: 'MEDDIC/MEDDPICC', impact: 'Economic Buyer and Champion identification as progressive discovery, not binary checkboxes' },
+                  { fw: 'Challenger Sale', impact: 'Seller-initiated engagement valued as teaching moments, not penalized' },
+                  { fw: 'SPICED', impact: 'Stage-appropriate pain and impact expectations' },
+                  { fw: 'Sandler Pain Funnel', impact: 'Champion signals recognized through observable behavior (intros, follow-ups, "we" language)' },
+                  { fw: 'Force Management', impact: 'Competitive and technical validation as late-stage activities' },
+                ].map((row) => (
+                  <TableRow key={row.fw}>
+                    <TableCell className="text-xs font-medium align-top whitespace-normal">{row.fw}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground align-top whitespace-normal">{row.impact}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </Section>
@@ -686,10 +949,10 @@ const FORECAST_CATEGORIES = [
   },
   {
     category: 'Upside',
-    healthRange: '45 – 54',
+    healthRange: '40 – 54',
     color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
     criteria: [
-      'Health score between 45 and 54',
+      'Health score between 40 and 54',
       'Active deal but significant unknowns',
       'Could accelerate with right actions',
       'Missing key elements (champion, EB, or MSP)',
@@ -698,10 +961,10 @@ const FORECAST_CATEGORIES = [
   },
   {
     category: 'At Risk',
-    healthRange: '< 45',
+    healthRange: '< 40',
     color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     criteria: [
-      'Health score below 45, OR any of:',
+      'Health score below 40, OR any of:',
       'Deal gone dark / no response in 3+ weeks',
       'Champion departed or reorganized',
       'Budget frozen or redirected',
@@ -989,14 +1252,14 @@ function AgentsSection() {
 const NEVER_RULES = [
   {
     id: 'NEVER_HEALTH_WITHOUT_EB',
-    rule: 'Health > 70 requires direct Economic Buyer engagement',
-    description: 'If the synthesis health score exceeds 70, Agent 6 must show direct EB engagement (not just secondhand mentions like "my CFO likes this"). The EB must have appeared on at least one call.',
+    rule: 'Health > 80 requires EB engagement (Stage 4+)',
+    description: 'At Stage 4 or later, if the synthesis health score exceeds 80, Agent 6 must show direct or champion-relayed EB engagement. Per MEDDIC, budget authority must be identified before late-stage commitment. Does NOT fire at Stage 1-3.',
     agent: 'Agent 6 / Agent 10',
   },
   {
     id: 'NEVER_HEALTH_WITHOUT_CHAMPION',
-    rule: 'Health > 65 requires a champion identified',
-    description: 'If the synthesis health score exceeds 65, Agent 2 must confirm a champion is identified with advocacy behavior evidence. A deal without a champion is unforecastable.',
+    rule: 'Health > 75 requires a champion identified (Stage 3+)',
+    description: 'At Stage 3 or later, if the synthesis health score exceeds 75, Agent 2 must confirm a champion is identified. Per Sandler/MEDDIC, internal advocates are critical for deal progression. Does NOT fire at Stage 1-2.',
     agent: 'Agent 2 / Agent 10',
   },
   {
@@ -1018,9 +1281,9 @@ const NEVER_RULES = [
     agent: 'Agent 3',
   },
   {
-    id: 'NEVER_NO_ADVERSARIAL_CHALLENGES',
-    rule: 'Agent 9 must produce at least 1 adversarial challenge',
-    description: 'The Open Discovery / Adversarial Validator must raise at least one challenge to upstream agent conclusions. Every deal has at least one finding that deserves scrutiny.',
+    id: 'EVIDENCE_BASED_CHALLENGES',
+    rule: 'Agent 9 challenges must be evidence-based',
+    description: 'The Open Discovery / Adversarial Validator produces challenges ONLY when transcript evidence supports them. Manufactured challenges are not permitted — if the deal evidence is genuinely strong, Agent 9 states that clearly.',
     agent: 'Agent 9',
   },
   {

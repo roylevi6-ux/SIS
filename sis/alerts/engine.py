@@ -4,7 +4,7 @@ Detects:
   - score_drop: health_score dropped > SCORE_DROP_ALERT_THRESHOLD
   - forecast_flip: ai_forecast_category changed between runs
   - stale_call: no transcript in > STALE_CALL_DAYS_THRESHOLD days
-  - new_critical: health_score went below 45
+  - new_needs_attention: health_score went below 40
 """
 
 from __future__ import annotations
@@ -58,14 +58,14 @@ def check_alerts() -> list[dict]:
                 })
 
             if len(assessments) < 2:
-                # Check new_critical on single assessment
-                if assessments and assessments[0].health_score < 45:
+                # Check needs_attention on single assessment
+                if assessments and assessments[0].health_score < 40:
                     alerts.append({
-                        "type": "new_critical",
+                        "type": "new_needs_attention",
                         "account_id": acct.id,
                         "account_name": acct.account_name,
                         "severity": "critical",
-                        "details": f"Health score is {assessments[0].health_score} (critical threshold: 45)",
+                        "details": f"Health score is {assessments[0].health_score} (needs attention threshold: 40)",
                     })
                 continue
 
@@ -98,15 +98,15 @@ def check_alerts() -> list[dict]:
                     ),
                 })
 
-            # New critical (crossed below 45)
-            if latest.health_score < 45 and previous.health_score >= 45:
+            # New needs_attention (crossed below 40)
+            if latest.health_score < 40 and previous.health_score >= 40:
                 alerts.append({
-                    "type": "new_critical",
+                    "type": "new_needs_attention",
                     "account_id": acct.id,
                     "account_name": acct.account_name,
                     "severity": "critical",
                     "details": (
-                        f"Entered critical zone: {previous.health_score} -> {latest.health_score}"
+                        f"Entered needs attention zone: {previous.health_score} -> {latest.health_score}"
                     ),
                 })
 

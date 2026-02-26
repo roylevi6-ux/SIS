@@ -74,11 +74,11 @@ function DistributionBar({ forecast }: { forecast: ForecastBreakdown }) {
 
 export function NumberLine({ quota, pipeline, forecast }: NumberLineProps) {
   const gapSign = pipeline.gap >= 0 ? '+' : '';
-  const gapColor = pipeline.gap >= 0 ? 'text-healthy' : 'text-critical';
+  const gapColor = pipeline.gap >= 0 ? 'text-healthy' : 'text-needs-attention';
   const coverageColor =
     pipeline.coverage >= 3 ? 'text-healthy' :
-    pipeline.coverage >= 2 ? 'text-at-risk' :
-    'text-critical';
+    pipeline.coverage >= 2 ? 'text-neutral' :
+    'text-needs-attention';
 
   return (
     <div className="rounded-xl border bg-brand-50/50 p-5 space-y-4">

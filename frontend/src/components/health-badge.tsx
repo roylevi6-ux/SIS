@@ -13,10 +13,10 @@ function getHealthTier(score: number | null) {
   if (score >= 70) {
     return { label: String(score), colorClass: 'bg-healthy-light text-healthy dark:bg-emerald-950 dark:text-emerald-400' };
   }
-  if (score >= 45) {
-    return { label: String(score), colorClass: 'bg-at-risk-light text-at-risk dark:bg-amber-950 dark:text-amber-400' };
+  if (score >= 40) {
+    return { label: String(score), colorClass: 'bg-neutral-light text-neutral dark:bg-amber-950 dark:text-amber-400' };
   }
-  return { label: String(score), colorClass: 'bg-critical-light text-critical dark:bg-red-950 dark:text-red-400' };
+  return { label: String(score), colorClass: 'bg-needs-attention-light text-needs-attention dark:bg-red-950 dark:text-red-400' };
 }
 
 export function HealthBadge({ score, className }: HealthBadgeProps) {

@@ -35,12 +35,12 @@ class PipelineSummary(BaseModel):
     """Aggregate counts and MRR totals for pipeline buckets."""
 
     healthy_count: int
-    at_risk_count: int
-    critical_count: int
+    neutral_count: int
+    needs_attention_count: int
     unscored_count: int
     total_mrr_healthy: float
-    total_mrr_at_risk: float
-    total_mrr_critical: float
+    total_mrr_neutral: float
+    total_mrr_needs_attention: float
 
 
 class PipelineOverviewResponse(BaseModel):
@@ -48,8 +48,8 @@ class PipelineOverviewResponse(BaseModel):
 
     total_deals: int
     healthy: List[PipelineDeal] = []
-    at_risk: List[PipelineDeal] = []
-    critical: List[PipelineDeal] = []
+    neutral: List[PipelineDeal] = []
+    needs_attention: List[PipelineDeal] = []
     unscored: List[PipelineDeal] = []
     summary: PipelineSummary
 
@@ -82,8 +82,8 @@ class TeamRollupItem(BaseModel):
     scored_deals: int
     avg_health_score: Optional[float] = None
     healthy_count: int
-    at_risk_count: int
-    critical_count: int
+    neutral_count: int
+    needs_attention_count: int
     total_mrr: float
     divergent_count: int
 

@@ -39,10 +39,10 @@ export function DealHealthTab({ weeks }: { weeks: number }) {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Deals in Critical</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Deals Needing Attention</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-red-500">{latest.critical}</p>
+            <p className="text-2xl font-bold text-red-500">{latest.needs_attention}</p>
           </CardContent>
         </Card>
         <Card>
@@ -71,8 +71,8 @@ export function DealHealthTab({ weeks }: { weeks: number }) {
               <YAxis className="text-xs" />
               <Tooltip />
               <Area type="monotone" dataKey="healthy" stackId="1" fill="#22c55e" stroke="#22c55e" isAnimationActive={false} />
-              <Area type="monotone" dataKey="at_risk" stackId="1" fill="#f59e0b" stroke="#f59e0b" isAnimationActive={false} />
-              <Area type="monotone" dataKey="critical" stackId="1" fill="#ef4444" stroke="#ef4444" isAnimationActive={false} />
+              <Area type="monotone" dataKey="neutral" stackId="1" fill="#f59e0b" stroke="#f59e0b" isAnimationActive={false} />
+              <Area type="monotone" dataKey="needs_attention" stackId="1" fill="#ef4444" stroke="#ef4444" isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         </CardContent>

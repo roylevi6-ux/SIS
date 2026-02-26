@@ -45,7 +45,7 @@ interface RadarDataItem {
 // ---------------------------------------------------------------------------
 
 const ZONE_HEALTHY = 70;
-const ZONE_AT_RISK = 45;
+const ZONE_NEUTRAL = 40;
 
 const COLOR_HEALTHY = '#059669';
 const COLOR_AT_RISK = '#d97706';
@@ -99,30 +99,30 @@ function normalizeKey(key: string): string {
 // Health zone helpers
 // ---------------------------------------------------------------------------
 
-function getZone(score: number): 'healthy' | 'at-risk' | 'critical' {
+function getZone(score: number): 'healthy' | 'neutral' | 'needs-attention' {
   if (score >= ZONE_HEALTHY) return 'healthy';
-  if (score >= ZONE_AT_RISK) return 'at-risk';
-  return 'critical';
+  if (score >= ZONE_NEUTRAL) return 'neutral';
+  return 'needs-attention';
 }
 
 function getZoneColor(score: number): string {
   if (score >= ZONE_HEALTHY) return COLOR_HEALTHY;
-  if (score >= ZONE_AT_RISK) return COLOR_AT_RISK;
+  if (score >= ZONE_NEUTRAL) return COLOR_AT_RISK;
   return COLOR_CRITICAL;
 }
 
-const ZONE_LABEL: Record<'healthy' | 'at-risk' | 'critical', string> = {
+const ZONE_LABEL: Record<'healthy' | 'neutral' | 'needs-attention', string> = {
   healthy: 'Healthy',
-  'at-risk': 'At Risk',
-  critical: 'Critical',
+  neutral: 'Neutral',
+  'needs-attention': 'Needs Attention',
 };
 
-const ZONE_BADGE_CLASS: Record<'healthy' | 'at-risk' | 'critical', string> = {
+const ZONE_BADGE_CLASS: Record<'healthy' | 'neutral' | 'needs-attention', string> = {
   healthy:
     'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800',
-  'at-risk':
+  neutral:
     'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800',
-  critical:
+  'needs-attention':
     'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800',
 };
 
@@ -359,10 +359,10 @@ function SimpleTooltip({
 
 function WeaknessPanel({ data }: { data: RadarDataItem[] }) {
   const critical = data
-    .filter((d) => d.score < ZONE_AT_RISK)
+    .filter((d) => d.score < ZONE_NEUTRAL)
     .sort((a, b) => a.score - b.score);
   const atRisk = data
-    .filter((d) => d.score >= ZONE_AT_RISK && d.score < ZONE_HEALTHY)
+    .filter((d) => d.score >= ZONE_NEUTRAL && d.score < ZONE_HEALTHY)
     .sort((a, b) => a.score - b.score);
 
   if (critical.length === 0 && atRisk.length === 0) return null;
@@ -421,8 +421,8 @@ function ZoneLegend() {
     <div className="flex items-center gap-4 text-[11px] text-muted-foreground whitespace-nowrap">
       {(
         [
-          { color: COLOR_CRITICAL, label: 'Critical <45' },
-          { color: COLOR_AT_RISK, label: 'At Risk 45\u201369' },
+          { color: COLOR_CRITICAL, label: 'Needs Attention <40' },
+          { color: COLOR_AT_RISK, label: 'Neutral 40\u201369' },
           { color: COLOR_HEALTHY, label: 'Healthy 70+' },
         ] as const
       ).map(({ color, label }) => (

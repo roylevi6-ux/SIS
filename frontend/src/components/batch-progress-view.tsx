@@ -327,25 +327,23 @@ export function BatchProgressView({
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-base">{headerTitle}</CardTitle>
 
-          {/* Terminal summary stats + new batch button */}
-          {isTerminal && (
-            <div className="flex items-center gap-4 text-xs text-muted-foreground tabular-nums shrink-0">
-              {totalElapsed > 0 && (
-                <span>{formatElapsed(totalElapsed)}</span>
-              )}
-              {totalCost > 0 && (
-                <span>{formatCost(totalCost)} total</span>
-              )}
-              {batch.failed_count > 0 && (
-                <span className="text-destructive">
-                  {batch.failed_count} failed
-                </span>
-              )}
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleDismiss}>
-                New Batch
-              </Button>
-            </div>
-          )}
+          {/* Summary stats + dismiss button */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground tabular-nums shrink-0">
+            {isTerminal && totalElapsed > 0 && (
+              <span>{formatElapsed(totalElapsed)}</span>
+            )}
+            {isTerminal && totalCost > 0 && (
+              <span>{formatCost(totalCost)} total</span>
+            )}
+            {batch.failed_count > 0 && (
+              <span className="text-destructive">
+                {batch.failed_count} failed
+              </span>
+            )}
+            <Button size="sm" variant={isTerminal ? "outline" : "ghost"} className="h-7 text-xs" onClick={handleDismiss}>
+              {isTerminal ? 'New Batch' : 'Cancel'}
+            </Button>
+          </div>
         </div>
 
         <Progress value={progressPct} className="h-2 mt-2" />

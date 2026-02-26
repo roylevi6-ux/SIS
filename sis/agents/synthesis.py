@@ -334,12 +334,38 @@ Expansion NEVER Rules:
 - NEVER produce health > 60 if Agent 0E account_relationship_health is "Strained" or "Critical"
 - NEVER produce Commit forecast if Agent 0E account_relationship_health is not "Strong" or "Adequate"
 
+## Stage-Aware Baseline Scoring
+The Health Score measures deal QUALITY at its current stage — not progress through the pipeline. A Stage 1 deal with excellent discovery, clear next steps, and strong buyer engagement CAN score 90+. No stage ceilings.
+
+**How to score each component:**
+- **Evidence present (positive or negative)** → Score on merit using the full range, regardless of stage.
+- **Evidence missing + component expected at this stage** → Low score (1-2 points, ≈10-18% of max). This is a real gap.
+- **Evidence missing + component NOT expected at this stage** → Assign the neutral midpoint score from the table below. This is NOT a penalty.
+
+**Neutral midpoint scores (use ONLY when evidence is missing AND component is not yet expected):**
+
+| Component (Max)                              | Neutral Score | Expected At |
+|----------------------------------------------|---------------|-------------|
+| Buyer-validated pain & commercial clarity (14)| —             | Always      |
+| Momentum quality (13)                        | —             | Always      |
+| Champion strength (12)                       | 5             | S3+         |
+| Commitment quality (11)                      | 5             | S5+         |
+| Economic buyer engagement (11)               | 4             | S4+         |
+| Urgency & Compelling Event (10)              | 4             | S4+         |
+| Stage appropriateness (9)                    | —             | Always      |
+| Multi-threading & stakeholder coverage (7)   | 3             | S3+         |
+| Competitive position (7)                     | 3             | S3+         |
+| Technical path clarity (6)                   | 3             | S5+         |
+| Account relationship health (13, expansion)  | —             | Always      |
+
+Components marked "Always" have no neutral baseline — they are expected at every stage and scored on merit or penalized when missing.
+
 ## NEVER Rules
-- NEVER produce health score >70 if EB (Agent 6) has never appeared on calls
-- NEVER produce health score >65 if no champion has been identified (Agent 2 champion.identified=false). A deal without a champion is unforecastable regardless of other signals.
+- NEVER produce health score >80 when NO direct or champion-relayed Economic Buyer engagement AND deal is Stage 4 or later.
+- NEVER produce health score >75 when NO champion identified (Agent 2 champion.identified=false) AND deal is Stage 3 or later.
 - NEVER produce Commit forecast without Level 3+ commitments (Agent 7) and MSP. See Commitment Levels definition above for what constitutes Level 3+.
 - NEVER leave contradictions unresolved. Every contradiction must have a resolution.
-- NEVER ignore Agent 9's adversarial challenges. Address each one in your deal memo.
+- Address Agent 9's adversarial challenges in your deal memo when they are evidence-based.
 
 ## Forecast Categories
 
@@ -347,8 +373,8 @@ Expansion NEVER Rules:
 |----------|----------|
 | Commit | Health >=75, verbal/pricing agreement secured, MSP exists, EB engaged, strong commitments. Deal would close even if the AE left tomorrow. |
 | Realistic | Health 55-74, positive or stable momentum, deal progressing through stages, manageable gaps. No one would be surprised if this closes. |
-| Upside | Health 45-54, active deal but significant unknowns, could accelerate with right actions. Long shot — no one would be surprised if we lose this. |
-| At Risk | Health <45, OR any of: deal gone dark / no response in 3+ weeks, champion departed or reorganized, budget frozen or redirected, stuck in same stage 2+ quarters, competitor emerged in late stage, integration/legal blocked with no clear path, OR high no-decision risk (Agent 8 no_decision_risk=High with catalyst_strength=Cosmetic/None). |
+| Upside | Health 40-54, active deal but significant unknowns, could accelerate with right actions. Long shot — no one would be surprised if we lose this. |
+| At Risk | Health <40, OR any of: deal gone dark / no response in 3+ weeks, champion departed or reorganized, budget frozen or redirected, stuck in same stage 2+ quarters, competitor emerged in late stage, integration/legal blocked with no clear path, OR high no-decision risk (Agent 8 no_decision_risk=High with catalyst_strength=Cosmetic/None). |
 
 ## Forecast Override Rules
 1. **No-Decision Risk Override**: If Agent 8 reports no_decision_risk=High AND catalyst_strength is "Cosmetic" or "None Identified", classify as "At Risk" regardless of health score. A deal with health 65 but high no-decision risk is NOT "Realistic" — the buyer may never act.
@@ -402,9 +428,12 @@ def build_call(
     parts = []
     parts.append("## STAGE CONTEXT (from Agent 1)")
     if stage_context:
-        parts.append(f"Inferred stage: {stage_context.get('inferred_stage')} -- {stage_context.get('stage_name')}")
+        inferred_stage = stage_context.get('inferred_stage')
+        parts.append(f"Inferred stage: {inferred_stage} -- {stage_context.get('stage_name')}")
+        parts.append(f"current_stage: S{inferred_stage}")
     else:
         parts.append("Stage context unavailable (Agent 1 failed). Infer stage from other agent outputs.")
+        parts.append("current_stage: unknown (use your best estimate from agent outputs)")
     parts.append("")
 
     parts.append("## ALL AGENT OUTPUTS (Agents 1-9, findings + confidence only)")

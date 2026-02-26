@@ -13,7 +13,7 @@ global:
 
 new_logo:
   agent_6_economic_buyer:
-    eb_absence_health_ceiling: 70     # max health score if EB never appeared
+    eb_absence_health_ceiling: 80     # max health score if EB never appeared (stage-gated: S4+)
     secondhand_mention_counts_as_engaged: false
 
   synthesis_agent_10:
@@ -28,9 +28,18 @@ new_logo:
       multithreading_stakeholder_coverage: 7  # split from stakeholder_completeness
       competitive_position: 7
       technical_path_clarity: 6
-    champion_absence_health_ceiling: 65
+    champion_absence_health_ceiling: 75
     forecast_commit_minimum_health: 75
-    forecast_at_risk_maximum_health: 45
+    forecast_at_risk_maximum_health: 40
+
+  never_rule_stage_gates:
+    eb_absence_health_ceiling:
+      ceiling: 80
+      min_stage: 4                     # only fires at S4+
+    champion_absence_health_ceiling:
+      ceiling: 75
+      min_stage: 3                     # only fires at S3+
+    adversarial_challenge_required: false
 
 expansion:
   agent_0e_account_health:
@@ -53,7 +62,7 @@ expansion:
       multithreading_stakeholder_coverage: 7
       competitive_position: 4
       technical_path_clarity: 9
-    champion_absence_health_ceiling: 65
+    champion_absence_health_ceiling: 75
     forecast_commit_minimum_health: 65
     forecast_at_risk_maximum_health: 40
 

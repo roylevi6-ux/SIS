@@ -44,12 +44,12 @@ export function PipelineChanges({ changes }: PipelineChangesProps) {
         This week
       </span>
       <Metric label="added" value={`+${formatDollar(changes.added)}`} icon={TrendingUp} colorClass="text-healthy" />
-      <Metric label="dropped" value={`-${formatDollar(changes.dropped)}`} icon={TrendingDown} colorClass="text-critical" />
+      <Metric label="dropped" value={`-${formatDollar(changes.dropped)}`} icon={TrendingDown} colorClass="text-needs-attention" />
       <Metric
         label="net"
         value={`${changes.net >= 0 ? '+' : ''}${formatDollar(changes.net)}`}
         icon={ArrowRight}
-        colorClass={changes.net >= 0 ? 'text-healthy' : 'text-critical'}
+        colorClass={changes.net >= 0 ? 'text-healthy' : 'text-needs-attention'}
       />
       <span className="text-border">|</span>
       <span className="text-xs text-muted-foreground">

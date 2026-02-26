@@ -13,10 +13,10 @@
   /* SIS brand: health tier colors */
   --color-healthy: #059669;
   --color-healthy-light: #d1fae5;
-  --color-at-risk: #d97706;
-  --color-at-risk-light: #fef3c7;
-  --color-critical: #dc2626;
-  --color-critical-light: #fee2e2;
+  --color-neutral: #d97706;
+  --color-neutral-light: #fef3c7;
+  --color-needs-attention: #dc2626;
+  --color-needs-attention-light: #fee2e2;
 
   /* SIS brand: momentum colors */
   --color-improving: #059669;
