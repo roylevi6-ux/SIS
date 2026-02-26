@@ -64,8 +64,8 @@ class TestAlertEngine:
     def test_check_alerts_new_critical(self, seeded_db, mock_get_session):
         from sis.alerts.engine import check_alerts
         alerts = check_alerts()
-        critical = [a for a in alerts if a["type"] == "new_critical"]
-        # CriticalInc has health 35 < 45, with single assessment → should trigger
+        critical = [a for a in alerts if a["type"] == "new_needs_attention"]
+        # CriticalInc has health 35 < 40, with single assessment → should trigger
         assert len(critical) >= 1
 
 

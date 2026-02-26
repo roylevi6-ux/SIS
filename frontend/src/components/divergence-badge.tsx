@@ -24,7 +24,7 @@ export function DivergenceBadge({ divergence, explanation, className }: Divergen
         <TooltipTrigger asChild>
           <span
             className={cn(
-              'inline-flex items-center gap-1 text-sm font-medium text-at-risk cursor-default',
+              'inline-flex items-center gap-1 text-sm font-medium text-neutral cursor-default',
               className,
             )}
           >

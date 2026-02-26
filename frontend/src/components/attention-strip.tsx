@@ -33,13 +33,13 @@ export function AttentionStrip({ items }: AttentionStripProps) {
   const totalAtRisk = items.reduce((sum, i) => sum + i.cp_estimate, 0);
 
   return (
-    <div className="rounded-lg border-l-4 border-l-at-risk border bg-card">
+    <div className="rounded-lg border-l-4 border-l-neutral border bg-card">
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <AlertTriangle className="size-4 text-at-risk" />
+          <AlertTriangle className="size-4 text-neutral" />
           <span className="text-sm font-semibold">
             {items.length} {items.length === 1 ? 'deal needs' : 'deals need'} attention
           </span>

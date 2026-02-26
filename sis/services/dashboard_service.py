@@ -11,6 +11,18 @@ from sis.db.models import Account, DealAssessment, AnalysisRun, Transcript, User
 from sis.config import STALE_CALL_DAYS_THRESHOLD
 
 
+def _collect_descendant_team_ids(db, team_id: str) -> list[str]:
+    """Return team_id plus all descendant team IDs (recursive BFS)."""
+    result = [team_id]
+    frontier = [team_id]
+    while frontier:
+        children = db.query(Team.id).filter(Team.parent_id.in_(frontier)).all()
+        child_ids = [c.id for c in children]
+        result.extend(child_ids)
+        frontier = child_ids
+    return result
+
+
 def get_pipeline_overview(
     team: Optional[str] = None,
     visible_user_ids: Optional[set[str]] = None,
@@ -94,24 +106,24 @@ def get_pipeline_overview(
 
         # Group by health tier
         healthy = [d for d in deals if d["health_score"] is not None and d["health_score"] >= 70]
-        at_risk = [d for d in deals if d["health_score"] is not None and 45 <= d["health_score"] < 70]
-        critical = [d for d in deals if d["health_score"] is not None and d["health_score"] < 45]
+        neutral = [d for d in deals if d["health_score"] is not None and 40 <= d["health_score"] < 70]
+        needs_attention = [d for d in deals if d["health_score"] is not None and d["health_score"] < 40]
         unscored = [d for d in deals if d["health_score"] is None]
 
         return {
             "total_deals": len(deals),
             "healthy": sorted(healthy, key=lambda d: -d["health_score"]),
-            "at_risk": sorted(at_risk, key=lambda d: -d["health_score"]),
-            "critical": sorted(critical, key=lambda d: -d["health_score"]),
+            "neutral": sorted(neutral, key=lambda d: -d["health_score"]),
+            "needs_attention": sorted(needs_attention, key=lambda d: -d["health_score"]),
             "unscored": unscored,
             "summary": {
                 "healthy_count": len(healthy),
-                "at_risk_count": len(at_risk),
-                "critical_count": len(critical),
+                "neutral_count": len(neutral),
+                "needs_attention_count": len(needs_attention),
                 "unscored_count": len(unscored),
                 "total_mrr_healthy": sum(d["cp_estimate"] or 0 for d in healthy),
-                "total_mrr_at_risk": sum(d["cp_estimate"] or 0 for d in at_risk),
-                "total_mrr_critical": sum(d["cp_estimate"] or 0 for d in critical),
+                "total_mrr_neutral": sum(d["cp_estimate"] or 0 for d in neutral),
+                "total_mrr_needs_attention": sum(d["cp_estimate"] or 0 for d in needs_attention),
             },
         }
 
@@ -202,8 +214,8 @@ def get_team_rollup(
                     if scored else None
                 ),
                 "healthy_count": sum(1 for m in scored if m["assessment"].health_score >= 70),
-                "at_risk_count": sum(1 for m in scored if 45 <= m["assessment"].health_score < 70),
-                "critical_count": sum(1 for m in scored if m["assessment"].health_score < 45),
+                "neutral_count": sum(1 for m in scored if 40 <= m["assessment"].health_score < 70),
+                "needs_attention_count": sum(1 for m in scored if m["assessment"].health_score < 40),
                 "total_mrr": sum(m["account"].cp_estimate or 0 for m in members),
                 "divergent_count": sum(1 for m in scored if m["assessment"].divergence_flag),
             })
@@ -309,8 +321,8 @@ def get_team_rollup_hierarchy(
                     if scored else None
                 ),
                 "healthy_count": sum(1 for d in scored if d["health_score"] >= 70),
-                "at_risk_count": sum(1 for d in scored if 45 <= d["health_score"] < 70),
-                "critical_count": sum(1 for d in scored if d["health_score"] < 45),
+                "neutral_count": sum(1 for d in scored if 40 <= d["health_score"] < 70),
+                "needs_attention_count": sum(1 for d in scored if d["health_score"] < 40),
                 "total_mrr": sum(d["cp_estimate"] or 0 for d in all_deals),
                 "divergent_count": sum(1 for d in scored if d["divergence_flag"]),
                 "reps": [],
@@ -328,20 +340,20 @@ def get_team_rollup_hierarchy(
                         if rep_scored else None
                     ),
                     "healthy_count": sum(1 for d in rep_scored if d["health_score"] >= 70),
-                    "at_risk_count": sum(1 for d in rep_scored if 45 <= d["health_score"] < 70),
-                    "critical_count": sum(1 for d in rep_scored if d["health_score"] < 45),
+                    "neutral_count": sum(1 for d in rep_scored if 40 <= d["health_score"] < 70),
+                    "needs_attention_count": sum(1 for d in rep_scored if d["health_score"] < 40),
                     "total_mrr": sum(d["cp_estimate"] or 0 for d in deals),
                     "deals": deals,
                 }
                 team_entry["reps"].append(rep_entry)
 
-            # Sort reps by critical count DESC
-            team_entry["reps"].sort(key=lambda r: -(r["critical_count"]))
+            # Sort reps by needs_attention count DESC
+            team_entry["reps"].sort(key=lambda r: -(r["needs_attention_count"]))
 
             result.append(team_entry)
 
-        # Sort teams by critical count DESC (risk-first)
-        result.sort(key=lambda t: -(t["critical_count"]))
+        # Sort teams by needs_attention count DESC (risk-first)
+        result.sort(key=lambda t: -(t["needs_attention_count"]))
         return result
 
 
@@ -495,8 +507,7 @@ def get_command_center(
         db: SQLAlchemy session (injected by route via Depends).
         visible_user_ids: Scoping set from JWT — None means admin/gm sees all.
         period: Quota period, e.g. "2026" for annual.
-        quarter: Optional quarter filter, e.g. "Q1". Not yet applied to deals
-                 (placeholder for future close-date filtering).
+        quarter: Optional quarter filter, e.g. "Q1". Filters deals by sf_close_quarter.
         team_id: Optional Team.id filter.
         ae_name: Optional ae_owner string filter.
 
@@ -511,13 +522,18 @@ def get_command_center(
     if visible_user_ids is not None:
         query = query.filter(Account.owner_id.in_(visible_user_ids))
     if team_id is not None:
-        # Filter by accounts whose owner belongs to this team
+        # Collect all descendant team IDs (recursive) so a division filter
+        # includes all child teams' members, not just direct members.
+        all_team_ids = _collect_descendant_team_ids(db, team_id)
         team_user_ids = [
-            u.id for u in db.query(User).filter(User.team_id == team_id).all()
+            u.id for u in db.query(User).filter(User.team_id.in_(all_team_ids)).all()
         ]
         query = query.filter(Account.owner_id.in_(team_user_ids))
     if ae_name is not None:
         query = query.filter(Account.ae_owner == ae_name)
+    if quarter is not None:
+        # Match sf_close_quarter like "Q1 2026" against quarter like "Q1"
+        query = query.filter(Account.sf_close_quarter.like(f"{quarter}%"))
 
     accounts = query.all()
 
@@ -834,7 +850,7 @@ def _compute_weekly_changes(db, accounts: list) -> dict:
             forecast_flips += 1
         cur_health = cur.get("health") or 100
         prev_health = prev.get("health") or 100
-        if cur_health < 45 and prev_health >= 45:
+        if cur_health < 40 and prev_health >= 40:
             new_risks += 1
 
     return {

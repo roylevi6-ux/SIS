@@ -56,7 +56,7 @@ function formatScore(value: number | null): string {
 function healthColor(score: number | null): string {
   if (score === null) return 'text-muted-foreground';
   if (score >= 70) return 'text-emerald-600 dark:text-emerald-400';
-  if (score >= 45) return 'text-amber-600 dark:text-amber-400';
+  if (score >= 40) return 'text-amber-600 dark:text-amber-400';
   return 'text-red-600 dark:text-red-400';
 }
 
@@ -88,8 +88,8 @@ function SkeletonTableRow() {
 
 const CHART_COLORS = {
   healthy: '#059669',
-  at_risk: '#d97706',
-  critical: '#dc2626',
+  neutral: '#d97706',
+  needs_attention: '#dc2626',
 };
 
 // ---------------------------------------------------------------------------
@@ -115,15 +115,15 @@ export default function TeamRollupPage() {
       return items[0].reps.map((rep) => ({
         name: rep.rep_name,
         Healthy: rep.healthy_count,
-        'At Risk': rep.at_risk_count,
-        Critical: rep.critical_count,
+        Neutral: rep.neutral_count,
+        'Needs Attention': rep.needs_attention_count,
       }));
     }
     return items.map((item) => ({
       name: item.team_name,
       Healthy: item.healthy_count,
-      'At Risk': item.at_risk_count,
-      Critical: item.critical_count,
+      Neutral: item.neutral_count,
+      'Needs Attention': item.needs_attention_count,
     }));
   }, [items, team]);
 
@@ -225,8 +225,8 @@ export default function TeamRollupPage() {
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                   <Bar dataKey="Healthy" stackId="a" fill={CHART_COLORS.healthy} isAnimationActive={false} />
-                  <Bar dataKey="At Risk" stackId="a" fill={CHART_COLORS.at_risk} isAnimationActive={false} />
-                  <Bar dataKey="Critical" stackId="a" fill={CHART_COLORS.critical} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Neutral" stackId="a" fill={CHART_COLORS.neutral} isAnimationActive={false} />
+                  <Bar dataKey="Needs Attention" stackId="a" fill={CHART_COLORS.needs_attention} radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -250,8 +250,8 @@ export default function TeamRollupPage() {
                     <TableHead className="text-right">Deals</TableHead>
                     <TableHead className="text-right">Avg Health</TableHead>
                     <TableHead className="text-right text-emerald-600">Healthy</TableHead>
-                    <TableHead className="text-right text-amber-600">At Risk</TableHead>
-                    <TableHead className="text-right text-red-600">Critical</TableHead>
+                    <TableHead className="text-right text-amber-600">Neutral</TableHead>
+                    <TableHead className="text-right text-red-600">Needs Attention</TableHead>
                     <TableHead className="text-right">Total MRR</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -280,7 +280,7 @@ export default function TeamRollupPage() {
                         {/* Team row */}
                         <TableRow
                           className={`cursor-pointer hover:bg-muted/50 font-medium ${
-                            teamItem.critical_count > 0 ? 'border-l-4 border-l-red-500' : ''
+                            teamItem.needs_attention_count > 0 ? 'border-l-4 border-l-red-500' : ''
                           }`}
                           onClick={() => toggleTeam(teamItem.team_name)}
                         >
@@ -309,10 +309,10 @@ export default function TeamRollupPage() {
                             {teamItem.healthy_count}
                           </TableCell>
                           <TableCell className="text-right tabular-nums text-amber-600 dark:text-amber-400">
-                            {teamItem.at_risk_count}
+                            {teamItem.neutral_count}
                           </TableCell>
                           <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">
-                            {teamItem.critical_count}
+                            {teamItem.needs_attention_count}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {formatMrr(teamItem.total_mrr)}
@@ -343,10 +343,10 @@ export default function TeamRollupPage() {
                                   {rep.healthy_count}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums text-sm text-amber-600 dark:text-amber-400">
-                                  {rep.at_risk_count}
+                                  {rep.neutral_count}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums text-sm text-red-600 dark:text-red-400">
-                                  {rep.critical_count}
+                                  {rep.needs_attention_count}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums text-sm">
                                   {formatMrr(rep.total_mrr)}

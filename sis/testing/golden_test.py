@@ -93,15 +93,15 @@ def run_regression_check(current: dict, baseline: dict) -> dict:
     """
     gates = []
 
-    # Gate 1: Health score delta > 10 → FAIL
+    # Gate 1: Health score delta > 15 → FAIL (widened during stage-aware scoring rollout; tighten back to 10 after baseline re-established)
     health_delta = abs(current["health_score"] - baseline["health_score"])
     gates.append({
         "gate": "Health Score Delta",
-        "threshold": "> 10",
+        "threshold": "> 15",
         "actual": health_delta,
         "baseline_value": baseline["health_score"],
         "current_value": current["health_score"],
-        "status": "FAIL" if health_delta > 10 else "PASS",
+        "status": "FAIL" if health_delta > 15 else "PASS",
     })
 
     # Gate 2: Forecast category changed → FAIL

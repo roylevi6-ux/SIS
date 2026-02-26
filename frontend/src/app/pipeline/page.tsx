@@ -70,11 +70,11 @@ function LoadingSkeleton() {
 // Deal filtering logic
 // ---------------------------------------------------------------------------
 
-function healthTier(score: number | null): 'healthy' | 'at_risk' | 'critical' | null {
+function healthTier(score: number | null): 'healthy' | 'neutral' | 'needs_attention' | null {
   if (score === null) return null;
   if (score >= 70) return 'healthy';
-  if (score >= 45) return 'at_risk';
-  return 'critical';
+  if (score >= 40) return 'neutral';
+  return 'needs_attention';
 }
 
 function isStale(deal: PipelineDeal): boolean {
@@ -143,13 +143,13 @@ export default function PipelineCommandCenter() {
 
   // Compute health & flag counts from all deals (before filtering)
   const counts = useMemo(() => {
-    if (!data) return { health: { healthy: 0, at_risk: 0, critical: 0 }, flags: { divergent: 0, stale: 0, declining: 0 } };
+    if (!data) return { health: { healthy: 0, neutral: 0, needs_attention: 0 }, flags: { divergent: 0, stale: 0, declining: 0 } };
     const deals = data.deals;
     return {
       health: {
         healthy: deals.filter((d) => healthTier(d.health_score) === 'healthy').length,
-        at_risk: deals.filter((d) => healthTier(d.health_score) === 'at_risk').length,
-        critical: deals.filter((d) => healthTier(d.health_score) === 'critical').length,
+        neutral: deals.filter((d) => healthTier(d.health_score) === 'neutral').length,
+        needs_attention: deals.filter((d) => healthTier(d.health_score) === 'needs_attention').length,
       },
       flags: {
         divergent: deals.filter((d) => d.divergence_flag).length,

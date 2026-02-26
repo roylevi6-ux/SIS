@@ -275,8 +275,8 @@ def _build_rep_context(accounts: list[dict]) -> str:
 
         # Health tiers
         healthy = sum(1 for d in scored if d["health_score"] >= 70)
-        at_risk = sum(1 for d in scored if 45 <= d["health_score"] < 70)
-        critical = sum(1 for d in scored if d["health_score"] < 45)
+        neutral = sum(1 for d in scored if 40 <= d["health_score"] < 70)
+        needs_attention = sum(1 for d in scored if d["health_score"] < 40)
         avg_health = (
             round(sum(d["health_score"] for d in scored) / len(scored), 1)
             if scored else None
@@ -306,7 +306,7 @@ def _build_rep_context(accounts: list[dict]) -> str:
             f"### {rep_name}\n"
             f"  Deals ({len(deals)}): {', '.join(deal_names)}\n"
             f"  Avg Health: {avg_str} | MRR: ${total_mrr:,.0f}\n"
-            f"  Healthy: {healthy}, At Risk: {at_risk}, Critical: {critical}\n"
+            f"  Healthy: {healthy}, Neutral: {neutral}, Needs Attention: {needs_attention}\n"
             f"  Momentum: {mom_str}\n"
             f"  Forecast: {fc_str}\n"
             f"  Divergent: {divergent}"
@@ -331,8 +331,8 @@ def _build_context(accounts: list[dict]) -> str:
     sections.append(
         f"Total: {overview['total_deals']} deals | "
         f"Healthy: {s['healthy_count']} (${s['total_mrr_healthy']:,.0f}) | "
-        f"At Risk: {s['at_risk_count']} (${s['total_mrr_at_risk']:,.0f}) | "
-        f"Critical: {s['critical_count']} (${s['total_mrr_critical']:,.0f})"
+        f"Neutral: {s['neutral_count']} (${s['total_mrr_neutral']:,.0f}) | "
+        f"Needs Attention: {s['needs_attention_count']} (${s['total_mrr_needs_attention']:,.0f})"
     )
 
     sections.append("\n## All Deals")

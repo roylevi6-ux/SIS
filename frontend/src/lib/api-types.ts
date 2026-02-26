@@ -132,11 +132,11 @@ export interface PipelineOverview {
   total_deals: number;
   summary: {
     healthy_count: number;
-    at_risk_count: number;
-    critical_count: number;
+    neutral_count: number;
+    needs_attention_count: number;
     total_mrr_healthy: number;
-    total_mrr_at_risk: number;
-    total_mrr_critical: number;
+    total_mrr_neutral: number;
+    total_mrr_needs_attention: number;
   };
   deals: Account[];
 }
@@ -397,8 +397,8 @@ export interface TeamRollupHierarchyRep {
   total_deals: number;
   avg_health_score: number | null;
   healthy_count: number;
-  at_risk_count: number;
-  critical_count: number;
+  neutral_count: number;
+  needs_attention_count: number;
   total_mrr: number;
   deals: TeamRollupHierarchyDeal[];
 }
@@ -410,8 +410,8 @@ export interface TeamRollupHierarchyTeam {
   total_deals: number;
   avg_health_score: number | null;
   healthy_count: number;
-  at_risk_count: number;
-  critical_count: number;
+  neutral_count: number;
+  needs_attention_count: number;
   total_mrr: number;
   divergent_count: number;
   reps: TeamRollupHierarchyRep[];
@@ -535,8 +535,8 @@ export interface ForecastMovementResponse {
 export interface HealthDistributionPoint {
   week: string;
   healthy: number;
-  at_risk: number;
-  critical: number;
+  neutral: number;
+  needs_attention: number;
 }
 
 export interface BiggestMover {

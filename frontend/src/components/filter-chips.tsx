@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import type { ForecastBreakdown } from '@/lib/pipeline-types';
 
 export type ForecastFilter = 'all' | 'commit' | 'realistic' | 'upside' | 'risk';
-export type HealthFilter = 'healthy' | 'at_risk' | 'critical';
+export type HealthFilter = 'healthy' | 'neutral' | 'needs_attention';
 export type FlagFilter = 'divergent' | 'stale' | 'declining';
 
 interface FilterChipsProps {
@@ -17,7 +17,7 @@ interface FilterChipsProps {
   onHealthToggle: (filter: HealthFilter) => void;
   onFlagToggle: (filter: FlagFilter) => void;
   onClearAll: () => void;
-  healthCounts: { healthy: number; at_risk: number; critical: number };
+  healthCounts: { healthy: number; neutral: number; needs_attention: number };
   flagCounts: { divergent: number; stale: number; declining: number };
 }
 
@@ -82,14 +82,14 @@ export function FilterChips({
       <span className="mx-1 text-border">|</span>
 
       <Chip label="Healthy" count={healthCounts.healthy} active={activeHealth.includes('healthy')} colorClass="bg-healthy" onClick={() => onHealthToggle('healthy')} />
-      <Chip label="At Risk" count={healthCounts.at_risk} active={activeHealth.includes('at_risk')} colorClass="bg-at-risk" onClick={() => onHealthToggle('at_risk')} />
-      <Chip label="Critical" count={healthCounts.critical} active={activeHealth.includes('critical')} colorClass="bg-critical" onClick={() => onHealthToggle('critical')} />
+      <Chip label="Neutral" count={healthCounts.neutral} active={activeHealth.includes('neutral')} colorClass="bg-neutral" onClick={() => onHealthToggle('neutral')} />
+      <Chip label="Needs Attention" count={healthCounts.needs_attention} active={activeHealth.includes('needs_attention')} colorClass="bg-needs-attention" onClick={() => onHealthToggle('needs_attention')} />
 
       <span className="mx-1 text-border">|</span>
 
-      <Chip label="Divergent" count={flagCounts.divergent} active={activeFlags.includes('divergent')} colorClass="bg-at-risk" onClick={() => onFlagToggle('divergent')} />
+      <Chip label="Divergent" count={flagCounts.divergent} active={activeFlags.includes('divergent')} colorClass="bg-neutral" onClick={() => onFlagToggle('divergent')} />
       <Chip label="Stale" count={flagCounts.stale} active={activeFlags.includes('stale')} colorClass="bg-muted-foreground" onClick={() => onFlagToggle('stale')} />
-      <Chip label="Declining" count={flagCounts.declining} active={activeFlags.includes('declining')} colorClass="bg-critical" onClick={() => onFlagToggle('declining')} />
+      <Chip label="Declining" count={flagCounts.declining} active={activeFlags.includes('declining')} colorClass="bg-needs-attention" onClick={() => onFlagToggle('declining')} />
 
       {hasActiveFilters && (
         <button
