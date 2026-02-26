@@ -294,9 +294,12 @@ export function BatchProgressView({
       <Card>
         <CardContent className="flex items-center gap-3 py-6">
           <Loader2 className="size-5 animate-spin text-muted-foreground shrink-0" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground flex-1">
             Connecting to batch progress...
           </p>
+          <Button size="sm" variant="destructive" onClick={handleDismiss}>
+            Cancel
+          </Button>
         </CardContent>
       </Card>
     );
