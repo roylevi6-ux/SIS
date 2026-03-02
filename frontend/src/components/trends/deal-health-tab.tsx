@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useDealHealth } from '@/lib/hooks/use-trends';
 import { Sparkline } from './sparkline';
 import Link from 'next/link';
@@ -57,26 +56,6 @@ export function DealHealthTab({ weeks }: { weeks: number }) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Health Distribution Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Health Distribution Over Time</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data.distribution_over_time} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="week" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip />
-              <Area type="monotone" dataKey="healthy" stackId="1" fill="#22c55e" stroke="#22c55e" isAnimationActive={false} />
-              <Area type="monotone" dataKey="neutral" stackId="1" fill="#f59e0b" stroke="#f59e0b" isAnimationActive={false} />
-              <Area type="monotone" dataKey="needs_attention" stackId="1" fill="#ef4444" stroke="#ef4444" isAnimationActive={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
 
       {/* Biggest Movers Table */}
       <Card>

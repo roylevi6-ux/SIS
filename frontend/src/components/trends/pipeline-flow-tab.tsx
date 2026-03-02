@@ -14,7 +14,6 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { usePipelineFlow } from '@/lib/hooks/use-trends';
-import { WaterfallChart } from './waterfall-chart';
 
 export function PipelineFlowTab({ weeks }: { weeks: number }) {
   const { data, isLoading } = usePipelineFlow(weeks);
@@ -75,17 +74,6 @@ export function PipelineFlowTab({ weeks }: { weeks: number }) {
           </CardContent>
         </Card>
       </div>
-
-      {data.waterfall && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Pipeline Waterfall</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <WaterfallChart data={data.waterfall} />
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>

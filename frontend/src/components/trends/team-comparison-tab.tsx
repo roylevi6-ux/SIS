@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useTeamComparison } from '@/lib/hooks/use-trends';
 
 const TEAM_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
@@ -16,13 +16,6 @@ export function TeamComparisonTab({ weeks }: { weeks: number }) {
   const healthiest = [...data.benchmark_table].sort((a, b) => (b.avg_health ?? 0) - (a.avg_health ?? 0))[0];
   const mostImproved = [...data.benchmark_table].sort((a, b) => b.improving_count - a.improving_count)[0];
   const needsAttention = [...data.benchmark_table].sort((a, b) => (a.avg_health ?? 100) - (b.avg_health ?? 100))[0];
-
-  // Transform team_pipeline_trend for multi-line chart
-  const teamNames = data.benchmark_table.map((t) => t.team_name);
-  const trendData = data.team_pipeline_trend.map((point) => ({
-    week: point.week,
-    ...point.teams,
-  }));
 
   return (
     <div className="space-y-6 mt-4">
@@ -67,33 +60,6 @@ export function TeamComparisonTab({ weeks }: { weeks: number }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Team Pipeline Trend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={trendData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="week" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip />
-              <Legend />
-              {teamNames.map((name, idx) => (
-                <Line
-                  key={name}
-                  type="monotone"
-                  dataKey={name}
-                  stroke={TEAM_COLORS[idx % TEAM_COLORS.length]}
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Team Benchmarking</CardTitle>
         </CardHeader>
         <CardContent>
@@ -131,15 +97,16 @@ export function TeamComparisonTab({ weeks }: { weeks: number }) {
           <CardTitle>Team Momentum</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={Math.max(200, data.momentum_distribution.length * 50)}>
+          <ResponsiveContainer width="100%" height={Math.max(250, data.momentum_distribution.length * 60)}>
             <BarChart
               data={data.momentum_distribution}
               layout="vertical"
-              margin={{ top: 5, right: 20, bottom: 5, left: 80 }}
+              margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+              barSize={20}
             >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis type="number" className="text-xs" />
-              <YAxis type="category" dataKey="team_name" className="text-xs" width={70} />
+              <YAxis type="category" dataKey="team_name" className="text-xs" width={140} tick={{ fontSize: 12 }} />
               <Tooltip />
               <Legend />
               <Bar dataKey="improving" name="Improving" stackId="a" fill="#22c55e" isAnimationActive={false} />
