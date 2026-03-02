@@ -32,7 +32,9 @@ def backfill(dry_run: bool = False) -> None:
             sf = account.sf_forecast_category
             ai = assessment.ai_forecast_category
 
-            if sf and ai and sf != ai:
+            # "At Risk" is SIS-only (not a SF category) — treat as aligned with SF "Upside"
+            is_match = (sf == ai) or (ai == "At Risk" and sf == "Upside")
+            if sf and ai and not is_match:
                 new_flag = 1
                 new_explanation = (
                     f"AI forecasts '{ai}' but rep set '{sf}' in Salesforce."
