@@ -35,6 +35,10 @@ import { Badge } from '@/components/ui/badge';
 // Helpers
 // ---------------------------------------------------------------------------
 
+function toTitleCase(s: string): string {
+  return s.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+}
+
 function generateCloseQuarters(): string[] {
   const now = new Date();
   const currentQ = Math.ceil((now.getMonth() + 1) / 3);
@@ -268,7 +272,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
 
     try {
       const items = selected.map((r) => ({
-        account_name: r.account.name,
+        account_name: toTitleCase(r.account.name),
         drive_path: r.account.path,
         max_calls: r.maxCalls,
         deal_type: r.dealType || undefined,
@@ -386,7 +390,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
                               className="size-4 rounded border-border"
                             />
                           </TableCell>
-                          <TableCell className="whitespace-normal font-medium">{row.account.name}</TableCell>
+                          <TableCell className="whitespace-normal font-medium">{toTitleCase(row.account.name)}</TableCell>
                           <TableCell className="whitespace-normal">
                             {row.selected ? (
                               <div className="flex items-center gap-1">
@@ -661,7 +665,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
         sf_forecast_category: sfForecast,
         sf_close_quarter: sfCloseQuarter,
       };
-      const result = await api.gdrive.import(selectedAccount.name, selectedAccount.path, maxCalls, dealArgs);
+      const result = await api.gdrive.import(toTitleCase(selectedAccount.name), selectedAccount.path, maxCalls, dealArgs);
       setImportResult(result as unknown as ImportResult);
       onImportComplete?.();
 
@@ -773,7 +777,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
                 <SelectContent>
                   {driveAccounts.map((a) => (
                     <SelectItem key={a.name} value={a.name}>
-                      {a.name} ({a.call_count} calls)
+                      {toTitleCase(a.name)} ({a.call_count} calls)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -809,7 +813,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
         {recentCalls.length > 0 && selectedAccount && (
           <div className="space-y-3">
             <p className="text-sm font-medium">
-              {recentCalls.length} most recent calls for <strong>{selectedAccount.name}</strong>:
+              {recentCalls.length} most recent calls for <strong>{toTitleCase(selectedAccount.name)}</strong>:
             </p>
             <Table>
               <TableHeader>
