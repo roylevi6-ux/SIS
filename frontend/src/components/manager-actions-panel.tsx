@@ -28,6 +28,13 @@ interface ManagerActionsPanelProps {
   agents: AgentAnalysis[];
 }
 
+function buildSummary(labels: string[]): string {
+  const count = labels.length;
+  const areas = labels.slice(0, 3).join(', ');
+  const more = count > 3 ? ` and ${count - 3} more` : '';
+  return `${count} agent${count === 1 ? '' : 's'} flagged action items this week. Key areas: ${areas}${more}.`;
+}
+
 export function ManagerActionsPanel({ agents }: ManagerActionsPanelProps) {
   const [open, setOpen] = useState(true);
 
@@ -40,6 +47,8 @@ export function ManagerActionsPanel({ agents }: ManagerActionsPanelProps) {
     }));
 
   if (insights.length === 0) return null;
+
+  const summary = buildSummary(insights.map((i) => i.agentLabel));
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -59,20 +68,49 @@ export function ManagerActionsPanel({ agents }: ManagerActionsPanelProps) {
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="pt-0 pb-4">
-            <ul className="space-y-3">
+          <CardContent className="pt-0 pb-4 space-y-3">
+            {/* Summary — always visible when section is open */}
+            <p className="text-sm text-muted-foreground leading-relaxed px-1">
+              {summary}
+            </p>
+
+            {/* Individual collapsible categories */}
+            <div className="space-y-1">
               {insights.map((item) => (
-                <li key={item.agentId} className="flex items-start gap-2 text-sm">
-                  <Badge variant="outline" className="shrink-0 mt-0.5 text-xs">
-                    {item.agentLabel}
-                  </Badge>
-                  <span className="leading-relaxed">{item.insight}</span>
-                </li>
+                <CategoryRow
+                  key={item.agentId}
+                  label={item.agentLabel}
+                  insight={item.insight}
+                />
               ))}
-            </ul>
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Card>
+    </Collapsible>
+  );
+}
+
+function CategoryRow({ label, insight }: { label: string; insight: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="w-full text-left">
+        <div className="flex items-center gap-2 px-1 py-1.5 rounded-md hover:bg-muted/50 transition-colors">
+          <ChevronRight
+            className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+          />
+          <Badge variant="outline" className="text-xs">
+            {label}
+          </Badge>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <p className="text-sm leading-relaxed pl-7 pr-2 pb-2 text-muted-foreground">
+          {insight}
+        </p>
+      </CollapsibleContent>
     </Collapsible>
   );
 }
