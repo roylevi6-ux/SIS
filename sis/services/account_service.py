@@ -15,6 +15,12 @@ from sis.db.models import (
 
 logger = logging.getLogger(__name__)
 
+
+def normalize_account_name(name: str) -> str:
+    """Normalize account name to Title Case for consistent dedup."""
+    return name.strip().title()
+
+
 # Whitelist of fields that can be updated via update_account
 UPDATABLE_FIELDS = {"account_name", "cp_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id", "sf_stage", "sf_forecast_category", "sf_close_quarter"}
 
@@ -56,7 +62,7 @@ def create_account(
                                 team_lead = team_lead or leader.name
 
         account = Account(
-            account_name=name,
+            account_name=normalize_account_name(name),
             cp_estimate=cp_estimate,
             team_lead=team_lead,
             ae_owner=ae_owner,
@@ -90,6 +96,8 @@ def update_account(account_id: str, **fields) -> Account:
             raise ValueError(f"Account not found: {account_id}")
         for key, value in fields.items():
             if key in UPDATABLE_FIELDS:
+                if key == "account_name":
+                    value = normalize_account_name(value)
                 setattr(account, key, value)
         session.flush()
         session.expunge(account)
