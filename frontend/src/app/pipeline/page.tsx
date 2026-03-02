@@ -131,6 +131,7 @@ export default function PipelineCommandCenter() {
   const [quarter, setQuarter] = useState('FY');
   const [team, setTeam] = useState<string | undefined>(undefined);
   const [teamLeadFilter, setTeamLeadFilter] = useState<string | undefined>(undefined);
+  const [aeOwnerFilter, setAeOwnerFilter] = useState<string | undefined>(undefined);
   const [forecastFilter, setForecastFilter] = useState<ForecastFilter>('all');
   const [healthFilters, setHealthFilters] = useState<HealthFilter[]>([]);
   const [flagFilters, setFlagFilters] = useState<FlagFilter[]>([]);
@@ -174,8 +175,11 @@ export default function PipelineCommandCenter() {
     if (teamLeadFilter) {
       deals = deals.filter((d) => d.team_lead === teamLeadFilter);
     }
+    if (aeOwnerFilter) {
+      deals = deals.filter((d) => d.ae_owner === aeOwnerFilter);
+    }
     return deals;
-  }, [data, forecastFilter, healthFilters, flagFilters, teamLeadFilter]);
+  }, [data, forecastFilter, healthFilters, flagFilters, teamLeadFilter, aeOwnerFilter]);
 
   const handleHealthToggle = useCallback((h: HealthFilter) => {
     setHealthFilters((prev) =>
@@ -194,6 +198,13 @@ export default function PipelineCommandCenter() {
     setHealthFilters([]);
     setFlagFilters([]);
     setTeamLeadFilter(undefined);
+    setAeOwnerFilter(undefined);
+  }, []);
+
+  const handleRepClick = useCallback((aeOwner: string) => {
+    setAeOwnerFilter((prev) => prev === aeOwner ? undefined : aeOwner);
+    setTeamLeadFilter(undefined);
+    setForecastFilter('all');
   }, []);
 
   const handleGridCellClick = useCallback((teamLead: string | null, category: string | null) => {
@@ -205,6 +216,7 @@ export default function PipelineCommandCenter() {
     }
     setTeamLeadFilter(teamLead ?? undefined);
     setForecastFilter(category ? (category as ForecastFilter) : 'all');
+    setAeOwnerFilter(undefined);
   }, [teamLeadFilter, forecastFilter]);
 
   return (
@@ -296,14 +308,22 @@ export default function PipelineCommandCenter() {
       {/* ── Data ── */}
       {data && !isLoading && (
         <>
-          {/* Number Line — always sticky at top (structural) */}
-          <div className="sticky top-0 z-10 bg-background pb-2">
-            <NumberLine
-              quota={data.quota}
-              pipeline={data.pipeline}
-              forecast={data.forecast_breakdown}
-            />
-          </div>
+          {/* Number Line — sticky at top, respects widget visibility */}
+          {(() => {
+            const allWidgets = widgetPrefs ?? [];
+            const numberLineWidget = allWidgets.find((w) => w.id === 'number_line');
+            const numberLineVisible = numberLineWidget ? numberLineWidget.visible : true;
+            if (!numberLineVisible) return null;
+            return (
+              <div className="sticky top-0 z-10 bg-background pb-2">
+                <NumberLine
+                  quota={data.quota}
+                  pipeline={data.pipeline}
+                  forecast={data.forecast_breakdown}
+                />
+              </div>
+            );
+          })()}
 
           {/* Dynamic widgets from user preferences */}
           {(() => {
@@ -329,7 +349,7 @@ export default function PipelineCommandCenter() {
                       onClearAll={clearAllFilters}
                       healthCounts={counts.health}
                       flagCounts={counts.flags}
-                      hasExternalFilters={forecastFilter !== 'all' || !!teamLeadFilter}
+                      hasExternalFilters={forecastFilter !== 'all' || !!teamLeadFilter || !!aeOwnerFilter}
                     />
                   );
                 case 'deal_table':
@@ -340,8 +360,10 @@ export default function PipelineCommandCenter() {
                       key={id}
                       deals={data.deals}
                       onCellClick={handleGridCellClick}
+                      onRepClick={handleRepClick}
                       activeTeamLead={teamLeadFilter ?? null}
                       activeForecastCategory={forecastFilter === 'all' ? null : forecastFilter}
+                      activeRepFilter={aeOwnerFilter ?? null}
                     />
                   ) : null;
                 default:
