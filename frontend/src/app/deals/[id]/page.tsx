@@ -87,7 +87,7 @@ interface AccountDetail {
   team_name: string | null;
   deal_type: string;
   prior_contract_value: number | null;
-  ic_forecast_category: string | null;
+  sf_forecast_category: string | null;
   transcripts: Transcript[];
   assessment: Assessment | null;
 }
@@ -710,8 +710,8 @@ export default function DealDetailPage({
                   <DeltaBadge field={deltaFields?.ai_forecast_category} />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm text-muted-foreground">IC Forecast:</span>
-                  <ForecastBadge category={account.ic_forecast_category} />
+                  <span className="text-sm text-muted-foreground">SF Forecast:</span>
+                  <ForecastBadge category={account.sf_forecast_category} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm text-muted-foreground">Confidence:</span>

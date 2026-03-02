@@ -1,4 +1,4 @@
-"""Account API routes — CRUD + IC forecast."""
+"""Account API routes — CRUD + rep forecast."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from sis.db.models import User
 from sis.api.schemas.accounts import (
     AccountCreate,
     AccountUpdate,
-    ICForecastUpdate,
+    ForecastUpdate,
 )
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -92,11 +92,11 @@ def delete_account(account_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/{account_id}/ic-forecast")
-def set_ic_forecast(account_id: str, body: ICForecastUpdate, user: dict = Depends(get_current_user)):
-    """Set the IC forecast category and compute divergence."""
+@router.post("/{account_id}/forecast")
+def set_forecast(account_id: str, body: ForecastUpdate, user: dict = Depends(get_current_user)):
+    """Set the rep (SF) forecast category and compute divergence."""
     try:
-        return account_service.set_ic_forecast(account_id, body.category)
+        return account_service.set_rep_forecast(account_id, body.category)
     except ValueError as e:
         raise HTTPException(
             status_code=404 if "not found" in str(e).lower() else 422,

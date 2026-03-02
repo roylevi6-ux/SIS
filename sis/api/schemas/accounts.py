@@ -8,9 +8,9 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from .transcripts import TranscriptItem
 
-# ── Allowed IC forecast categories (matches account_service validation) ──
+# ── Allowed forecast categories (matches account_service validation) ──
 
-IC_FORECAST_CATEGORIES = {
+FORECAST_CATEGORIES = {
     "Commit",
     "Realistic",
     "Upside",
@@ -49,15 +49,15 @@ class AccountUpdate(BaseModel):
     sf_close_quarter: Optional[str] = None
 
 
-class ICForecastUpdate(BaseModel):
+class ForecastUpdate(BaseModel):
     category: str
 
     @field_validator("category")
     @classmethod
     def validate_category(cls, v: str) -> str:
-        if v not in IC_FORECAST_CATEGORIES:
+        if v not in FORECAST_CATEGORIES:
             raise ValueError(
-                f"Invalid category: {v}. Must be one of {IC_FORECAST_CATEGORIES}"
+                f"Invalid category: {v}. Must be one of {FORECAST_CATEGORIES}"
             )
         return v
 
@@ -114,7 +114,6 @@ class AccountSummary(BaseModel):
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
     deal_type: str = "new_logo"
-    ic_forecast_category: Optional[str] = None
     health_score: Optional[int] = None
     momentum_direction: Optional[str] = None
     ai_forecast_category: Optional[str] = None
@@ -144,13 +143,12 @@ class AccountDetail(BaseModel):
     team_name: Optional[str] = None
     deal_type: str = "new_logo"
     prior_contract_value: Optional[float] = None
-    ic_forecast_category: Optional[str] = None
     transcripts: List[TranscriptItem] = []
     assessment: Optional[AssessmentDetail] = None
 
 
-class ICForecastResponse(BaseModel):
-    """Returned after setting IC forecast category."""
+class ForecastResponse(BaseModel):
+    """Returned after setting rep forecast category."""
 
     divergence_flag: bool
     explanation: Optional[str] = None

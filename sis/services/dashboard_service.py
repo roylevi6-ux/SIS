@@ -69,7 +69,7 @@ def get_pipeline_overview(
                 "team_lead": acct.team_lead,
                 "ae_owner": acct.ae_owner,
                 "team_name": acct.team_name,
-                "ic_forecast_category": acct.ic_forecast_category,
+                "sf_forecast_category": acct.sf_forecast_category,
                 "last_call_date": latest_transcript.call_date if latest_transcript else None,
             }
 
@@ -132,7 +132,7 @@ def get_divergence_report(
     team: Optional[str] = None,
     visible_user_ids: Optional[set[str]] = None,
 ) -> list[dict]:
-    """Deals where AI and IC forecasts differ, sorted by value impact."""
+    """Deals where AI and SF forecasts differ, sorted by value impact."""
     with get_session() as session:
         query = (
             session.query(DealAssessment, Account)
@@ -159,7 +159,7 @@ def get_divergence_report(
                 "cp_estimate": account.cp_estimate,
                 "team_lead": account.team_lead,
                 "ai_forecast_category": assessment.ai_forecast_category,
-                "ic_forecast_category": account.ic_forecast_category,
+                "sf_forecast_category": account.sf_forecast_category,
                 "health_score": assessment.health_score,
                 "divergence_explanation": assessment.divergence_explanation,
                 "forecast_rationale": assessment.forecast_rationale,
@@ -599,7 +599,7 @@ def get_command_center(
             "team_lead": acct.team_lead,
             "ae_owner": acct.ae_owner,
             "team_name": acct.team_name,
-            "ic_forecast_category": acct.ic_forecast_category,
+            "sf_forecast_category": acct.sf_forecast_category,
             "deal_type": acct.deal_type,
             "last_call_date": tx_map.get(acct.id),
         }
@@ -732,7 +732,7 @@ def get_command_center(
             "account_id": d["account_id"],
             "account_name": d["account_name"],
             "cp_estimate": d["cp_estimate"] or 0,
-            "reason": f"AI/IC forecast divergence — AI: {d.get('ai_forecast_category', '?')}, IC: {d.get('ic_forecast_category', '?')}",
+            "reason": f"AI/SF forecast divergence — AI: {d.get('ai_forecast_category', '?')}, SF: {d.get('sf_forecast_category', '?')}",
             "type": "divergent",
         })
     for d in stale_attn:

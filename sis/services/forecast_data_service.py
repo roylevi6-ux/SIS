@@ -36,7 +36,7 @@ def load_forecast_data(team: Optional[str] = None) -> list[dict]:
                 "team_name": acct.team_name or "Unassigned",
                 "ae_owner": acct.ae_owner or "N/A",
                 "ai_forecast": latest.ai_forecast_category,
-                "ic_forecast": acct.ic_forecast_category,
+                "sf_forecast": acct.sf_forecast_category,
                 "health_score": latest.health_score,
                 "momentum": latest.momentum_direction,
                 "divergence": bool(latest.divergence_flag),

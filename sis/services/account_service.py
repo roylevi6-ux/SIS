@@ -1,4 +1,4 @@
-"""Account service — CRUD + IC forecast + divergence per Technical Architecture Section 6.2."""
+"""Account service — CRUD + rep forecast + divergence per Technical Architecture Section 6.2."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def normalize_account_name(name: str) -> str:
 
 
 # Whitelist of fields that can be updated via update_account
-UPDATABLE_FIELDS = {"account_name", "cp_estimate", "ic_forecast_category", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id", "sf_stage", "sf_forecast_category", "sf_close_quarter"}
+UPDATABLE_FIELDS = {"account_name", "cp_estimate", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id", "sf_stage", "sf_forecast_category", "sf_close_quarter"}
 
 # Whitelist of fields that can be used for sorting
 SORTABLE_FIELDS = {"account_name", "cp_estimate", "team_name", "created_at", "updated_at"}
@@ -104,8 +104,8 @@ def update_account(account_id: str, **fields) -> Account:
         return account
 
 
-def set_ic_forecast(account_id: str, category: str) -> dict:
-    """Set the IC forecast category. Computes divergence against latest AI forecast.
+def set_rep_forecast(account_id: str, category: str) -> dict:
+    """Set the rep (SF) forecast category. Computes divergence against latest AI forecast.
 
     Returns:
         dict with divergence_flag and explanation
@@ -118,7 +118,7 @@ def set_ic_forecast(account_id: str, category: str) -> dict:
         account = session.query(Account).filter_by(id=account_id).one_or_none()
         if not account:
             raise ValueError(f"Account not found: {account_id}")
-        account.ic_forecast_category = category
+        account.sf_forecast_category = category
 
         # Find latest deal assessment for divergence computation
         latest = (
@@ -135,7 +135,8 @@ def set_ic_forecast(account_id: str, category: str) -> dict:
             if ai_category != category:
                 latest.divergence_flag = 1
                 explanation = (
-                    f"AI forecasts '{ai_category}' but IC forecasts '{category}'. "
+                    f"AI forecasts '{ai_category}' but rep set "
+                    f"'{category}' in Salesforce. "
                     f"AI rationale: {latest.forecast_rationale or 'N/A'}"
                 )
                 latest.divergence_explanation = explanation
@@ -189,7 +190,6 @@ def list_accounts(
                 "team_lead": acct.team_lead,
                 "ae_owner": acct.ae_owner,
                 "team_name": acct.team_name,
-                "ic_forecast_category": acct.ic_forecast_category,
                 "sf_stage": acct.sf_stage,
                 "sf_forecast_category": acct.sf_forecast_category,
                 "sf_close_quarter": acct.sf_close_quarter,
@@ -331,7 +331,6 @@ def get_account_detail(account_id: str) -> dict:
             "team_lead": account.team_lead,
             "ae_owner": account.ae_owner,
             "team_name": account.team_name,
-            "ic_forecast_category": account.ic_forecast_category,
             "sf_stage": account.sf_stage,
             "sf_forecast_category": account.sf_forecast_category,
             "sf_close_quarter": account.sf_close_quarter,

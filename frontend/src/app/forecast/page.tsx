@@ -45,7 +45,7 @@ interface ForecastDataItem {
   team_name: string | null;
   ae_owner: string | null;
   ai_forecast: string | null;
-  ic_forecast: string | null;
+  sf_forecast: string | null;
   health_score: number | null;
   momentum: string | null;
   divergence: boolean;
@@ -76,15 +76,15 @@ const FORECAST_CATEGORIES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Build grouped bar chart data: count of AI vs IC per category
+// Build grouped bar chart data: count of AI vs SF per category
 // ---------------------------------------------------------------------------
 
 function buildChartData(items: ForecastDataItem[]) {
   return FORECAST_CATEGORIES.map((cat) => ({
     category: cat,
     AI: items.filter((d) => d.ai_forecast === cat).length,
-    IC: items.filter((d) => d.ic_forecast === cat).length,
-  })).filter((row) => row.AI > 0 || row.IC > 0);
+    SF: items.filter((d) => d.sf_forecast === cat).length,
+  })).filter((row) => row.AI > 0 || row.SF > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -153,7 +153,7 @@ export default function ForecastPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">AI vs IC Forecast</h1>
+          <h1 className="text-2xl font-bold tracking-tight">AI vs SF Forecast</h1>
           <p className="text-sm text-muted-foreground">
             {isLoading ? 'Loading forecast data...' : `${items.length} deals in view`}
           </p>
@@ -241,7 +241,7 @@ export default function ForecastPage() {
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                   <Bar dataKey="AI" fill="#6366f1" name="AI Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                  <Bar dataKey="IC" fill="#0ea5e9" name="IC Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="SF" fill="#0ea5e9" name="SF Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -263,7 +263,7 @@ export default function ForecastPage() {
                     <TableHead>Account</TableHead>
                     <TableHead className="text-right">MRR</TableHead>
                     <TableHead>AI Forecast</TableHead>
-                    <TableHead>IC Forecast</TableHead>
+                    <TableHead>SF Forecast</TableHead>
                     <TableHead>Health</TableHead>
                     <TableHead>Momentum</TableHead>
                     <TableHead>Divergence</TableHead>
@@ -308,7 +308,7 @@ export default function ForecastPage() {
                           <ForecastBadge category={item.ai_forecast} />
                         </TableCell>
                         <TableCell>
-                          <ForecastBadge category={item.ic_forecast} />
+                          <ForecastBadge category={item.sf_forecast} />
                         </TableCell>
                         <TableCell>
                           <HealthBadge score={item.health_score} />

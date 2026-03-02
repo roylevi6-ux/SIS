@@ -33,7 +33,7 @@ interface DivergenceItem {
   cp_estimate: number | null;
   team_lead: string | null;
   ai_forecast_category: string | null;
-  ic_forecast_category: string | null;
+  sf_forecast_category: string | null;
   health_score: number | null;
   divergence_explanation: string | null;
   forecast_rationale: string | null;
@@ -92,7 +92,7 @@ export default function DivergencePage() {
           <p className="text-sm text-muted-foreground">
             {isLoading
               ? 'Loading divergence data...'
-              : `${items.length} deal${items.length !== 1 ? 's' : ''} where AI and IC forecasts differ`}
+              : `${items.length} deal${items.length !== 1 ? 's' : ''} where AI and SF forecasts differ`}
           </p>
         </div>
 
@@ -140,7 +140,7 @@ export default function DivergencePage() {
                     <TableHead>Account</TableHead>
                     <TableHead className="text-right">MRR</TableHead>
                     <TableHead>AI Forecast</TableHead>
-                    <TableHead>IC Forecast</TableHead>
+                    <TableHead>SF Forecast</TableHead>
                     <TableHead>Health</TableHead>
                     <TableHead>Explanation</TableHead>
                   </TableRow>
@@ -184,7 +184,7 @@ export default function DivergencePage() {
                           <ForecastBadge category={item.ai_forecast_category} />
                         </TableCell>
                         <TableCell>
-                          <ForecastBadge category={item.ic_forecast_category} />
+                          <ForecastBadge category={item.sf_forecast_category} />
                         </TableCell>
                         <TableCell>
                           <HealthBadge score={item.health_score} />

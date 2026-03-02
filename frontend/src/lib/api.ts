@@ -100,7 +100,7 @@ export const api = {
     delete: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/accounts/${id}`, { method: 'DELETE' }),
     setForecast: (id: string, category: string) =>
-      apiFetch<Account>(`/api/accounts/${id}/ic-forecast`, {
+      apiFetch<Account>(`/api/accounts/${id}/forecast`, {
         method: 'POST',
         body: JSON.stringify({ category }),
       }),

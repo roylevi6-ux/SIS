@@ -355,6 +355,19 @@ def _persist_pipeline_result(
             if sf_gap:
                 assessment.sf_gap_interpretation = sf_gap.get("overall_gap_assessment", "")
 
+            # Auto-compute divergence: SF forecast vs AI forecast
+            account = session.query(Account).filter_by(id=account_id).one_or_none()
+            if account and account.sf_forecast_category and assessment.ai_forecast_category:
+                if account.sf_forecast_category != assessment.ai_forecast_category:
+                    assessment.divergence_flag = 1
+                    assessment.divergence_explanation = (
+                        f"AI forecasts '{assessment.ai_forecast_category}' but rep set "
+                        f"'{account.sf_forecast_category}' in Salesforce."
+                    )
+                else:
+                    assessment.divergence_flag = 0
+                    assessment.divergence_explanation = None
+
             session.add(assessment)
 
         session.flush()
@@ -810,6 +823,19 @@ def resynthesize(run_id: str) -> dict:
                 else:
                     assessment.stage_gap_direction = "SIS-ahead"
                 assessment.stage_gap_magnitude = abs(sf_stage - sis_stage)
+
+        # Auto-compute divergence: SF forecast vs AI forecast
+        acct = session.query(Account).filter_by(id=account_id).one_or_none()
+        if acct and acct.sf_forecast_category and assessment.ai_forecast_category:
+            if acct.sf_forecast_category != assessment.ai_forecast_category:
+                assessment.divergence_flag = 1
+                assessment.divergence_explanation = (
+                    f"AI forecasts '{assessment.ai_forecast_category}' but rep set "
+                    f"'{acct.sf_forecast_category}' in Salesforce."
+                )
+            else:
+                assessment.divergence_flag = 0
+                assessment.divergence_explanation = None
 
         # Mark the run as completed now that Agent 10 has succeeded
         run = session.query(AnalysisRun).filter_by(id=run_id).first()

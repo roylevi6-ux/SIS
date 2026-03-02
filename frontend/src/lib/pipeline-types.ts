@@ -5,7 +5,7 @@ export interface PipelineDeal {
   team_lead: string | null;
   ae_owner: string | null;
   team_name: string | null;
-  ic_forecast_category: string | null;
+  sf_forecast_category: string | null;
   last_call_date: string | null;
   health_score: number | null;
   momentum_direction: string | null;

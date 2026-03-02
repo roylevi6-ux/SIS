@@ -19,7 +19,7 @@ class PipelineDeal(BaseModel):
     team_lead: Optional[str] = None
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
-    ic_forecast_category: Optional[str] = None
+    sf_forecast_category: Optional[str] = None
     last_call_date: Optional[str] = None
     health_score: Optional[int] = None
     momentum_direction: Optional[str] = None
@@ -58,14 +58,14 @@ class PipelineOverviewResponse(BaseModel):
 
 
 class DivergenceItem(BaseModel):
-    """Deal where AI and IC forecast categories diverge."""
+    """Deal where AI and SF forecast categories diverge."""
 
     account_id: str
     account_name: str
     cp_estimate: Optional[float] = None
     team_lead: Optional[str] = None
     ai_forecast_category: str
-    ic_forecast_category: Optional[str] = None
+    sf_forecast_category: Optional[str] = None
     health_score: int
     divergence_explanation: Optional[str] = None
     forecast_rationale: Optional[str] = None

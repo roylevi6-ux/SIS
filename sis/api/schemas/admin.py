@@ -225,7 +225,7 @@ class ForecastDataItem(BaseModel):
     team_name: Optional[str] = None
     ae_owner: Optional[str] = None
     ai_forecast: Optional[str] = None
-    ic_forecast: Optional[str] = None
+    sf_forecast: Optional[str] = None
     health_score: int
     momentum: str
     divergence: bool
