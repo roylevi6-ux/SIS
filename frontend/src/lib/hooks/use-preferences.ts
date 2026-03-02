@@ -53,3 +53,38 @@ export function useSaveDealPageWidgets() {
       qc.invalidateQueries({ queryKey: ['preferences', 'deal_page_widgets'] }),
   });
 }
+
+export const DEFAULT_PIPELINE_WIDGETS: WidgetConfig[] = [
+  { id: 'number_line', label: 'Number Line', description: 'Pipeline stage funnel visualization', visible: true, order: 0 },
+  { id: 'attention_strip', label: 'Attention Strip', description: 'Deals needing immediate attention', visible: true, order: 1 },
+  { id: 'pipeline_changes', label: 'Pipeline Changes', description: 'Recent deal movements and updates', visible: true, order: 2 },
+  { id: 'filter_chips', label: 'Filter Chips', description: 'Quick filters for deal table', visible: true, order: 3 },
+  { id: 'team_forecast_grid', label: 'Team Forecast Grid', description: 'Team-level forecast summary (VP+ only)', visible: true, order: 4 },
+  { id: 'deal_table', label: 'Deal Table', description: 'Main pipeline data table', visible: true, order: 5 },
+];
+
+export function usePipelineWidgets() {
+  return useQuery({
+    queryKey: ['preferences', 'pipeline_page_widgets'],
+    queryFn: async () => {
+      try {
+        const data = await api.preferences.get('pipeline_page_widgets');
+        const widgets = (data.widgets ?? []) as WidgetConfig[];
+        return widgets.length > 0 ? widgets : DEFAULT_PIPELINE_WIDGETS;
+      } catch {
+        return DEFAULT_PIPELINE_WIDGETS;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSavePipelineWidgets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (widgets: WidgetConfig[]) =>
+      api.preferences.save('pipeline_page_widgets', { widgets }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['preferences', 'pipeline_page_widgets'] }),
+  });
+}

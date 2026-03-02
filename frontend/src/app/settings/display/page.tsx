@@ -23,7 +23,16 @@ import { GripVertical, RotateCcw, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { useDealPageWidgets, useSaveDealPageWidgets, DEFAULT_DEAL_WIDGETS, type WidgetConfig } from '@/lib/hooks/use-preferences';
+import {
+  useDealPageWidgets,
+  useSaveDealPageWidgets,
+  DEFAULT_DEAL_WIDGETS,
+  usePipelineWidgets,
+  useSavePipelineWidgets,
+  DEFAULT_PIPELINE_WIDGETS,
+  type WidgetConfig,
+} from '@/lib/hooks/use-preferences';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 function SortableWidget({
   widget,
@@ -72,19 +81,30 @@ function SortableWidget({
   );
 }
 
-export default function DisplaySettingsPage() {
-  const { data: serverWidgets, isLoading } = useDealPageWidgets();
-  const saveMutation = useSaveDealPageWidgets();
+function WidgetConfigList({
+  title,
+  description,
+  defaults,
+  serverWidgets,
+  saveMutation,
+  isLoading,
+}: {
+  title: string;
+  description: string;
+  defaults: WidgetConfig[];
+  serverWidgets: WidgetConfig[] | undefined;
+  saveMutation: UseMutationResult<unknown, Error, WidgetConfig[]>;
+  isLoading: boolean;
+}) {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [saved, setSaved] = useState(false);
 
-  // Sync server data to local state (use defaults as fallback)
   useEffect(() => {
     if (widgets.length === 0) {
-      const source = serverWidgets && serverWidgets.length > 0 ? serverWidgets : DEFAULT_DEAL_WIDGETS;
+      const source = serverWidgets && serverWidgets.length > 0 ? serverWidgets : defaults;
       setWidgets([...source].sort((a, b) => a.order - b.order));
     }
-  }, [serverWidgets, widgets.length]);
+  }, [serverWidgets, widgets.length, defaults]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -123,71 +143,108 @@ export default function DisplaySettingsPage() {
   };
 
   const handleReset = () => {
-    const defaults = DEFAULT_DEAL_WIDGETS.map((w, i) => ({
+    const resetWidgets = defaults.map((w, i) => ({
       ...w,
       visible: true,
       order: i,
     }));
-    save(defaults);
+    save(resetWidgets);
   };
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
-        <div className="h-8 w-48 rounded bg-muted" />
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-16 rounded-lg border bg-muted/20" />
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 animate-pulse">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-16 rounded-lg border bg-muted/20" />
+          ))}
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="mb-6">
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <div>
+          <CardTitle className="text-base">{title}</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {saved && (
+            <span className="text-xs text-emerald-600 flex items-center gap-1">
+              <Check className="size-3" /> Saved
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={handleReset}>
+            <RotateCcw className="size-3.5 mr-1" />
+            Reset
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={widgets.map((w) => w.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {widgets.map((widget) => (
+              <SortableWidget
+                key={widget.id}
+                widget={widget}
+                onToggle={handleToggle}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function DisplaySettingsPage() {
+  const { data: dealWidgets, isLoading: dealLoading } = useDealPageWidgets();
+  const dealSaveMutation = useSaveDealPageWidgets();
+
+  const { data: pipelineWidgets, isLoading: pipelineLoading } = usePipelineWidgets();
+  const pipelineSaveMutation = useSavePipelineWidgets();
+
+  return (
+    <div className="p-6 max-w-6xl space-y-6">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight">Display Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Customize which widgets appear on deal pages and their order.
+          Customize which widgets appear on each page and their order.
           Drag to reorder, toggle to show or hide.
         </p>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-base">Deal Page Widgets</CardTitle>
-          <div className="flex items-center gap-2">
-            {saved && (
-              <span className="text-xs text-emerald-600 flex items-center gap-1">
-                <Check className="size-3" /> Saved
-              </span>
-            )}
-            <Button variant="outline" size="sm" onClick={handleReset}>
-              <RotateCcw className="size-3.5 mr-1" />
-              Reset
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={widgets.map((w) => w.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {widgets.map((widget) => (
-                <SortableWidget
-                  key={widget.id}
-                  widget={widget}
-                  onToggle={handleToggle}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <WidgetConfigList
+          title="Deal Drilldown Widgets"
+          description="Widgets shown on individual deal analysis pages"
+          defaults={DEFAULT_DEAL_WIDGETS}
+          serverWidgets={dealWidgets}
+          saveMutation={dealSaveMutation}
+          isLoading={dealLoading}
+        />
+
+        <WidgetConfigList
+          title="Pipeline View Widgets"
+          description="Sections shown on the pipeline command center"
+          defaults={DEFAULT_PIPELINE_WIDGETS}
+          serverWidgets={pipelineWidgets}
+          saveMutation={pipelineSaveMutation}
+          isLoading={pipelineLoading}
+        />
+      </div>
     </div>
   );
 }

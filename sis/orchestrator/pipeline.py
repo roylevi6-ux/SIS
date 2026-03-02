@@ -144,6 +144,11 @@ class AnalysisPipeline:
         sf_data: dict | None = None,
     ) -> PipelineResult:
         """Run the full pipeline synchronously (wraps async version)."""
+        # Discard stale async client — its httpx connections are bound to the
+        # previous (closed) event loop and would raise "Event loop is closed".
+        from sis.llm.client import LLMClient
+        LLMClient.discard_async_client()
+
         loop = asyncio.new_event_loop()
         try:
             return loop.run_until_complete(self.run_async(account_id, transcript_texts, timeline_entries, deal_context, sf_data))

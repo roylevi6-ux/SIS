@@ -12,7 +12,7 @@ import {
   Upload,
   RotateCcw,
 } from 'lucide-react';
-import { useBatchProgress } from '@/lib/hooks/use-batch-analysis';
+import { useBatchProgress, clearBatchCache } from '@/lib/hooks/use-batch-analysis';
 import { AnalysisProgressDetail } from '@/components/analysis-progress-detail';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -262,6 +262,7 @@ export function BatchProgressView({
   function handleDismiss() {
     sessionStorage.removeItem('sis_batch_id');
     sessionStorage.removeItem('sis_batch_terminal');
+    clearBatchCache();
     onDismiss?.();
   }
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
@@ -316,6 +317,9 @@ export function BatchProgressView({
       </Card>
     );
   }
+
+  // -- Stale indicator (SSE lost but we have cached data) -------------------
+  const isStale = error != null;
 
   // -- Derived values -------------------------------------------------------
   const completed = batch.completed_count ?? 0;
@@ -389,6 +393,12 @@ export function BatchProgressView({
           {isTerminal ? 'finished' : 'complete'}
           {(batch.failed_count ?? 0) > 0 && ` · ${batch.failed_count} failed`}
         </p>
+
+        {isStale && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            Session expired — showing last known state
+          </p>
+        )}
       </CardHeader>
 
       <CardContent className="pt-0 px-0 pb-2">
