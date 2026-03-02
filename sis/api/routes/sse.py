@@ -12,7 +12,7 @@ import json
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from sis.db.models import AnalysisRun
+from sis.db.models import AgentAnalysis, AnalysisRun
 from sis.db.session import get_session
 from sis.orchestrator.progress_store import get_snapshot
 from sis.orchestrator.batch_store import get_snapshot as get_batch_snapshot
@@ -86,13 +86,44 @@ def _get_progress(run_id: str) -> dict:
         run = session.query(AnalysisRun).filter_by(id=run_id).first()
         if not run:
             return {"run_id": run_id, "status": "not_found", "agents": {}}
+
+        # Build per-agent detail from persisted agent_analyses rows
+        agents_db = session.query(AgentAnalysis).filter_by(analysis_run_id=run_id).all()
+        agents = {}
+        total_cost = 0.0
+        parallel_elapsed = 0.0
+        sequential_elapsed = 0.0
+        parallel_agents = {"agent_0e", "agent_2", "agent_3", "agent_4",
+                           "agent_5", "agent_6", "agent_7", "agent_8"}
+
+        for a in agents_db:
+            agents[a.agent_id] = {
+                "status": a.status or "completed",
+                "name": a.agent_name,
+                "input_tokens": a.input_tokens,
+                "output_tokens": a.output_tokens,
+                "elapsed_seconds": a.elapsed_seconds,
+                "prep_seconds": a.prep_seconds,
+                "cost_usd": a.cost_usd,
+                "model": a.model_used,
+                "attempts": (a.retries or 0) + 1,
+                "error": None,
+            }
+            if a.cost_usd:
+                total_cost += a.cost_usd
+            if a.elapsed_seconds:
+                if a.agent_id in parallel_agents:
+                    parallel_elapsed = max(parallel_elapsed, a.elapsed_seconds)
+                else:
+                    sequential_elapsed += a.elapsed_seconds
+
         return {
             "run_id": run.id,
             "status": run.status,
             "started_at": run.started_at,
             "completed_at": run.completed_at,
-            "agents": {},
-            "total_cost_usd": run.total_cost_usd or 0,
-            "total_elapsed_seconds": 0,
+            "agents": agents,
+            "total_cost_usd": run.total_cost_usd or round(total_cost, 4),
+            "total_elapsed_seconds": round(parallel_elapsed + sequential_elapsed, 1),
             "errors": [],
         }

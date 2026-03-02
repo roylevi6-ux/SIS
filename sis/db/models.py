@@ -208,6 +208,8 @@ class AgentAnalysis(Base):
     input_tokens = Column(Integer, nullable=True)
     output_tokens = Column(Integer, nullable=True)
     cost_usd = Column(Float, nullable=True)
+    elapsed_seconds = Column(Float, nullable=True)
+    prep_seconds = Column(Float, nullable=True)
     model_used = Column(Text, nullable=True)
     retries = Column(Integer, default=0)
     status = Column(Text, default="completed")  # completed/failed/skipped
