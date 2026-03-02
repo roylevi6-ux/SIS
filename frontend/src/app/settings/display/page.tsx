@@ -23,7 +23,7 @@ import { GripVertical, RotateCcw, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { useDealPageWidgets, useSaveDealPageWidgets, type WidgetConfig } from '@/lib/hooks/use-preferences';
+import { useDealPageWidgets, useSaveDealPageWidgets, DEFAULT_DEAL_WIDGETS, type WidgetConfig } from '@/lib/hooks/use-preferences';
 
 function SortableWidget({
   widget,
@@ -78,10 +78,11 @@ export default function DisplaySettingsPage() {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [saved, setSaved] = useState(false);
 
-  // Sync server data to local state
+  // Sync server data to local state (use defaults as fallback)
   useEffect(() => {
-    if (serverWidgets && widgets.length === 0) {
-      setWidgets([...serverWidgets].sort((a, b) => a.order - b.order));
+    if (widgets.length === 0) {
+      const source = serverWidgets && serverWidgets.length > 0 ? serverWidgets : DEFAULT_DEAL_WIDGETS;
+      setWidgets([...source].sort((a, b) => a.order - b.order));
     }
   }, [serverWidgets, widgets.length]);
 
@@ -122,14 +123,12 @@ export default function DisplaySettingsPage() {
   };
 
   const handleReset = () => {
-    if (serverWidgets) {
-      const defaults = serverWidgets.map((w, i) => ({
-        ...w,
-        visible: true,
-        order: i,
-      }));
-      save(defaults);
-    }
+    const defaults = DEFAULT_DEAL_WIDGETS.map((w, i) => ({
+      ...w,
+      visible: true,
+      order: i,
+    }));
+    save(defaults);
   };
 
   if (isLoading) {
