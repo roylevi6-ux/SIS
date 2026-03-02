@@ -54,6 +54,7 @@ from sis.api.routes import (  # noqa: E402
     gdrive,
     teams,
     quotas,
+    preferences,
 )
 
 app.include_router(auth.router)
@@ -70,3 +71,4 @@ app.include_router(sse.router)
 app.include_router(gdrive.router)
 app.include_router(teams.router)
 app.include_router(quotas.router)
+app.include_router(preferences.router)
