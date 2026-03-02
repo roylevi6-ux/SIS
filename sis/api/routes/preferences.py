@@ -38,6 +38,15 @@ DEFAULT_DEAL_WIDGETS = [
     {"id": "transcript_list", "label": "Transcripts", "description": "All uploaded transcripts for this account", "visible": True, "order": 15},
 ]
 
+DEFAULT_PIPELINE_WIDGETS = [
+    {"id": "number_line", "label": "Number Line", "description": "Pipeline stage funnel visualization", "visible": True, "order": 0},
+    {"id": "attention_strip", "label": "Attention Strip", "description": "Deals needing immediate attention", "visible": True, "order": 1},
+    {"id": "pipeline_changes", "label": "Pipeline Changes", "description": "Recent deal movements and updates", "visible": True, "order": 2},
+    {"id": "filter_chips", "label": "Filter Chips", "description": "Quick filters for deal table", "visible": True, "order": 3},
+    {"id": "team_forecast_grid", "label": "Team Forecast Grid", "description": "Team-level forecast summary (VP+ only)", "visible": True, "order": 4},
+    {"id": "deal_table", "label": "Deal Table", "description": "Main pipeline data table", "visible": True, "order": 5},
+]
+
 
 class PreferenceUpdate(BaseModel):
     value: Union[dict, list]
@@ -52,10 +61,15 @@ def _get_user_id_from_token(user: dict, db) -> str | None:
 
 @router.get("/{key}")
 def get_preference(key: str, user: dict = Depends(get_current_user), db=Depends(get_db)):
+    _WIDGET_DEFAULTS = {
+        "deal_page_widgets": DEFAULT_DEAL_WIDGETS,
+        "pipeline_page_widgets": DEFAULT_PIPELINE_WIDGETS,
+    }
+
     user_id = _get_user_id_from_token(user, db)
     if not user_id:
-        if key == "deal_page_widgets":
-            return {"widgets": DEFAULT_DEAL_WIDGETS}
+        if key in _WIDGET_DEFAULTS:
+            return {"widgets": _WIDGET_DEFAULTS[key]}
         return {"value": None}
 
     pref = db.query(UserPreference).filter(
@@ -64,8 +78,8 @@ def get_preference(key: str, user: dict = Depends(get_current_user), db=Depends(
     ).first()
 
     if not pref:
-        if key == "deal_page_widgets":
-            return {"widgets": DEFAULT_DEAL_WIDGETS}
+        if key in _WIDGET_DEFAULTS:
+            return {"widgets": _WIDGET_DEFAULTS[key]}
         return {"value": None}
 
     return json.loads(pref.preference_value)

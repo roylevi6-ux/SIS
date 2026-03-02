@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useCommandCenter } from '@/lib/hooks/use-command-center';
 import { usePermissions } from '@/lib/permissions';
+import { usePipelineWidgets, type WidgetConfig } from '@/lib/hooks/use-preferences';
 import { api } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -120,6 +121,12 @@ function filterDeals(
 // Main page
 // ---------------------------------------------------------------------------
 
+function getVisiblePipelineWidgets(widgets: WidgetConfig[]): WidgetConfig[] {
+  return widgets
+    .filter((w) => w.visible)
+    .sort((a, b) => a.order - b.order);
+}
+
 export default function PipelineCommandCenter() {
   const [quarter, setQuarter] = useState('FY');
   const [team, setTeam] = useState<string | undefined>(undefined);
@@ -129,6 +136,7 @@ export default function PipelineCommandCenter() {
   const [flagFilters, setFlagFilters] = useState<FlagFilter[]>([]);
 
   const { isVpOrAbove } = usePermissions();
+  const { data: widgetPrefs } = usePipelineWidgets();
 
   const { data: teamsData } = useQuery<{ id: string; name: string; level: string; leader_name: string | null }[]>({
     queryKey: ['teams'],
@@ -188,9 +196,16 @@ export default function PipelineCommandCenter() {
     setTeamLeadFilter(undefined);
   }, []);
 
-  const handleTeamClick = useCallback((teamLead: string) => {
-    setTeamLeadFilter((prev) => prev === teamLead ? undefined : teamLead);
-  }, []);
+  const handleGridCellClick = useCallback((teamLead: string | null, category: string | null) => {
+    // Toggle: if clicking same combination, clear both
+    if (teamLead === (teamLeadFilter ?? null) && category === (forecastFilter === 'all' ? null : forecastFilter)) {
+      setTeamLeadFilter(undefined);
+      setForecastFilter('all');
+      return;
+    }
+    setTeamLeadFilter(teamLead ?? undefined);
+    setForecastFilter(category ? (category as ForecastFilter) : 'all');
+  }, [teamLeadFilter, forecastFilter]);
 
   return (
     <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
@@ -281,7 +296,7 @@ export default function PipelineCommandCenter() {
       {/* ── Data ── */}
       {data && !isLoading && (
         <>
-          {/* 1. Number Line — sticky on scroll */}
+          {/* Number Line — always sticky at top (structural) */}
           <div className="sticky top-0 z-10 bg-background pb-2">
             <NumberLine
               quota={data.quota}
@@ -290,37 +305,55 @@ export default function PipelineCommandCenter() {
             />
           </div>
 
-          {/* 2. Attention Strip */}
-          <AttentionStrip items={data.attention_items} />
+          {/* Dynamic widgets from user preferences */}
+          {(() => {
+            const visibleWidgets = getVisiblePipelineWidgets(widgetPrefs ?? []);
+            const filterChipsVisible = visibleWidgets.some((w) => w.id === 'filter_chips');
 
-          {/* 3. Pipeline Changes (weekly delta) */}
-          <PipelineChanges changes={data.changes_this_week} />
+            const renderWidget = (id: string): ReactNode => {
+              switch (id) {
+                case 'number_line':
+                  return null; // rendered sticky above
+                case 'attention_strip':
+                  return <AttentionStrip key={id} items={data.attention_items} />;
+                case 'pipeline_changes':
+                  return <PipelineChanges key={id} changes={data.changes_this_week} />;
+                case 'filter_chips':
+                  return (
+                    <FilterChips
+                      key={id}
+                      forecast={data.forecast_breakdown}
+                      totalDeals={data.pipeline.total_deals}
+                      activeForecast={forecastFilter}
+                      activeHealth={healthFilters}
+                      activeFlags={flagFilters}
+                      onForecastChange={setForecastFilter}
+                      onHealthToggle={handleHealthToggle}
+                      onFlagToggle={handleFlagToggle}
+                      onClearAll={clearAllFilters}
+                      healthCounts={counts.health}
+                      flagCounts={counts.flags}
+                    />
+                  );
+                case 'deal_table':
+                  return <DataTable key={id} deals={filterChipsVisible ? filteredDeals : data.deals} />;
+                case 'team_forecast_grid':
+                  return isVpOrAbove ? (
+                    <TeamForecastGrid
+                      key={id}
+                      deals={data.deals}
+                      onCellClick={handleGridCellClick}
+                      activeTeamLead={teamLeadFilter ?? null}
+                      activeForecastCategory={forecastFilter === 'all' ? null : forecastFilter}
+                    />
+                  ) : null;
+                default:
+                  return null;
+              }
+            };
 
-          {/* 4. Filter Chips */}
-          <FilterChips
-            forecast={data.forecast_breakdown}
-            totalDeals={data.pipeline.total_deals}
-            activeForecast={forecastFilter}
-            activeHealth={healthFilters}
-            activeFlags={flagFilters}
-            onForecastChange={setForecastFilter}
-            onHealthToggle={handleHealthToggle}
-            onFlagToggle={handleFlagToggle}
-            onClearAll={clearAllFilters}
-            healthCounts={counts.health}
-            flagCounts={counts.flags}
-          />
-
-          {/* 5. Deal Table */}
-          <DataTable deals={filteredDeals} />
-
-          {/* 6. Team Forecast Grid (VP+ only) */}
-          {isVpOrAbove && (
-            <TeamForecastGrid
-              deals={data.deals}
-              onTeamClick={handleTeamClick}
-            />
-          )}
+            return visibleWidgets.map((w) => renderWidget(w.id));
+          })()}
         </>
       )}
     </div>

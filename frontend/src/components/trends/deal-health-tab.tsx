@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useDealHealth } from '@/lib/hooks/use-trends';
 import { Sparkline } from './sparkline';
 import Link from 'next/link';
@@ -134,19 +134,38 @@ export function DealHealthTab({ weeks }: { weeks: number }) {
             <CardTitle>Component Averages</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={Math.max(200, data.component_averages.length * 40)}>
-              <BarChart
-                data={data.component_averages}
-                layout="vertical"
-                margin={{ top: 5, right: 20, bottom: 5, left: 120 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis type="number" domain={[0, 100]} className="text-xs" />
-                <YAxis type="category" dataKey="component" className="text-xs" width={110} />
-                <Tooltip />
-                <Bar dataKey="avg_score" isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-3">
+              {[...data.component_averages]
+                .sort((a, b) => a.avg_score - b.avg_score)
+                .map((c) => (
+                  <div key={c.component} className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground w-48 shrink-0 text-right truncate" title={c.component}>
+                      {c.component}
+                    </span>
+                    <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          c.avg_score >= 70
+                            ? 'bg-emerald-500'
+                            : c.avg_score >= 40
+                            ? 'bg-amber-500'
+                            : 'bg-red-500'
+                        }`}
+                        style={{ width: `${c.avg_score}%` }}
+                      />
+                    </div>
+                    <span className={`text-sm font-medium w-8 text-right ${
+                      c.avg_score >= 70
+                        ? 'text-emerald-600'
+                        : c.avg_score >= 40
+                        ? 'text-amber-600'
+                        : 'text-red-600'
+                    }`}>
+                      {c.avg_score}
+                    </span>
+                  </div>
+                ))}
+            </div>
           </CardContent>
         </Card>
       )}
