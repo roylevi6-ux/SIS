@@ -52,6 +52,24 @@ class User(Base):
     )
 
 
+# ─── user_preferences ─────────────────────────────────────────────────
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    user_id = Column(Text, ForeignKey("users.id"), nullable=False)
+    preference_key = Column(Text, nullable=False)
+    preference_value = Column(Text, nullable=False)  # JSON string
+    updated_at = Column(Text, nullable=False, default=_now)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "preference_key", name="uq_user_preference"),
+        Index("ix_user_preferences_user", "user_id"),
+    )
+
+
 # ─── teams ─────────────────────────────────────────────────────────────
 
 
