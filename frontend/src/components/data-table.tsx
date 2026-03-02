@@ -129,7 +129,7 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
     cell: ({ row }) => {
       const deal = row.original;
       const ai = deal.ai_forecast_category;
-      const ic = deal.ic_forecast_category;
+      const sf = deal.sf_forecast_category;
       const divergent = deal.divergence_flag;
 
       return (
@@ -138,8 +138,8 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
           divergent && 'rounded px-1.5 py-0.5 bg-neutral-light/50'
         )}>
           <ForecastBadge category={ai} />
-          {divergent && ic && (
-            <span className="text-[10px] text-neutral">IC: {ic}</span>
+          {divergent && sf && (
+            <span className="text-[10px] text-neutral">SF: {sf}</span>
           )}
         </div>
       );

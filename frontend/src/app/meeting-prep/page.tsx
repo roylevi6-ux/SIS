@@ -48,7 +48,6 @@ interface AccountDetail {
   ae_owner: string | null;
   team_name: string | null;
   cp_estimate: number | null;
-  ic_forecast_category: string | null;
   assessment: Assessment | null;
 }
 

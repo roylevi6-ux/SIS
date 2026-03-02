@@ -22,7 +22,6 @@ export interface Account {
   cp_estimate: number | null;
   team_lead: string | null;
   ae_owner: string | null;
-  ic_forecast_category: string | null;
   health_score: number | null;
   momentum_direction: string | null;
   ai_forecast_category: string | null;
@@ -145,7 +144,7 @@ export interface DivergenceItem {
   account_id: string;
   account_name: string;
   ai_forecast_category: string;
-  ic_forecast_category: string;
+  sf_forecast_category: string | null;
   cp_estimate: number;
   health_score: number | null;
 }
@@ -315,7 +314,7 @@ export interface ForecastData {
   account_id: string;
   account_name: string;
   ai_forecast_category: string;
-  ic_forecast_category: string | null;
+  sf_forecast_category: string | null;
   cp_estimate: number;
   health_score: number | null;
   [key: string]: unknown;

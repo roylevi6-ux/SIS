@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # ── Action type constants ──────────────────────────────────────────────
 
 ACTION_PAGE_VIEW = "page_view"
-ACTION_IC_FORECAST = "ic_forecast_set"
+ACTION_FORECAST_SET = "forecast_set"
 ACTION_ANALYSIS_RUN = "analysis_run"
 ACTION_TRANSCRIPT_UPLOAD = "transcript_upload"
 ACTION_FEEDBACK_SUBMIT = "feedback_submit"

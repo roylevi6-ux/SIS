@@ -194,12 +194,12 @@ def _build_deal_context(account_id: str) -> str:
     )
     if assessment.get("forecast_rationale"):
         sections.append(f"- Rationale: {assessment['forecast_rationale']}")
-    ic = detail.get("ic_forecast_category")
-    if ic:
-        sections.append(f"- IC Forecast: {ic}")
+    sf = detail.get("sf_forecast_category")
+    if sf:
+        sections.append(f"- SF Forecast: {sf}")
     if assessment.get("divergence_flag"):
         sections.append(
-            f"- DIVERGENT: {assessment.get('divergence_explanation', 'AI and IC disagree')}"
+            f"- DIVERGENT: {assessment.get('divergence_explanation', 'AI and SF disagree')}"
         )
 
     # Agent Analyses
@@ -340,13 +340,13 @@ def _build_context(accounts: list[dict]) -> str:
         hs = a.get("health_score", "N/A")
         mom = a.get("momentum_direction", "N/A")
         ai_fc = a.get("ai_forecast_category", "N/A")
-        ic_fc = a.get("ic_forecast_category", "Not set")
+        sf_fc = a.get("sf_forecast_category", "Not set")
         stage = f"{a.get('inferred_stage', '?')} ({a.get('stage_name', 'N/A')})"
         mrr = f"${a['cp_estimate']:,.0f}" if a.get("cp_estimate") else "N/A"
         div = " [DIVERGENT]" if a.get("divergence_flag") else ""
         sections.append(
             f"- {a['account_name']}: Health={hs}, Momentum={mom}, "
-            f"Stage={stage}, AI={ai_fc}, IC={ic_fc}, MRR={mrr}, "
+            f"Stage={stage}, AI={ai_fc}, SF={sf_fc}, MRR={mrr}, "
             f"TL={a.get('team_lead', 'N/A')}{div}"
         )
 
@@ -355,7 +355,7 @@ def _build_context(accounts: list[dict]) -> str:
         for d in divergences:
             sections.append(
                 f"- {d['account_name']}: AI={d['ai_forecast_category']}, "
-                f"IC={d['ic_forecast_category']}, CP Est.=${d.get('cp_estimate', 0):,.0f}"
+                f"SF={d['sf_forecast_category']}, CP Est.=${d.get('cp_estimate', 0):,.0f}"
             )
 
     if rollup:
