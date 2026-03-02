@@ -1,24 +1,21 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { ForecastBreakdown } from '@/lib/pipeline-types';
 
 export type ForecastFilter = 'all' | 'commit' | 'realistic' | 'upside' | 'risk';
 export type HealthFilter = 'healthy' | 'neutral' | 'needs_attention';
 export type FlagFilter = 'divergent' | 'stale' | 'declining';
 
 interface FilterChipsProps {
-  forecast: ForecastBreakdown;
-  totalDeals: number;
-  activeForecast: ForecastFilter;
   activeHealth: HealthFilter[];
   activeFlags: FlagFilter[];
-  onForecastChange: (filter: ForecastFilter) => void;
   onHealthToggle: (filter: HealthFilter) => void;
   onFlagToggle: (filter: FlagFilter) => void;
   onClearAll: () => void;
   healthCounts: { healthy: number; neutral: number; needs_attention: number };
   flagCounts: { divergent: number; stale: number; declining: number };
+  /** Whether any external filter (e.g. grid forecast/team) is active */
+  hasExternalFilters?: boolean;
 }
 
 function Chip({
@@ -56,31 +53,20 @@ function Chip({
 }
 
 export function FilterChips({
-  forecast,
-  totalDeals,
-  activeForecast,
   activeHealth,
   activeFlags,
-  onForecastChange,
   onHealthToggle,
   onFlagToggle,
   onClearAll,
   healthCounts,
   flagCounts,
+  hasExternalFilters,
 }: FilterChipsProps) {
   const hasActiveFilters =
-    activeForecast !== 'all' || activeHealth.length > 0 || activeFlags.length > 0;
+    activeHealth.length > 0 || activeFlags.length > 0 || !!hasExternalFilters;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Chip label="All" count={totalDeals} active={activeForecast === 'all'} colorClass="bg-foreground" onClick={() => onForecastChange('all')} />
-      <Chip label="Commit" count={forecast.commit.count} active={activeForecast === 'commit'} colorClass="bg-forecast-commit" onClick={() => onForecastChange('commit')} />
-      <Chip label="Realistic" count={forecast.realistic.count} active={activeForecast === 'realistic'} colorClass="bg-forecast-realistic" onClick={() => onForecastChange('realistic')} />
-      <Chip label="Upside" count={forecast.upside.count} active={activeForecast === 'upside'} colorClass="bg-forecast-upside" onClick={() => onForecastChange('upside')} />
-      <Chip label="Risk" count={forecast.risk.count} active={activeForecast === 'risk'} colorClass="bg-forecast-risk" onClick={() => onForecastChange('risk')} />
-
-      <span className="mx-1 text-border">|</span>
-
       <Chip label="Healthy" count={healthCounts.healthy} active={activeHealth.includes('healthy')} colorClass="bg-healthy" onClick={() => onHealthToggle('healthy')} />
       <Chip label="Neutral" count={healthCounts.neutral} active={activeHealth.includes('neutral')} colorClass="bg-neutral" onClick={() => onHealthToggle('neutral')} />
       <Chip label="Needs Attention" count={healthCounts.needs_attention} active={activeHealth.includes('needs_attention')} colorClass="bg-needs-attention" onClick={() => onHealthToggle('needs_attention')} />

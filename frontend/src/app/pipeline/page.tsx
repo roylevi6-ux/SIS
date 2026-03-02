@@ -322,17 +322,14 @@ export default function PipelineCommandCenter() {
                   return (
                     <FilterChips
                       key={id}
-                      forecast={data.forecast_breakdown}
-                      totalDeals={data.pipeline.total_deals}
-                      activeForecast={forecastFilter}
                       activeHealth={healthFilters}
                       activeFlags={flagFilters}
-                      onForecastChange={setForecastFilter}
                       onHealthToggle={handleHealthToggle}
                       onFlagToggle={handleFlagToggle}
                       onClearAll={clearAllFilters}
                       healthCounts={counts.health}
                       flagCounts={counts.flags}
+                      hasExternalFilters={forecastFilter !== 'all' || !!teamLeadFilter}
                     />
                   );
                 case 'deal_table':
