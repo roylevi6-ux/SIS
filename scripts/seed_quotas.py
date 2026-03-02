@@ -6,12 +6,12 @@ from sis.db import get_session
 from sis.db.models import Quota, User
 
 QUOTAS_2026 = {
-    "Nadine Barchecht": 104_750,
+    "Nadine Barchechath": 104_750,
     "Omer Snir": 104_750,
     "Stefania Fanari": 104_750,
     "Keiko Navon": 125_700,
     "Nicholas Kirtley": 125_700,
-    "Dror Gross": 104_750,
+    "Dror Peter Gross": 104_750,
     "Uriel Ross": 104_750,
     "Yos Jacobs": 104_750,
     "Lei Bao": 83_800,
