@@ -108,7 +108,7 @@ function filterDeals(
     if (flagFilters.length > 0) {
       for (const flag of flagFilters) {
         if (flag === 'divergent' && !d.divergence_flag) return false;
-        if (flag === 'declining' && d.momentum_direction !== 'declining') return false;
+        if (flag === 'declining' && d.momentum_direction?.toLowerCase() !== 'declining') return false;
         if (flag === 'stale' && !isStale(d)) return false;
       }
     }
@@ -163,7 +163,7 @@ export default function PipelineCommandCenter() {
       flags: {
         divergent: deals.filter((d) => d.divergence_flag).length,
         stale: deals.filter((d) => isStale(d)).length,
-        declining: deals.filter((d) => d.momentum_direction === 'declining').length,
+        declining: deals.filter((d) => d.momentum_direction?.toLowerCase() === 'declining').length,
       },
     };
   }, [data]);
