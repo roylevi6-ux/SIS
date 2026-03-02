@@ -77,7 +77,8 @@ def _get_meta_files(directory: Path, account_name: str | None = None) -> list[Pa
         if not _is_transcript(f.name) and not _is_gdrive_duplicate(f.name)
     ]
     if account_name:
-        meta = [f for f in meta if _extract_account_name(f.name) == account_name]
+        target = account_name.lower()
+        meta = [f for f in meta if (_extract_account_name(f.name) or "").lower() == target]
     return meta
 
 
