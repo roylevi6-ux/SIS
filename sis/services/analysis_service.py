@@ -340,7 +340,8 @@ def _persist_pipeline_result(
                 assessment.stage_gap_magnitude = abs(sf_stage - sis_stage)
 
             if result.sf_data and result.sf_data.get("sf_forecast_category"):
-                forecast_rank = {"At Risk": 1, "Upside": 2, "Realistic": 3, "Commit": 4}
+                # "At Risk" is SIS-only — equivalent to SF "Upside" (same rank)
+                forecast_rank = {"At Risk": 2, "Upside": 2, "Realistic": 3, "Commit": 4}
                 sf_rank = forecast_rank.get(result.sf_data["sf_forecast_category"], 0)
                 sis_rank = forecast_rank.get(syn.get("forecast_category", ""), 0)
                 if sf_rank == sis_rank:
