@@ -76,6 +76,7 @@ interface Assessment {
   stage_gap_magnitude: number | null;
   forecast_gap_direction: string | null;
   sf_gap_interpretation: string | null;
+  manager_actions_summary: string | null;
 }
 
 interface AccountDetail {
@@ -560,7 +561,7 @@ export default function DealDetailPage({
       case 'deal_memo':
         return assessment ? <DealMemo key={widgetId} memo={assessment.deal_memo} /> : null;
       case 'manager_actions':
-        return assessment ? <ManagerActionsPanel key={widgetId} agents={agentList} /> : null;
+        return assessment ? <ManagerActionsPanel key={widgetId} agents={agentList} summary={assessment.manager_actions_summary} /> : null;
       case 'health_breakdown':
         return assessment ? (
           <HealthBreakdown key={widgetId} breakdown={assessment.health_breakdown} healthScore={assessment.health_score} />

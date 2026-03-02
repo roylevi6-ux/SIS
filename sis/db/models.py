@@ -266,6 +266,9 @@ class DealAssessment(Base):
     top_risks = Column(Text, nullable=True)  # JSON array
     recommended_actions = Column(Text, nullable=True)  # JSON array
 
+    # Manager actions summary (2 sentences: pressing issue + next step)
+    manager_actions_summary = Column(Text, nullable=True)
+
     # Divergence (computed post-hoc)
     divergence_flag = Column(Integer, default=0)  # boolean
     divergence_explanation = Column(Text, nullable=True)

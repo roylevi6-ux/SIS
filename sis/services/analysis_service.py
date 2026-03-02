@@ -310,6 +310,7 @@ def _persist_pipeline_result(
                 top_positive_signals=json.dumps(syn.get("top_positive_signals", [])),
                 top_risks=json.dumps(syn.get("top_risks", [])),
                 recommended_actions=json.dumps(syn.get("recommended_actions", [])),
+                manager_actions_summary=syn.get("manager_actions_summary", ""),
             )
 
             # Snapshot SF indication fields at run time

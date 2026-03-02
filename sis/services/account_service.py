@@ -360,6 +360,7 @@ def get_account_detail(account_id: str) -> dict:
                 "stage_gap_magnitude": latest_assessment.stage_gap_magnitude,
                 "forecast_gap_direction": latest_assessment.forecast_gap_direction,
                 "sf_gap_interpretation": latest_assessment.sf_gap_interpretation,
+                "manager_actions_summary": latest_assessment.manager_actions_summary,
                 "created_at": latest_assessment.created_at,
             }
 
