@@ -265,6 +265,14 @@ export const api = {
         body: JSON.stringify({ account_name: accountName, account_path: accountPath, max_calls: maxCalls ?? 5, ...dealArgs }),
       }),
   },
+  preferences: {
+    get: (key: string) => apiFetch<any>(`/api/preferences/${key}`),
+    save: (key: string, value: any) =>
+      apiFetch<any>(`/api/preferences/${key}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+  },
 
   // Team & User management (admin)
   teams: {
