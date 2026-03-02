@@ -91,6 +91,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Admin',
     items: [
       { label: 'Team Management', href: '/settings/teams', icon: Users, minRole: 'admin' },
+      { label: 'Display Settings', href: '/settings/display', icon: Settings },
       { label: 'Feedback', href: '/feedback', icon: ThumbsUp, minRole: 'team_lead' },
       { label: 'Calibration', href: '/calibration', icon: Settings, minRole: 'admin' },
       { label: 'Prompt Versions', href: '/prompts', icon: Code, minRole: 'admin' },
