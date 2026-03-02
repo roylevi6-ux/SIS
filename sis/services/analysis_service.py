@@ -260,6 +260,12 @@ def _persist_pipeline_result(
             session.add(run)
         session.flush()
 
+        # Build per-agent cost lookup from cost_summary
+        agent_cost_map = {
+            c.agent_id: c.cost_usd
+            for c in result.cost_summary.agent_costs
+        }
+
         # Persist individual agent analyses (agents 1-9)
         for agent_id, output_dict in result.agent_outputs.items():
             meta = result.agent_metadata.get(agent_id, {})
@@ -278,7 +284,9 @@ def _persist_pipeline_result(
                 sparse_data_flag=1 if output_dict.get("sparse_data_flag") else 0,
                 input_tokens=meta.get("input_tokens"),
                 output_tokens=meta.get("output_tokens"),
-                cost_usd=None,  # calculated from cost_summary
+                cost_usd=round(agent_cost_map.get(agent_id, 0), 4),
+                elapsed_seconds=meta.get("elapsed_seconds"),
+                prep_seconds=meta.get("prep_seconds"),
                 model_used=meta.get("model"),
                 retries=meta.get("attempts", 1) - 1,
             )
