@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, MessageSquarePlus, AlertTriangle, Zap } from 'lucide-react';
 import { useAccount } from '@/lib/hooks/use-accounts';
 import { useAnalysisHistory, useAgentAnalyses, useAssessmentDelta } from '@/lib/hooks/use-analyses';
+import { useDealPageWidgets, type WidgetConfig } from '@/lib/hooks/use-preferences';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -153,6 +154,26 @@ function formatDuration(minutes: number | null): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+// ---------------------------------------------------------------------------
+// Widget visibility helpers
+// ---------------------------------------------------------------------------
+
+function getVisibleWidgets(prefs: WidgetConfig[] | undefined): string[] {
+  if (!prefs) {
+    return [
+      'status_strip', 'call_timeline', 'what_changed', 'deal_memo',
+      'manager_actions', 'health_breakdown', 'actions_risks',
+      'positive_contradictions', 'forecast_divergence', 'key_unknowns',
+      'forecast_rationale', 'sf_gap', 'agent_analyses', 'deal_timeline',
+      'analysis_history', 'transcript_list',
+    ];
+  }
+  return prefs
+    .filter((w) => w.visible)
+    .sort((a, b) => a.order - b.order)
+    .map((w) => w.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -488,6 +509,9 @@ export default function DealDetailPage({
   const { data: agentData } = useAgentAnalyses(latestCompletedRun?.run_id ?? '');
   const agentList = (agentData ?? []) as AgentAnalysis[];
 
+  // Widget preferences
+  const { data: widgetPrefs } = useDealPageWidgets();
+
   // Loading state
   if (isLoading) {
     return <PageSkeleton />;
@@ -521,6 +545,111 @@ export default function DealDetailPage({
   if (!account) return null;
 
   const assessment = account.assessment;
+
+  function renderWidget(widgetId: string) {
+    if (!account) return null;
+    switch (widgetId) {
+      case 'status_strip':
+        return null; // Status strip is rendered in the header, not dynamically
+      case 'call_timeline':
+        return account.transcripts?.length > 0 ? (
+          <CallTimeline key={widgetId} transcripts={account.transcripts} />
+        ) : null;
+      case 'what_changed':
+        return <WhatChangedCard key={widgetId} accountId={id} />;
+      case 'deal_memo':
+        return assessment ? <DealMemo key={widgetId} memo={assessment.deal_memo} /> : null;
+      case 'manager_actions':
+        return assessment ? <ManagerActionsPanel key={widgetId} agents={agentList} /> : null;
+      case 'health_breakdown':
+        return assessment ? (
+          <HealthBreakdown key={widgetId} breakdown={assessment.health_breakdown} healthScore={assessment.health_score} />
+        ) : null;
+      case 'actions_risks':
+        return assessment ? (
+          <div key={widgetId} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ActionsList actions={assessment.recommended_actions} />
+            <SignalsList
+              title="Risk Signals"
+              items={assessment.top_risks}
+              icon={<AlertTriangle className="size-3.5 text-amber-500" />}
+              emptyText="No risks identified."
+            />
+          </div>
+        ) : null;
+      case 'positive_contradictions':
+        return assessment ? (
+          <div key={widgetId} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SignalsList
+              title="Positive Signals"
+              items={assessment.top_positive_signals}
+              icon={<span className="text-emerald-500">+</span>}
+              emptyText="No positive signals."
+            />
+            <SignalsList
+              title="Contradictions"
+              items={assessment.contradiction_map}
+              icon={<Zap className="size-3.5 text-purple-500" />}
+              emptyText="No contradictions detected."
+            />
+          </div>
+        ) : null;
+      case 'forecast_divergence':
+        return assessment?.divergence_flag && assessment.divergence_explanation ? (
+          <Card key={widgetId} className="border-amber-200 dark:border-amber-800">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="size-4 text-amber-500" />
+                Forecast Divergence
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">{assessment.divergence_explanation}</p>
+            </CardContent>
+          </Card>
+        ) : null;
+      case 'key_unknowns':
+        return (assessment?.key_unknowns?.length ?? 0) > 0 ? (
+          <Card key={widgetId}>
+            <CardHeader>
+              <CardTitle className="text-base">Key Unknowns</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                {assessment?.key_unknowns?.map((u, i) => (
+                  <li key={i}>{u}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ) : null;
+      case 'forecast_rationale':
+        return assessment?.forecast_rationale ? (
+          <Card key={widgetId}>
+            <CardHeader>
+              <CardTitle className="text-base">Forecast Rationale</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed">{assessment.forecast_rationale}</p>
+            </CardContent>
+          </Card>
+        ) : null;
+      case 'sf_gap':
+        return assessment ? <SFGapCard key={widgetId} assessment={assessment} /> : null;
+      case 'agent_analyses':
+        return assessment ? (
+          <AgentAnalysesSection key={widgetId} agents={agentList} healthBreakdown={assessment.health_breakdown} />
+        ) : null;
+      case 'deal_timeline':
+        return <DealTimeline key={widgetId} accountId={id} />;
+      case 'analysis_history':
+        return <AnalysisHistorySection key={widgetId} accountId={id} />;
+      case 'transcript_list':
+        return <TranscriptListSection key={widgetId} transcripts={account.transcripts ?? []} />;
+      default:
+        return null;
+    }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -646,121 +775,9 @@ export default function DealDetailPage({
 
       <Separator />
 
-      {/* ---- Call Timeline (always shown if we have transcripts) ---- */}
-      {account.transcripts && account.transcripts.length > 0 && (
-        <CallTimeline transcripts={account.transcripts} />
-      )}
-
-      {/* ---- What Changed (only renders with 2+ runs) ---- */}
-      <WhatChangedCard accountId={id} />
-
-      {/* ---- No assessment state ---- */}
-      {!assessment && (
-        <NoAssessmentState accountName={account.account_name} />
-      )}
-
-      {/* ---- Assessment content ---- */}
-      {assessment && (
-        <>
-          {/* Deal Memo */}
-          <DealMemo memo={assessment.deal_memo} />
-
-          {/* Manager Actions */}
-          <ManagerActionsPanel agents={agentList} />
-
-          {/* Health Breakdown */}
-          <HealthBreakdown breakdown={assessment.health_breakdown} healthScore={assessment.health_score} />
-
-          {/* Two-column: Actions + Risks */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ActionsList actions={assessment.recommended_actions} />
-            <SignalsList
-              title="Risk Signals"
-              items={assessment.top_risks}
-              icon={<AlertTriangle className="size-3.5 text-amber-500" />}
-              emptyText="No risks identified."
-            />
-          </div>
-
-          {/* Two-column: Positive Signals + Contradictions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SignalsList
-              title="Positive Signals"
-              items={assessment.top_positive_signals}
-              icon={<span className="text-emerald-500">+</span>}
-              emptyText="No positive signals."
-            />
-            <SignalsList
-              title="Contradictions"
-              items={assessment.contradiction_map}
-              icon={<Zap className="size-3.5 text-purple-500" />}
-              emptyText="No contradictions detected."
-            />
-          </div>
-
-          {/* Divergence explanation */}
-          {assessment.divergence_flag && assessment.divergence_explanation && (
-            <Card className="border-amber-200 dark:border-amber-800">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertTriangle className="size-4 text-amber-500" />
-                  Forecast Divergence
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">{assessment.divergence_explanation}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Key unknowns */}
-          {assessment.key_unknowns && assessment.key_unknowns.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Key Unknowns</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc list-inside text-sm space-y-1">
-                  {assessment.key_unknowns.map((unknown, i) => (
-                    <li key={i}>{unknown}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Forecast rationale */}
-          {assessment.forecast_rationale && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Forecast Rationale</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed">{assessment.forecast_rationale}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* SF Gap Analysis */}
-          <SFGapCard assessment={assessment} />
-
-          <Separator />
-
-          {/* Per-Agent Analysis */}
-          <AgentAnalysesSection agents={agentList} healthBreakdown={assessment.health_breakdown} />
-        </>
-      )}
-
-      <Separator />
-
-      {/* Assessment Timeline */}
-      <DealTimeline accountId={id} />
-
-      {/* Analysis History */}
-      <AnalysisHistorySection accountId={id} />
-
-      {/* Transcript List */}
-      <TranscriptListSection transcripts={account.transcripts ?? []} />
+      {/* ---- Dynamic widget layout ---- */}
+      {!assessment && <NoAssessmentState accountName={account.account_name} />}
+      {getVisibleWidgets(widgetPrefs).map((widgetId) => renderWidget(widgetId))}
     </div>
   );
 }
