@@ -122,6 +122,14 @@ class SynthesisOutput(BaseModel):
         "to know, the biggest forecast risk, and what should happen this week.",
     )
 
+    # 2c. Manager Actions Summary
+    manager_actions_summary: str = Field(
+        default="",
+        description="Exactly 2 sentences: (1) the most pressing issue or pattern this week "
+        "across all agent manager_insight fields, (2) the single most important next step "
+        "the manager should take given that issue. Be specific and actionable.",
+    )
+
     # 3. Structured Fields
     inferred_stage: int = Field(ge=1, le=7, description="Synthesized deal stage (1-7)")
     inferred_stage_name: str = Field(description="Stage name")
@@ -194,6 +202,12 @@ Write 3-5 sentences directly to the VP Sales in the `manager_brief` field:
 - The ONE thing to know about this deal right now
 - The biggest forecast risk
 - What should happen this week
+
+### Step 2c: MANAGER ACTIONS SUMMARY
+Write exactly 2 sentences in the `manager_actions_summary` field:
+- Sentence 1: The most pressing issue or pattern this week, synthesized from all agent manager_insight fields. Be specific — name the risk, the gap, or the signal.
+- Sentence 2: The single most important next step the manager should take this week to address that issue.
+Do NOT write a generic overview. Be direct and actionable.
 
 ### Step 3: STRUCTURED FIELDS
 Produce health score, forecast category, signals, risks, and actions.
