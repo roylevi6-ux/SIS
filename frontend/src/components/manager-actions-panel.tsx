@@ -26,18 +26,16 @@ const AGENT_LABELS: Record<string, string> = {
 
 interface ManagerActionsPanelProps {
   agents: AgentAnalysis[];
-  /** AI-generated 2-sentence summary from Agent 10 (pressing issue + next step). */
-  summary?: string | null;
 }
 
-function buildFallbackSummary(labels: string[]): string {
+function buildSummary(labels: string[]): string {
   const count = labels.length;
   const areas = labels.slice(0, 3).join(', ');
   const more = count > 3 ? ` and ${count - 3} more` : '';
   return `${count} agent${count === 1 ? '' : 's'} flagged action items this week. Key areas: ${areas}${more}.`;
 }
 
-export function ManagerActionsPanel({ agents, summary }: ManagerActionsPanelProps) {
+export function ManagerActionsPanel({ agents }: ManagerActionsPanelProps) {
   const [open, setOpen] = useState(true);
 
   const insights = agents
@@ -50,7 +48,7 @@ export function ManagerActionsPanel({ agents, summary }: ManagerActionsPanelProp
 
   if (insights.length === 0) return null;
 
-  const displaySummary = summary || buildFallbackSummary(insights.map((i) => i.agentLabel));
+  const summary = buildSummary(insights.map((i) => i.agentLabel));
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -72,8 +70,8 @@ export function ManagerActionsPanel({ agents, summary }: ManagerActionsPanelProp
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 space-y-3">
             {/* Summary — always visible when section is open */}
-            <p className="text-sm leading-relaxed px-1">
-              {displaySummary}
+            <p className="text-sm text-muted-foreground leading-relaxed px-1">
+              {summary}
             </p>
 
             {/* Individual collapsible categories */}
