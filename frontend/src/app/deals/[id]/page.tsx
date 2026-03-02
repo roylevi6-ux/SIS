@@ -16,6 +16,7 @@ import { HealthBreakdown } from '@/components/health-breakdown';
 import { DealMemo } from '@/components/deal-memo';
 import { AgentCard } from '@/components/agent-card';
 import { ActionsList } from '@/components/actions-list';
+import { ManagerActionsPanel } from '@/components/manager-actions-panel';
 import { DealTimeline } from '@/components/deal-timeline';
 import { CallTimeline } from '@/components/call-timeline';
 import { DeltaBadge } from '@/components/delta-badge';
@@ -343,41 +344,17 @@ function SignalsList({
 // Agent analyses section
 // ---------------------------------------------------------------------------
 
-function AgentAnalysesSection({ accountId, healthBreakdown }: { accountId: string; healthBreakdown?: unknown }) {
-  const { data: history } = useAnalysisHistory(accountId);
-  const runs = (history ?? []) as AnalysisRun[];
-
-  // Get the latest completed run
-  const latestRun = runs.find((r) => r.status === 'completed') ?? runs[0];
-  const runId = latestRun?.run_id ?? '';
-
-  const { data: agents, isLoading } = useAgentAnalyses(runId);
-  const agentList = (agents ?? []) as AgentAnalysis[];
-
-  if (!latestRun) {
-    return null;
-  }
+function AgentAnalysesSection({ agents, healthBreakdown }: { agents: AgentAnalysis[]; healthBreakdown?: unknown }) {
+  if (agents.length === 0) return null;
 
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold">Per-Agent Analysis</h2>
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-xl border bg-muted/20 animate-pulse" />
-          ))}
-        </div>
-      ) : agentList.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No agent analyses found for this run.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {agentList.map((agent) => (
-            <AgentCard key={agent.agent_id} analysis={agent} healthBreakdown={healthBreakdown as HealthBreakdownEntry[] | null} />
-          ))}
-        </div>
-      )}
+      <div className="space-y-2">
+        {agents.map((agent) => (
+          <AgentCard key={agent.agent_id} analysis={agent} healthBreakdown={healthBreakdown as HealthBreakdownEntry[] | null} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -503,6 +480,13 @@ export default function DealDetailPage({
   const [_feedbackOpen, setFeedbackOpen] = useState(false);
   const { data: deltaData } = useAssessmentDelta(id);
   const deltaFields = deltaData?.fields as Record<string, { previous: unknown; current: unknown; changed: boolean; delta?: number }> | undefined;
+
+  // Fetch agent analyses for Manager Actions panel + AgentAnalysesSection
+  const { data: historyData } = useAnalysisHistory(id);
+  const historyRuns = (historyData ?? []) as AnalysisRun[];
+  const latestCompletedRun = historyRuns.find((r) => r.status === 'completed') ?? historyRuns[0];
+  const { data: agentData } = useAgentAnalyses(latestCompletedRun?.run_id ?? '');
+  const agentList = (agentData ?? []) as AgentAnalysis[];
 
   // Loading state
   if (isLoading) {
@@ -681,6 +665,9 @@ export default function DealDetailPage({
           {/* Deal Memo */}
           <DealMemo memo={assessment.deal_memo} />
 
+          {/* Manager Actions */}
+          <ManagerActionsPanel agents={agentList} />
+
           {/* Health Breakdown */}
           <HealthBreakdown breakdown={assessment.health_breakdown} healthScore={assessment.health_score} />
 
@@ -760,7 +747,7 @@ export default function DealDetailPage({
           <Separator />
 
           {/* Per-Agent Analysis */}
-          <AgentAnalysesSection accountId={id} healthBreakdown={assessment.health_breakdown} />
+          <AgentAnalysesSection agents={agentList} healthBreakdown={assessment.health_breakdown} />
         </>
       )}
 
