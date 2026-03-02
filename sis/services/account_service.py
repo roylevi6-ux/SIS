@@ -132,7 +132,9 @@ def set_rep_forecast(account_id: str, category: str) -> dict:
 
         if latest:
             ai_category = latest.ai_forecast_category
-            if ai_category != category:
+            # "At Risk" is SIS-only — treat as aligned with SF "Upside"
+            is_match = (ai_category == category) or (ai_category == "At Risk" and category == "Upside")
+            if not is_match:
                 latest.divergence_flag = 1
                 explanation = (
                     f"AI forecasts '{ai_category}' but rep set "

@@ -356,13 +356,17 @@ def _persist_pipeline_result(
                 assessment.sf_gap_interpretation = sf_gap.get("overall_gap_assessment", "")
 
             # Auto-compute divergence: SF forecast vs AI forecast
+            # "At Risk" is SIS-only (not a SF category) — treat as aligned with SF "Upside"
             account = session.query(Account).filter_by(id=account_id).one_or_none()
             if account and account.sf_forecast_category and assessment.ai_forecast_category:
-                if account.sf_forecast_category != assessment.ai_forecast_category:
+                sf = account.sf_forecast_category
+                ai = assessment.ai_forecast_category
+                is_match = (sf == ai) or (ai == "At Risk" and sf == "Upside")
+                if not is_match:
                     assessment.divergence_flag = 1
                     assessment.divergence_explanation = (
-                        f"AI forecasts '{assessment.ai_forecast_category}' but rep set "
-                        f"'{account.sf_forecast_category}' in Salesforce."
+                        f"AI forecasts '{ai}' but rep set "
+                        f"'{sf}' in Salesforce."
                     )
                 else:
                     assessment.divergence_flag = 0
@@ -825,13 +829,17 @@ def resynthesize(run_id: str) -> dict:
                 assessment.stage_gap_magnitude = abs(sf_stage - sis_stage)
 
         # Auto-compute divergence: SF forecast vs AI forecast
+        # "At Risk" is SIS-only (not a SF category) — treat as aligned with SF "Upside"
         acct = session.query(Account).filter_by(id=account_id).one_or_none()
         if acct and acct.sf_forecast_category and assessment.ai_forecast_category:
-            if acct.sf_forecast_category != assessment.ai_forecast_category:
+            sf = acct.sf_forecast_category
+            ai = assessment.ai_forecast_category
+            is_match = (sf == ai) or (ai == "At Risk" and sf == "Upside")
+            if not is_match:
                 assessment.divergence_flag = 1
                 assessment.divergence_explanation = (
-                    f"AI forecasts '{assessment.ai_forecast_category}' but rep set "
-                    f"'{acct.sf_forecast_category}' in Salesforce."
+                    f"AI forecasts '{ai}' but rep set "
+                    f"'{sf}' in Salesforce."
                 )
             else:
                 assessment.divergence_flag = 0
