@@ -19,14 +19,23 @@ export function DeltaBadge({ field }: { field: DeltaFieldData | undefined }) {
 
   // Numeric delta (health score, confidence)
   if (typeof field.delta === 'number') {
-    const sign = field.delta > 0 ? '+' : '';
-    const color = field.delta > 0
+    const prev = Number(field.previous);
+    const curr = Number(field.current);
+
+    // Values in 0-1 range are percentages stored as decimals (e.g. confidence 0.82)
+    const isDecimal = Math.abs(prev) <= 1 && Math.abs(curr) <= 1 && prev !== 0;
+    const displayPrev = isDecimal ? Math.round(prev * 100) : prev;
+    const displayCurr = isDecimal ? Math.round(curr * 100) : curr;
+    const displayDelta = isDecimal ? Math.round(field.delta * 100) : Math.round(field.delta);
+
+    const sign = displayDelta > 0 ? '+' : '';
+    const color = displayDelta > 0
       ? 'text-emerald-600 dark:text-emerald-400'
       : 'text-red-600 dark:text-red-400';
 
     return (
       <span className={`text-xs font-medium ${color}`}>
-        {String(field.previous)} → {String(field.current)} ({sign}{field.delta})
+        {displayPrev} → {displayCurr} ({sign}{displayDelta})
       </span>
     );
   }
