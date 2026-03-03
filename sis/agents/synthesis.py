@@ -97,6 +97,24 @@ class SFGapAnalysis(BaseModel):
     overall_gap_assessment: str = Field(description="2-3 sentences for the VP Sales")
 
 
+class DealMemoSection(BaseModel):
+    """One section of the structured deal memo."""
+
+    section_id: str = Field(
+        description="Stable ID: bottom_line, deal_situation, people_power, "
+        "commercial_competitive, why_now, momentum, technical, red_flags, expansion_dynamics"
+    )
+    title: str = Field(description="Section display title")
+    content: str = Field(description="The section content (1-2 paragraphs)")
+    health_signal: str = Field(
+        description="green (strength area, related health components >= 70% of max), "
+        "amber (watch area, 45-69% of max), red (concern, < 45% of max)"
+    )
+    related_components: list[str] = Field(
+        description="Health breakdown component names this section relates to"
+    )
+
+
 # --- Output Model (NOT envelope -- this is the pipeline endpoint) ---
 
 
@@ -120,6 +138,21 @@ class SynthesisOutput(BaseModel):
         default="",
         description="3-5 sentences written directly to the VP Sales: the ONE thing "
         "to know, the biggest forecast risk, and what should happen this week.",
+    )
+
+    # 2c. Structured deal memo sections (for TL view)
+    deal_memo_sections: list[DealMemoSection] = Field(
+        default_factory=list,
+        description="Structured deal memo broken into labeled sections with health signals. "
+        "Must cover: bottom_line, deal_situation, people_power, commercial_competitive, "
+        "why_now, momentum, technical, red_flags. Add expansion_dynamics for expansion deals.",
+    )
+
+    # 2d. VP attention level
+    attention_level: str = Field(
+        default="none",
+        description="VP attention signal: 'act' (VP intervention needed this week), "
+        "'watch' (emerging risk, monitor), 'none' (tracking to forecast, no VP action needed)",
     )
 
     # 3. Structured Fields
