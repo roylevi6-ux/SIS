@@ -28,13 +28,13 @@ export function VPBrief({ brief, attentionLevel, fallbackMemo }: VPBriefProps) {
     <Card
       className={cn(
         'transition-colors',
-        level === 'act' && 'border-red-500/60 bg-red-50/50 dark:bg-red-950/20',
+        level === 'act' && 'border-orange-400/60 bg-orange-50/40 dark:bg-orange-950/20',
         level === 'watch' && 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20',
       )}
     >
       <CardContent className="pt-4 pb-4">
         <div className="flex items-start gap-3">
-          {level === 'act' && <AlertTriangle className="size-5 text-red-500 shrink-0 mt-0.5" />}
+          {level === 'act' && <AlertTriangle className="size-5 text-orange-500 shrink-0 mt-0.5" />}
           {level === 'watch' && <Eye className="size-5 text-amber-500 shrink-0 mt-0.5" />}
           <div className="space-y-1.5 min-w-0">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
