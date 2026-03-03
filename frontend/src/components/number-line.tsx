@@ -1,5 +1,6 @@
 'use client';
 
+import { useCountUp } from '@/lib/hooks/use-count-up';
 import type { CommandCenterPipeline, CommandCenterQuota, ForecastBreakdown } from '@/lib/pipeline-types';
 
 interface NumberLineProps {
@@ -14,14 +15,25 @@ function formatDollar(value: number): string {
   return `$${value.toLocaleString()}`;
 }
 
-function KpiItem({ label, value, subtext }: { label: string; value: string; subtext?: string }) {
+function AnimatedKpi({
+  label,
+  rawValue,
+  subtext,
+  colorClass,
+}: {
+  label: string;
+  rawValue: number;
+  subtext?: string;
+  colorClass?: string;
+}) {
+  const animated = useCountUp(rawValue);
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <span className="text-2xl font-bold font-mono tabular-nums text-foreground sm:text-3xl">
-        {value}
+      <span className={`text-3xl font-medium font-mono tabular-nums sm:text-4xl ${colorClass ?? 'text-foreground'}`}>
+        {formatDollar(animated)}
       </span>
       {subtext && (
         <span className="text-xs text-muted-foreground">{subtext}</span>
@@ -46,15 +58,15 @@ function DistributionBar({ forecast }: { forecast: ForecastBreakdown }) {
   ];
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex h-3 w-full overflow-hidden rounded-full">
+    <div className="space-y-2 pt-4 mt-4 border-t border-border">
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full">
         {segments.map((seg) => {
           const pct = (seg.value / total) * 100;
           if (pct < 1) return null;
           return (
             <div
               key={seg.key}
-              className={`${seg.color} transition-all`}
+              className={`${seg.color} transition-all duration-700`}
               style={{ width: `${pct}%` }}
               title={`${seg.label}: ${formatDollar(seg.value)} (${pct.toFixed(0)}%)`}
             />
@@ -63,8 +75,9 @@ function DistributionBar({ forecast }: { forecast: ForecastBreakdown }) {
       </div>
       <div className="flex justify-between text-[11px] text-muted-foreground">
         {segments.map((seg) => (
-          <span key={seg.key}>
-            {seg.label} {formatDollar(seg.value)}
+          <span key={seg.key} className="flex items-center gap-1.5">
+            <span className={`inline-block size-2 rounded-full ${seg.color}`} />
+            {seg.label} <span className="font-mono tabular-nums">{formatDollar(seg.value)}</span>
           </span>
         ))}
       </div>
@@ -73,33 +86,37 @@ function DistributionBar({ forecast }: { forecast: ForecastBreakdown }) {
 }
 
 export function NumberLine({ quota, pipeline, forecast }: NumberLineProps) {
-  const gapSign = pipeline.gap >= 0 ? '+' : '';
   const gapColor = pipeline.gap >= 0 ? 'text-healthy' : 'text-needs-attention';
   const coverageColor =
     pipeline.coverage >= 3 ? 'text-healthy' :
     pipeline.coverage >= 2 ? 'text-neutral' :
     'text-needs-attention';
 
+  const coverageAnimated = useCountUp(Math.round(pipeline.coverage * 10));
+
   return (
-    <div className="rounded-xl border bg-brand-50/50 p-5 space-y-4">
+    <div className="relative rounded-xl border bg-card p-6 space-y-4 overflow-hidden">
+      {/* Top accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-brand-500" />
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <KpiItem label="Quota" value={formatDollar(quota.amount)} subtext={quota.period} />
-        <KpiItem label="Pipeline" value={formatDollar(pipeline.total_value)} subtext={`${pipeline.total_deals} deals`} />
-        <div className="flex flex-col items-center">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <AnimatedKpi label="Quota" rawValue={quota.amount} subtext={quota.period} />
+        <AnimatedKpi label="Pipeline" rawValue={pipeline.total_value} subtext={`${pipeline.total_deals} deals`} />
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
             Coverage
           </span>
-          <span className={`text-2xl font-bold font-mono tabular-nums sm:text-3xl ${coverageColor}`}>
-            {pipeline.coverage.toFixed(1)}x
+          <span className={`text-3xl font-medium font-mono tabular-nums sm:text-4xl ${coverageColor}`}>
+            {(coverageAnimated / 10).toFixed(1)}x
           </span>
         </div>
-        <KpiItem label="Weighted" value={formatDollar(pipeline.weighted_value)} />
-        <div className="flex flex-col items-center">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <AnimatedKpi label="Weighted" rawValue={pipeline.weighted_value} />
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
             Gap
           </span>
-          <span className={`text-2xl font-bold font-mono tabular-nums sm:text-3xl ${gapColor}`}>
-            {gapSign}{formatDollar(Math.abs(pipeline.gap))}
+          <span className={`text-3xl font-medium font-mono tabular-nums sm:text-4xl ${gapColor}`}>
+            {pipeline.gap >= 0 ? '+' : ''}{formatDollar(Math.abs(pipeline.gap))}
           </span>
           <span className="text-xs text-muted-foreground">
             {pipeline.gap >= 0 ? 'above quota' : 'below quota'}
