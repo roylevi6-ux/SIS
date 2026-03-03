@@ -11,15 +11,15 @@ interface AgentAnalysis {
 }
 
 const AGENT_COLORS: Record<string, string> = {
-  agent_0e: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300',
-  agent_1: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  agent_2: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-  agent_3: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  agent_4: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-  agent_5: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  agent_6: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-  agent_7: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300',
-  agent_8: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+  agent_0e: 'bg-emerald-500/15 text-emerald-400',
+  agent_1: 'bg-blue-500/15 text-blue-400',
+  agent_2: 'bg-purple-500/15 text-purple-400',
+  agent_3: 'bg-green-500/15 text-green-400',
+  agent_4: 'bg-amber-500/15 text-amber-400',
+  agent_5: 'bg-slate-500/15 text-slate-400',
+  agent_6: 'bg-red-500/15 text-red-400',
+  agent_7: 'bg-cyan-500/15 text-cyan-400',
+  agent_8: 'bg-orange-500/15 text-orange-400',
 };
 
 function getInsight(agent: AgentAnalysis): string | null {

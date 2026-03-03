@@ -659,8 +659,8 @@ function HealthScoreSection() {
                           <span className={cn(
                             'inline-flex items-center justify-center h-7 w-full rounded text-xs font-semibold tabular-nums',
                             isExpected
-                              ? 'bg-red-500/10 text-red-700 dark:text-red-400'
-                              : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                              ? 'bg-red-500/10 text-red-400'
+                              : 'bg-emerald-500/10 text-emerald-400'
                           )}>
                             {label}
                           </span>
@@ -803,7 +803,7 @@ function BuyingCultureSection() {
                 {BUYING_CULTURE_WEIGHTS.map((row) => (
                   <TableRow
                     key={row.component}
-                    className={row.differs ? 'bg-amber-50 dark:bg-amber-950/20' : undefined}
+                    className={row.differs ? 'bg-amber-500/10' : undefined}
                   >
                     <TableCell className="text-xs font-medium align-top whitespace-normal break-words">
                       {row.component}
