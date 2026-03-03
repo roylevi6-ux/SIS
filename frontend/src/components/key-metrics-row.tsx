@@ -38,7 +38,7 @@ export function KeyMetricsRow({ topRisk, topAction, keyUnknown }: KeyMetricsRowP
         <Card className="py-0">
           <CardContent className="pt-3 pb-3">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <AlertTriangle className="size-3.5 text-red-500" />
+              <AlertTriangle className="size-3.5 text-amber-600" />
               <span className="text-xs font-semibold text-muted-foreground uppercase">Top Risk</span>
             </div>
             <p className="text-sm leading-snug line-clamp-3">{riskText}</p>
