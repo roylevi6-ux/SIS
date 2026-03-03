@@ -105,11 +105,11 @@ function MetricChip({
   if (isNumeric) {
     // For health_score: up = good. For confidence: up = good.
     colorClasses = isPositive
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800'
-      : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800';
+      ? 'bg-brand-500/10 text-brand-400 border-brand-500/20'
+      : 'bg-needs-attention-bg text-needs-attention border-red-500/20';
   } else {
     colorClasses =
-      'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800';
+      'bg-blue-500/10 text-blue-400 border-blue-500/20';
   }
 
   let valueText: string;
@@ -198,7 +198,7 @@ export function WhatChangedCard({ accountId }: { accountId: string }) {
         {/* New risks */}
         {newRisks.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400 mb-2 flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-needs-attention mb-2 flex items-center gap-1.5">
               <AlertTriangle className="size-3" />
               New Risks
             </h4>
@@ -211,7 +211,7 @@ export function WhatChangedCard({ accountId }: { accountId: string }) {
                     {risk.severity && (
                       <Badge
                         variant="outline"
-                        className="ml-2 text-[10px] py-0 border-red-200 text-red-600 dark:border-red-800 dark:text-red-400"
+                        className="ml-2 text-[10px] py-0 border-red-500/20 text-needs-attention"
                       >
                         {risk.severity}
                       </Badge>
@@ -226,7 +226,7 @@ export function WhatChangedCard({ accountId }: { accountId: string }) {
         {/* Unfollowed actions */}
         {carryForward && carryForward.length > 0 && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral mb-2 flex items-center gap-1.5">
               <CircleAlert className="size-3" />
               Unfollowed Actions
             </h4>
@@ -239,7 +239,7 @@ export function WhatChangedCard({ accountId }: { accountId: string }) {
                     {action.priority && (
                       <Badge
                         variant="outline"
-                        className="ml-2 text-[10px] py-0 border-amber-200 text-amber-600 dark:border-amber-800 dark:text-amber-400"
+                        className="ml-2 text-[10px] py-0 border-amber-500/20 text-neutral"
                       >
                         {action.priority}
                       </Badge>

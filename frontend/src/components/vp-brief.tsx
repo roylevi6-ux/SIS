@@ -28,8 +28,8 @@ export function VPBrief({ brief, attentionLevel, fallbackMemo }: VPBriefProps) {
     <Card
       className={cn(
         'transition-colors',
-        level === 'act' && 'border-orange-400/60 bg-orange-50/40 dark:bg-orange-950/20',
-        level === 'watch' && 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20',
+        level === 'act' && 'border-orange-400/40',
+        level === 'watch' && 'border-amber-400/40',
       )}
     >
       <CardContent className="pt-4 pb-4">

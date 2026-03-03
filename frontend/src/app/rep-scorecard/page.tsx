@@ -66,9 +66,9 @@ const DIMENSION_KEYS = [
 
 function scoreColor(score: number | null): string {
   if (score === null) return 'text-muted-foreground';
-  if (score >= 70) return 'text-emerald-600 dark:text-emerald-400';
-  if (score >= 50) return 'text-amber-600 dark:text-amber-400';
-  return 'text-red-600 dark:text-red-400';
+  if (score >= 70) return 'text-emerald-400';
+  if (score >= 50) return 'text-amber-400';
+  return 'text-red-400';
 }
 
 function formatScore(score: number | null): string {
@@ -133,7 +133,7 @@ function RepAccountsTable({ accounts }: { accounts: ScorecardAccount[] }) {
               <TableCell className="pl-8 font-medium">{acc.account_name}</TableCell>
               <TableCell>
                 {acc.scored ? (
-                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">
+                  <Badge variant="outline" className="text-xs bg-brand-500/10 text-brand-400 border-brand-500/20">
                     Yes
                   </Badge>
                 ) : (
@@ -168,7 +168,7 @@ function RepAccountsTable({ accounts }: { accounts: ScorecardAccount[] }) {
 // ---------------------------------------------------------------------------
 
 const RADAR_COLORS = [
-  '#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#60a5fa', '#34d399', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
 ];
 
 export default function RepScorecardPage() {
@@ -194,7 +194,7 @@ export default function RepScorecardPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rep Scorecard</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Rep Scorecard</h1>
           <p className="text-sm text-muted-foreground">
             {isLoading ? 'Loading...' : `${reps.length} rep${reps.length !== 1 ? 's' : ''}`}
           </p>

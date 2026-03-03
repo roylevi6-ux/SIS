@@ -708,10 +708,10 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
     return (
       <div className="space-y-4">
         {importResult && (
-          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3">
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
+              <p className="text-sm font-medium text-emerald-300">
                 Imported {importResult.imported_count} call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
                 {importResult.skipped_count > 0 && (
                   <span className="text-amber-600 dark:text-amber-400">
@@ -988,10 +988,10 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
         )}
 
         {importResult && (
-          <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-2">
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <p className="font-medium text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="size-5 text-emerald-400 mt-0.5 shrink-0" />
+              <p className="font-medium text-emerald-300">
                 Imported {importResult.imported_count} new call{importResult.imported_count !== 1 ? 's' : ''} for {importResult.account_name}
                 {importResult.skipped_count > 0 && (
                   <span className="text-amber-600 dark:text-amber-400">
@@ -1177,10 +1177,10 @@ function ManualUploadTab() {
 
           {/* Success message */}
           {uploadResult && (
-            <div className="rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3 flex items-start gap-2">
-              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 flex items-start gap-2">
+              <CheckCircle2 className="size-4 text-emerald-400 mt-0.5 shrink-0" />
               <div className="text-sm">
-                <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                <p className="font-medium text-emerald-300">
                   Transcript uploaded successfully!
                 </p>
                 {uploadResult.token_count != null && (

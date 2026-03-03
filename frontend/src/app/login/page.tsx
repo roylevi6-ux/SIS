@@ -62,7 +62,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-lg bg-primary text-primary-foreground text-lg font-bold">
+          <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 text-white text-lg font-bold shadow-lg shadow-brand-500/25">
             S
           </div>
           <CardTitle className="text-xl">Sign in to SIS</CardTitle>

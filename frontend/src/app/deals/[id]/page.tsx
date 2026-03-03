@@ -300,12 +300,12 @@ function SFGapCard({ assessment }: { assessment: Assessment }) {
         {assessment.divergence_flag && assessment.divergence_explanation && (
           <>
             <Separator />
-            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
-              <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+            <div className="rounded-md border border-amber-300 bg-neutral-bg p-3">
+              <p className="text-xs font-semibold uppercase text-neutral mb-1 flex items-center gap-1">
                 <AlertTriangle className="size-3" />
                 Forecast Divergence
               </p>
-              <p className="text-sm text-amber-800 dark:text-amber-300">{assessment.divergence_explanation}</p>
+              <p className="text-sm text-neutral">{assessment.divergence_explanation}</p>
             </div>
           </>
         )}
@@ -482,10 +482,10 @@ function AnalysisHistorySection({ accountId }: { accountId: string }) {
                     variant="outline"
                     className={
                       run.status === 'completed'
-                        ? 'bg-emerald-100 text-emerald-700 border-transparent dark:bg-emerald-950 dark:text-emerald-400'
+                        ? 'bg-brand-500/10 text-brand-400 border-transparent'
                         : run.status === 'failed'
-                          ? 'bg-red-100 text-red-700 border-transparent dark:bg-red-950 dark:text-red-400'
-                          : 'bg-blue-100 text-blue-700 border-transparent dark:bg-blue-950 dark:text-blue-400'
+                          ? 'bg-needs-attention-bg text-needs-attention border-transparent'
+                          : 'bg-blue-500/15 text-blue-400 border-transparent'
                     }
                   >
                     {run.status}
@@ -677,7 +677,7 @@ export default function DealDetailPage({
         ) : null;
       case 'forecast_divergence':
         return assessment?.divergence_flag && assessment.divergence_explanation ? (
-          <Card key={widgetId} className="border-amber-200 dark:border-amber-800">
+          <Card key={widgetId} className="border-amber-200/50">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <AlertTriangle className="size-4 text-amber-500" />
@@ -787,7 +787,7 @@ export default function DealDetailPage({
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-xl font-semibold tracking-tight">
               {account.account_name}
             </h1>
 
@@ -845,7 +845,7 @@ export default function DealDetailPage({
                 {assessment.divergence_flag && (
                   <Badge
                     variant="outline"
-                    className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+                    className="border-amber-300 bg-neutral-bg text-neutral"
                   >
                     <AlertTriangle className="size-3 mr-1" />
                     Divergence
@@ -857,12 +857,12 @@ export default function DealDetailPage({
             {/* Meta info */}
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               {account.deal_type && account.deal_type !== 'new_logo' && (
-                <Badge variant="outline" className="text-xs border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-400">
+                <Badge variant="outline" className="text-xs border-blue-300 bg-blue-500/10 text-blue-400">
                   {account.deal_type.replace('expansion_', 'Expansion: ').replace('_', ' ')}
                 </Badge>
               )}
               {account.buying_culture === 'proxy_delegated' && (
-                <Badge variant="outline" className="text-xs border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                <Badge variant="outline" className="text-xs border-amber-300 bg-neutral-bg text-neutral">
                   Proxy-Delegated
                 </Badge>
               )}
