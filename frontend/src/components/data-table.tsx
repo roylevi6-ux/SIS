@@ -39,13 +39,6 @@ function daysAgoColor(dateStr: string | null): string {
   return 'text-needs-attention';
 }
 
-function healthTier(score: number | null): string {
-  if (score === null) return '';
-  if (score >= 70) return 'healthy';
-  if (score >= 40) return 'neutral';
-  return 'needs_attention';
-}
-
 const dealColumns: ColumnDef<PipelineDeal>[] = [
   {
     accessorKey: 'attention_level',
@@ -241,15 +234,10 @@ export function DataTable({ deals, pageSize = 25 }: DataTableProps) {
                 </tr>
               ) : (
                 table.getRowModel().rows.map((row, idx) => {
-                  const tier = healthTier(row.original.health_score);
-                  const tintClass = tier === 'needs_attention' ? 'bg-needs-attention-bg' : '';
                   return (
                     <tr
                       key={row.id}
-                      className={cn(
-                        'border-b border-border/50 transition-colors hover:bg-[rgba(16,185,129,0.08)] animate-row-reveal',
-                        tintClass,
-                      )}
+                      className="border-b border-border/50 transition-colors hover:bg-[rgba(16,185,129,0.08)] animate-row-reveal"
                       style={{ animationDelay: `${idx * 20}ms` }}
                     >
                       {row.getVisibleCells().map((cell) => (
