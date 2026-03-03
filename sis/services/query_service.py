@@ -1,24 +1,28 @@
-"""Query service — LLM-powered conversational interface per Section 6.5.
-
-Gathers all pipeline data into a context string, sends it with the user's
-question to the LLM, and returns a formatted answer.  This is a structured
-query layer over stored data — NOT re-running the pipeline per query.
+"""Query service — LLM-powered conversational interface with tool-use.
 
 Two-tier context strategy:
-  Tier 1 (always): pipeline summary, all deals one-liner, divergences, team rollup
-  Tier 2 (on-demand): full assessment, agent analyses, call history for a detected deal
+  Tier 1 (always): pipeline summary injected as context
+  Tier 2 (on-demand): Claude calls tools to fetch deal details, agent analyses, transcripts
+
+Tool-use loop: max 3 rounds of tool calls per query.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 
 import anthropic
 
 from sis.config import MODEL_CHAT
 from sis.llm.client import get_client
-from sis.services.account_service import list_accounts, get_account_detail
+from sis.services.account_service import (
+    list_accounts,
+    get_account_detail,
+    resolve_account_by_name,
+)
 from sis.services.analysis_service import get_latest_run_id, get_agent_analyses
+from sis.services.transcript_service import search_transcript as _search_transcript
 from sis.services.dashboard_service import (
     get_pipeline_overview,
     get_divergence_report,
@@ -27,226 +31,325 @@ from sis.services.dashboard_service import (
 
 logger = logging.getLogger(__name__)
 
+MAX_TOOL_ROUNDS = 3
+
+# ── System prompt ────────────────────────────────────────────────────
+
 SYSTEM_PROMPT = """You are the SIS (Sales Intelligence System) assistant for Riskified's sales team.
 You answer questions about deal health, pipeline status, forecasts, and team performance.
 
-You have access to structured pipeline data provided below. Answer based ONLY on this data.
-If the data does not contain the answer, say so — never hallucinate.
+You have:
+1. A pipeline summary provided below with all deals at a glance.
+2. Tools to fetch detailed data: deal assessments, agent analyses, transcript evidence, and transcript search.
 
 Rules:
+- For simple pipeline questions (counts, lists, comparisons), answer from the summary data directly.
+- For deal-specific questions, USE YOUR TOOLS to fetch the relevant data before answering.
+- When asked about evidence, quotes, or "why" questions, use get_all_agent_evidence or search_transcript.
+- Always cite your sources: agent name, call date, or direct quotes when available.
 - Be concise and specific. Use bullet points for lists.
+- If a tool returns no results or an error, say so honestly — never hallucinate.
 - Reference deal names, scores, and categories exactly as shown in the data.
 - When comparing deals, cite specific health scores and momentum directions.
-- If asked about a specific deal, include: health score, stage, momentum, forecast, top risks.
-- For pipeline questions, summarize by health tier (Healthy 70+, At Risk 45-69, Critical <45).
-- When asked about forecast divergence, explain both AI and IC categories and the delta.
-- For rep performance questions ("How is X doing?", "Compare reps", "Who is underperforming?"):
-  - Reference their avg health score, deal count, MRR, and health tier breakdown.
-  - Highlight momentum trends (how many deals improving vs declining).
-  - Flag divergent forecasts and critical deals by name.
-  - When comparing reps, use a consistent format: health, MRR, momentum, risks.
-
-When deal-specific data is available (marked with "## Deal Deep Dive"):
-- Reference specific agent findings and confidence levels when explaining assessments.
-- Cite health breakdown dimensions (e.g. "Champion Strength scored 4/10") when explaining why a score is low.
-- Reference specific risks, positive signals, and recommended actions by name.
-- Use the deal memo as the primary narrative, then supplement with agent details.
-- When explaining "why" a deal is at risk, cite the lowest-scoring health dimensions and top risks.
-- Reference call history dates and topics to give recency context.
+- For rep performance questions, reference avg health, deal count, MRR, and momentum trends.
 """
 
+# ── Tool definitions (Anthropic format) ──────────────────────────────
 
-# ── Intent detection ─────────────────────────────────────────────────
+TOOL_DEFINITIONS = [
+    {
+        "name": "get_deal_assessment",
+        "description": (
+            "Get the full deal assessment for a specific account: deal memo, health score, "
+            "health breakdown by dimension, top risks, positive signals, recommended actions, "
+            "key unknowns, contradictions, forecast details, and SF snapshot. "
+            "Use this when the user asks about a specific deal's health, risks, or status."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string",
+                    "description": "The deal/account name (fuzzy matched — spaces and underscores both work)",
+                },
+            },
+            "required": ["account_name"],
+        },
+    },
+    {
+        "name": "get_agent_analysis",
+        "description": (
+            "Get the full analysis output from a specific agent for a deal. "
+            "Includes the complete narrative (not truncated), structured findings, "
+            "evidence citations with transcript quotes, confidence score, and data gaps. "
+            "Use when the user asks about a specific dimension like champion strength, "
+            "competitive position, technical validation, etc."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string",
+                    "description": "The deal/account name",
+                },
+                "agent_name": {
+                    "type": "string",
+                    "description": (
+                        "Agent identifier. Use agent_id format (agent_1 through agent_9) or "
+                        "descriptive name: agent_1=Stage Classification, agent_2=Relationship & Champion, "
+                        "agent_3=Commercial Analysis, agent_4=Momentum & Engagement, "
+                        "agent_5=Technical Validation, agent_6=Economic Buyer, "
+                        "agent_7=MSP & Next Steps, agent_8=Competitive Intelligence, "
+                        "agent_9=Open Discovery Questions"
+                    ),
+                },
+            },
+            "required": ["account_name", "agent_name"],
+        },
+    },
+    {
+        "name": "get_all_agent_evidence",
+        "description": (
+            "Get all evidence citations (transcript quotes) from every agent for a deal. "
+            "This is the most token-efficient way to see what transcript evidence supports "
+            "the deal assessment. Each citation includes the quote, source call, and relevance. "
+            "Use when the user asks 'show me the evidence' or 'what supports this assessment'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string",
+                    "description": "The deal/account name",
+                },
+            },
+            "required": ["account_name"],
+        },
+    },
+    {
+        "name": "list_deal_transcripts",
+        "description": (
+            "List all call transcripts for a deal with metadata: date, title, duration, "
+            "participants, topics, and token count. Use this to see what calls are available "
+            "before searching within a specific transcript."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string",
+                    "description": "The deal/account name",
+                },
+            },
+            "required": ["account_name"],
+        },
+    },
+    {
+        "name": "search_transcript",
+        "description": (
+            "Search within a specific transcript for a keyword or phrase. Returns matching "
+            "paragraphs with surrounding context. Use after list_deal_transcripts to search "
+            "a specific call. Max 10 matches returned."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "transcript_id": {
+                    "type": "string",
+                    "description": "UUID of the transcript (from list_deal_transcripts)",
+                },
+                "search_query": {
+                    "type": "string",
+                    "description": "Keyword or phrase to search for (case-insensitive)",
+                },
+            },
+            "required": ["transcript_id", "search_query"],
+        },
+    },
+]
 
 
-def _detect_deal(message: str, accounts: list[dict]) -> dict | None:
-    """Detect if the user is asking about a specific deal.
-
-    Heuristic matching: checks if any account name (or all its significant
-    words) appear in the user message.  Returns the best match or None.
-    """
-    msg_lower = message.lower()
-
-    best_match = None
-    best_length = 0
-
-    for acct in accounts:
-        name = acct.get("account_name", "")
-        if not name:
-            continue
-        name_lower = name.lower()
-
-        # Full-name substring match (prefer longest)
-        if name_lower in msg_lower:
-            if len(name_lower) > best_length:
-                best_match = acct
-                best_length = len(name_lower)
-            continue
-
-        # Multi-word: all significant words (>2 chars) present in message
-        words = [w for w in name_lower.split() if len(w) > 2]
-        if words and all(w in msg_lower for w in words):
-            match_length = sum(len(w) for w in words)
-            if match_length > best_length:
-                best_match = acct
-                best_length = match_length
-
-    return best_match
+# ── Tool executor ────────────────────────────────────────────────────
 
 
-# ── Tier 2: deal deep-dive context ──────────────────────────────────
-
-
-def _build_deal_context(account_id: str) -> str:
-    """Build Tier 2 deep-dive context for a specific deal."""
+def execute_tool(
+    tool_name: str,
+    tool_input: dict,
+    visible_user_ids: set[str] | None = None,
+) -> str:
+    """Execute a tool call and return the result as a JSON string."""
     try:
-        detail = get_account_detail(account_id)
-    except ValueError:
-        return ""
+        if tool_name == "get_deal_assessment":
+            return _exec_get_deal_assessment(tool_input, visible_user_ids)
+        elif tool_name == "get_agent_analysis":
+            return _exec_get_agent_analysis(tool_input, visible_user_ids)
+        elif tool_name == "get_all_agent_evidence":
+            return _exec_get_all_agent_evidence(tool_input, visible_user_ids)
+        elif tool_name == "list_deal_transcripts":
+            return _exec_list_deal_transcripts(tool_input, visible_user_ids)
+        elif tool_name == "search_transcript":
+            return _exec_search_transcript(tool_input)
+        else:
+            return json.dumps({"error": f"Unknown tool: {tool_name}"})
+    except Exception as e:
+        logger.error("Tool execution error (%s): %s", tool_name, e)
+        return json.dumps({"error": f"Tool error: {str(e)}"})
 
-    sections: list[str] = []
-    name = detail["account_name"]
-    sections.append(f"\n## Deal Deep Dive: {name}")
+
+def _resolve_or_error(account_name: str, visible_user_ids: set[str] | None) -> dict | str:
+    """Resolve account name or return a JSON error string."""
+    acct = resolve_account_by_name(account_name, visible_user_ids=visible_user_ids)
+    if not acct:
+        return json.dumps({
+            "error": f"No account found matching '{account_name}'. Check the deal name in the pipeline summary."
+        })
+    return acct
+
+
+def _exec_get_deal_assessment(tool_input: dict, visible_user_ids: set[str] | None) -> str:
+    acct = _resolve_or_error(tool_input["account_name"], visible_user_ids)
+    if isinstance(acct, str):
+        return acct
+
+    try:
+        detail = get_account_detail(acct["id"])
+    except ValueError:
+        return json.dumps({"error": f"Could not load details for {acct['account_name']}"})
 
     assessment = detail.get("assessment")
     if not assessment:
-        sections.append("No assessment available for this deal yet.")
-        return "\n".join(sections)
+        return json.dumps({"account_name": acct["account_name"], "error": "No assessment available yet."})
 
-    # Deal Memo
-    if assessment.get("deal_memo"):
-        sections.append(f"\n### Deal Memo\n{assessment['deal_memo']}")
+    return json.dumps({
+        "account_name": acct["account_name"],
+        "health_score": assessment.get("health_score"),
+        "momentum_direction": assessment.get("momentum_direction"),
+        "ai_forecast_category": assessment.get("ai_forecast_category"),
+        "deal_memo": assessment.get("deal_memo"),
+        "manager_brief": assessment.get("manager_brief"),
+        "health_breakdown": assessment.get("health_breakdown", []),
+        "top_risks": assessment.get("top_risks", []),
+        "top_positive_signals": assessment.get("top_positive_signals", []),
+        "recommended_actions": assessment.get("recommended_actions", []),
+        "key_unknowns": assessment.get("key_unknowns", []),
+        "contradiction_map": assessment.get("contradiction_map", []),
+        "stage": {
+            "inferred": assessment.get("inferred_stage"),
+            "name": assessment.get("stage_name"),
+            "confidence": assessment.get("stage_confidence"),
+        },
+        "forecast": {
+            "category": assessment.get("ai_forecast_category"),
+            "rationale": assessment.get("forecast_rationale"),
+            "divergence_flag": assessment.get("divergence_flag"),
+            "divergence_explanation": assessment.get("divergence_explanation"),
+        },
+        "sf_snapshot": {
+            "stage": assessment.get("sf_stage_at_run"),
+            "forecast": assessment.get("sf_forecast_at_run"),
+            "close_quarter": assessment.get("sf_close_quarter_at_run"),
+        },
+    }, default=str)
 
-    # Health Breakdown
-    breakdown = assessment.get("health_breakdown", [])
-    if breakdown:
-        sections.append("\n### Health Breakdown")
-        for dim in breakdown:
-            if isinstance(dim, dict):
-                dim_name = dim.get("dimension", dim.get("name", "Unknown"))
-                score = dim.get("score", "N/A")
-                weight = dim.get("weight", "")
-                rationale = dim.get("rationale", "")
-                weight_str = f" (weight: {weight})" if weight else ""
-                sections.append(
-                    f"- {dim_name}: {score}/10{weight_str} — {rationale}"
-                )
 
-    # Top Risks
-    risks = assessment.get("top_risks", [])
-    if risks:
-        sections.append("\n### Top Risks")
-        for r in risks:
-            if isinstance(r, dict):
-                sections.append(
-                    f"- {r.get('risk', r.get('description', str(r)))}"
-                )
-            else:
-                sections.append(f"- {r}")
+def _exec_get_agent_analysis(tool_input: dict, visible_user_ids: set[str] | None) -> str:
+    acct = _resolve_or_error(tool_input["account_name"], visible_user_ids)
+    if isinstance(acct, str):
+        return acct
 
-    # Positive Signals
-    signals = assessment.get("top_positive_signals", [])
-    if signals:
-        sections.append("\n### Positive Signals")
-        for s in signals:
-            if isinstance(s, dict):
-                sections.append(
-                    f"- {s.get('signal', s.get('description', str(s)))}"
-                )
-            else:
-                sections.append(f"- {s}")
+    run_id = get_latest_run_id(acct["id"])
+    if not run_id:
+        return json.dumps({"error": f"No analysis run found for {acct['account_name']}"})
 
-    # Recommended Actions
-    actions = assessment.get("recommended_actions", [])
-    if actions:
-        sections.append("\n### Recommended Actions")
-        for a in actions:
-            if isinstance(a, dict):
-                sections.append(
-                    f"- {a.get('action', a.get('description', str(a)))}"
-                )
-            else:
-                sections.append(f"- {a}")
+    agent_outputs = get_agent_analyses(run_id)
+    agent_query = tool_input["agent_name"].lower().strip()
 
-    # Key Unknowns
-    unknowns = assessment.get("key_unknowns", [])
-    if unknowns:
-        sections.append("\n### Key Unknowns")
-        for u in unknowns:
-            sections.append(f"- {u}")
+    for agent in agent_outputs:
+        agent_id = agent.get("agent_id", "").lower()
+        agent_name = agent.get("agent_name", "").lower()
+        if agent_query in agent_id or agent_query in agent_name or agent_id in agent_query:
+            return json.dumps({
+                "agent_id": agent["agent_id"],
+                "agent_name": agent["agent_name"],
+                "narrative": agent.get("narrative", ""),
+                "findings": agent.get("findings", {}),
+                "evidence": agent.get("evidence", []),
+                "confidence_overall": agent.get("confidence_overall"),
+                "confidence_rationale": agent.get("confidence_rationale"),
+                "data_gaps": agent.get("data_gaps", []),
+                "sparse_data_flag": agent.get("sparse_data_flag", False),
+            }, default=str)
 
-    # Contradictions
-    contradictions = assessment.get("contradiction_map", [])
-    if contradictions:
-        sections.append("\n### Contradictions")
-        for c in contradictions:
-            if isinstance(c, dict):
-                sections.append(
-                    f"- {c.get('description', c.get('contradiction', str(c)))}"
-                )
-            else:
-                sections.append(f"- {c}")
+    available = [f"{a['agent_id']} ({a['agent_name']})" for a in agent_outputs]
+    return json.dumps({
+        "error": f"No agent matching '{tool_input['agent_name']}' found.",
+        "available_agents": available,
+    })
 
-    # Forecast
-    sections.append("\n### Forecast")
-    sections.append(
-        f"- AI Forecast: {assessment.get('ai_forecast_category', 'N/A')}"
-    )
-    if assessment.get("forecast_rationale"):
-        sections.append(f"- Rationale: {assessment['forecast_rationale']}")
-    sf = detail.get("sf_forecast_category")
-    if sf:
-        sections.append(f"- SF Forecast: {sf}")
-    if assessment.get("divergence_flag"):
-        sections.append(
-            f"- DIVERGENT: {assessment.get('divergence_explanation', 'AI and SF disagree')}"
-        )
 
-    # Agent Analyses
-    run_id = get_latest_run_id(account_id)
-    if run_id:
-        agent_outputs = get_agent_analyses(run_id)
-        if agent_outputs:
-            sections.append("\n### Agent Analyses")
-            for agent in agent_outputs:
-                conf = agent.get("confidence_overall")
-                if conf is not None:
-                    conf_str = (
-                        f" (confidence: {conf:.0f}%)"
-                        if conf > 1
-                        else f" (confidence: {conf:.0%})"
-                    )
-                else:
-                    conf_str = ""
-                agent_name = agent.get(
-                    "agent_name", agent.get("agent_id", "Unknown")
-                )
-                narrative = agent.get("narrative", "")
-                if len(narrative) > 500:
-                    narrative = narrative[:500] + "..."
-                sections.append(f"- **{agent_name}**{conf_str}: {narrative}")
+def _exec_get_all_agent_evidence(tool_input: dict, visible_user_ids: set[str] | None) -> str:
+    acct = _resolve_or_error(tool_input["account_name"], visible_user_ids)
+    if isinstance(acct, str):
+        return acct
 
-    # Call History (metadata only — no raw transcript text)
+    run_id = get_latest_run_id(acct["id"])
+    if not run_id:
+        return json.dumps({"error": f"No analysis run found for {acct['account_name']}"})
+
+    agent_outputs = get_agent_analyses(run_id)
+    by_agent = []
+    total = 0
+    for agent in agent_outputs:
+        evidence = agent.get("evidence", [])
+        if evidence:
+            by_agent.append({
+                "agent_name": agent["agent_name"],
+                "agent_id": agent["agent_id"],
+                "evidence": evidence,
+            })
+            total += len(evidence)
+
+    return json.dumps({
+        "account_name": acct["account_name"],
+        "total_evidence_items": total,
+        "by_agent": by_agent,
+    }, default=str)
+
+
+def _exec_list_deal_transcripts(tool_input: dict, visible_user_ids: set[str] | None) -> str:
+    acct = _resolve_or_error(tool_input["account_name"], visible_user_ids)
+    if isinstance(acct, str):
+        return acct
+
+    try:
+        detail = get_account_detail(acct["id"])
+    except ValueError:
+        return json.dumps({"error": f"Could not load details for {acct['account_name']}"})
+
     transcripts = detail.get("transcripts", [])
-    if transcripts:
-        sections.append("\n### Call History")
-        sorted_transcripts = sorted(
-            transcripts,
-            key=lambda t: t.get("call_date") or "",
-            reverse=True,
-        )
-        for t in sorted_transcripts:
-            parts: list[str] = [str(t.get("call_date", "Unknown date"))]
-            if t.get("call_title"):
-                parts.append(t["call_title"])
-            if t.get("duration_minutes"):
-                parts.append(f"{t['duration_minutes']} min")
-            participants = t.get("participants")
-            if participants and isinstance(participants, list):
-                parts.append(f"with {', '.join(str(p) for p in participants)}")
-            sections.append(f"- {' | '.join(parts)}")
+    return json.dumps({
+        "account_name": acct["account_name"],
+        "transcript_count": len(transcripts),
+        "transcripts": [
+            {
+                "id": t["id"],
+                "call_date": t.get("call_date"),
+                "call_title": t.get("call_title"),
+                "duration_minutes": t.get("duration_minutes"),
+                "participants": t.get("participants"),
+                "token_count": t.get("token_count"),
+                "call_topics": t.get("call_topics"),
+            }
+            for t in sorted(transcripts, key=lambda x: x.get("call_date") or "", reverse=True)
+        ],
+    }, default=str)
 
-    return "\n".join(sections)
+
+def _exec_search_transcript(tool_input: dict) -> str:
+    result = _search_transcript(tool_input["transcript_id"], tool_input["search_query"])
+    if result is None:
+        return json.dumps({"error": f"Transcript {tool_input['transcript_id']} not found."})
+    return json.dumps(result, default=str)
 
 
 # ── Rep performance context ─────────────────────────────────────────
@@ -376,6 +479,18 @@ def _build_context(accounts: list[dict]) -> str:
     return "\n".join(sections)
 
 
+# ── Helper ───────────────────────────────────────────────────────────
+
+
+def _extract_text(response) -> str:
+    """Extract text content from a Claude response."""
+    texts = []
+    for block in response.content:
+        if hasattr(block, "text"):
+            texts.append(block.text)
+    return "\n".join(texts) if texts else "I wasn't able to generate a response. Please try again."
+
+
 # ── Public API ───────────────────────────────────────────────────────
 
 
@@ -384,14 +499,12 @@ def query(
     history: list[dict] | None = None,
     visible_user_ids: set[str] | None = None,
 ) -> str:
-    """Process a natural language query about the pipeline.
+    """Process a natural language query about the pipeline using tool-use.
 
     Args:
         user_message: The user's question.
         history: Previous messages as [{"role": "user"|"assistant", "content": str}].
-                 Should NOT include the current user_message.
-        visible_user_ids: If provided, restrict context to accounts owned by
-                          these user IDs (role-based scoping).
+        visible_user_ids: Role-based scoping (None = admin/see all).
 
     Returns:
         The LLM's answer as a string.
@@ -403,19 +516,12 @@ def query(
     if "## All Deals\n" not in context or context.endswith("## All Deals\n"):
         return "No pipeline data available yet. Upload transcripts and run analysis first."
 
-    # Tier 2: detect if user is asking about a specific deal
-    matched = _detect_deal(user_message, accounts)
-    if matched and matched.get("id"):
-        deal_context = _build_deal_context(matched["id"])
-        if deal_context:
-            context = context + "\n" + deal_context
-
+    # Build message list
     messages: list[dict] = []
     if history:
         for msg in history[-10:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
 
-    # Current query with injected pipeline context
     messages.append({
         "role": "user",
         "content": f"<pipeline_data>\n{context}\n</pipeline_data>\n\n{user_message}",
@@ -424,17 +530,48 @@ def query(
     client = get_client()
 
     try:
-        # Use streaming to avoid Riskified proxy 60s timeout (matches runner.py pattern)
-        with client.messages.stream(
-            model=MODEL_CHAT,
-            max_tokens=6000,
-            temperature=0.2,
-            system=SYSTEM_PROMPT,
-            messages=messages,
-        ) as stream:
-            response = stream.get_final_message()
+        # Agentic tool-use loop
+        for _round in range(MAX_TOOL_ROUNDS + 1):
+            response = client.messages.create(
+                model=MODEL_CHAT,
+                max_tokens=6000,
+                temperature=0.2,
+                system=SYSTEM_PROMPT,
+                messages=messages,
+                tools=TOOL_DEFINITIONS,
+            )
 
-        return response.content[0].text
+            # If Claude responded with text (no tool use), return it
+            if response.stop_reason == "end_turn":
+                return _extract_text(response)
+
+            # If Claude wants to use tools
+            if response.stop_reason == "tool_use":
+                # Add assistant message with tool_use blocks
+                messages.append({"role": "assistant", "content": response.content})
+
+                # Execute each tool call
+                tool_results = []
+                for block in response.content:
+                    if block.type == "tool_use":
+                        result = execute_tool(
+                            block.name, block.input, visible_user_ids
+                        )
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": result,
+                        })
+
+                messages.append({"role": "user", "content": tool_results})
+                continue
+
+            # Unexpected stop reason — return whatever text we have
+            return _extract_text(response)
+
+        # Fallback if loop exhausts without text response
+        return _extract_text(response)
+
     except anthropic.APITimeoutError:
         logger.warning("Chat query timed out")
         return "Sorry, the request timed out. Please try again."

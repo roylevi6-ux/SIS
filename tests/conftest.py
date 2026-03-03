@@ -86,7 +86,7 @@ def mock_get_session(session):
         "sis.services.analysis_service.get_session",
         "sis.services.dashboard_service.get_session",
         "sis.services.coaching_service.get_session",
-        "sis.services.trend_service.get_session",
+        # trend_service doesn't import get_session directly
         "sis.services.export_service.get_session",
         "sis.services.usage_tracking_service.get_session",
         "sis.services.user_action_log_service.get_session",
