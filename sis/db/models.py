@@ -238,6 +238,9 @@ class DealAssessment(Base):
 
     # Synthesis narrative
     deal_memo = Column(Text, nullable=False)
+    manager_brief = Column(Text, nullable=True)           # VP-targeted blunt advisor brief
+    attention_level = Column(Text, nullable=True)          # "act" / "watch" / "none"
+    deal_memo_sections = Column(Text, nullable=True)       # JSON: structured sections with health signals
     contradiction_map = Column(Text, nullable=True)  # JSON array
     # Stage inference
     inferred_stage = Column(Integer, nullable=False)
