@@ -117,7 +117,7 @@ function NavLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
       className={cn(
         'flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
         isActive
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]'
           : 'text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
       )}
     >
@@ -176,7 +176,7 @@ function NavGroupSection({
 function SidebarLogo() {
   return (
     <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 text-white font-bold text-sm tracking-tight shadow-lg shadow-brand-500/25 shrink-0">
+      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 text-white font-bold text-sm tracking-tight shadow-lg shadow-brand-500/25 shrink-0" style={{ boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)' }}>
         SIS
       </div>
       <div className="flex flex-col">
