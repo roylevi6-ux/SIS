@@ -1,6 +1,8 @@
 'use client';
 
-import { Phone } from 'lucide-react';
+import { useState } from 'react';
+import { Phone, ZoomIn, ZoomOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Tooltip,
@@ -160,20 +162,36 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
     (a, b) => a.call_date.localeCompare(b.call_date),
   );
 
-  const analyzedCount = sorted.filter((t) => t.analyzed).length;
-
   const dates = sorted.map((t) => parseDate(t.call_date).getTime());
   const minDate = Math.min(...dates);
   const maxDate = Math.max(...dates);
-  const range = maxDate - minDate || 1;
+
+  // Zoom: each level trims 3 months from the oldest end
+  const THREE_MONTHS_MS = 91 * DAY_MS;
+  const maxZoom = Math.max(Math.floor((maxDate - minDate) / THREE_MONTHS_MS), 0);
+  const [zoomLevel, setZoomLevel] = useState(0);
+
+  // Clamp: must stay at least 1 month before maxDate
+  const ONE_MONTH_MS = 30 * DAY_MS;
+  const zoomedMinDate = Math.min(
+    minDate + zoomLevel * THREE_MONTHS_MS,
+    maxDate - ONE_MONTH_MS,
+  );
+
+  const visibleCalls = sorted.filter(
+    (t) => parseDate(t.call_date).getTime() >= zoomedMinDate,
+  );
+  const analyzedCount = visibleCalls.filter((t) => t.analyzed).length;
+
+  const range = maxDate - zoomedMinDate || 1;
   const padMs = range * 0.05;
-  const axisStart = minDate - padMs;
+  const axisStart = zoomedMinDate - padMs;
   const axisEnd = maxDate + padMs;
   const axisRange = axisEnd - axisStart;
 
-  const axisTicks = getAxisTicks(sorted, axisStart, axisRange);
+  const axisTicks = getAxisTicks(visibleCalls, axisStart, axisRange);
 
-  const pcts = sorted.map((t) => {
+  const pcts = visibleCalls.map((t) => {
     const ms = parseDate(t.call_date).getTime();
     return ((ms - axisStart) / axisRange) * 100;
   });
@@ -181,9 +199,9 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
   // Compute max label width per call (as %) so labels in the same row don't overlap.
   // Labels in the "above" row are odd-indexed, "below" row are even-indexed.
   // For each label, the available width is the gap to the next label in the same row.
-  const labelMaxWidths: (number | null)[] = sorted.map(() => null);
-  const aboveIndices = sorted.map((_, i) => i).filter((i) => i % 2 !== 0);
-  const belowIndices = sorted.map((_, i) => i).filter((i) => i % 2 === 0);
+  const labelMaxWidths: (number | null)[] = visibleCalls.map(() => null);
+  const aboveIndices = visibleCalls.map((_, i) => i).filter((i) => i % 2 !== 0);
+  const belowIndices = visibleCalls.map((_, i) => i).filter((i) => i % 2 === 0);
   for (const group of [aboveIndices, belowIndices]) {
     for (let g = 0; g < group.length; g++) {
       const idx = group[g];
@@ -213,6 +231,28 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
           <div className="flex items-center gap-2 text-sm font-medium">
             <Phone className="size-4 text-muted-foreground" />
             Call Timeline
+            {maxZoom > 0 && (
+              <span className="flex items-center gap-0.5 ml-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setZoomLevel((z) => Math.max(z - 1, 0))}
+                  disabled={zoomLevel === 0}
+                  aria-label="Zoom out"
+                >
+                  <ZoomOut className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setZoomLevel((z) => Math.min(z + 1, maxZoom))}
+                  disabled={zoomLevel >= maxZoom}
+                  aria-label="Zoom in"
+                >
+                  <ZoomIn className="size-4" />
+                </Button>
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -221,7 +261,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block size-2.5 rounded-full border-2 border-muted-foreground/30" />
-              Not analyzed ({sorted.length - analyzedCount})
+              Not analyzed ({visibleCalls.length - analyzedCount})
             </span>
           </div>
         </div>
@@ -243,7 +283,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
 
           {/* Topic labels ABOVE the line (odd-indexed calls) */}
           <div className="relative h-5 overflow-hidden">
-            {sorted.map((call, idx) => {
+            {visibleCalls.map((call, idx) => {
               if (idx % 2 === 0) return null;
               if (!call.analyzed) return null;
               const topics = getTopicStrings(call);
@@ -278,7 +318,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
             )}
 
             {/* Call dots */}
-            {sorted.map((call, idx) => {
+            {visibleCalls.map((call, idx) => {
               const pct = pcts[idx];
               const d = parseDate(call.call_date);
               const topics = getTopicStrings(call);
@@ -329,7 +369,7 @@ export function CallTimeline({ transcripts }: CallTimelineProps) {
 
           {/* Topic labels BELOW the line (even-indexed calls) */}
           <div className="relative h-5 overflow-hidden">
-            {sorted.map((call, idx) => {
+            {visibleCalls.map((call, idx) => {
               if (idx % 2 !== 0) return null;
               if (!call.analyzed) return null;
               const topics = getTopicStrings(call);
