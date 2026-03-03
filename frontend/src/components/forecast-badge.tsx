@@ -18,7 +18,7 @@ export function ForecastBadge({ category, className }: ForecastBadgeProps) {
     return <span className="text-muted-foreground text-sm">--</span>;
   }
 
-  const colorClass = categoryColors[category] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+  const colorClass = categoryColors[category] ?? 'bg-muted text-muted-foreground';
 
   return (
     <Badge
