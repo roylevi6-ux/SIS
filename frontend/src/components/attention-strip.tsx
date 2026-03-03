@@ -23,7 +23,7 @@ export function AttentionStrip({ items }: AttentionStripProps) {
 
   if (items.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-healthy/30 bg-healthy-light/30 px-4 py-3">
+      <div className="flex items-center gap-2 rounded-lg border border-healthy/20 bg-healthy-bg px-4 py-3">
         <CheckCircle className="size-4 text-healthy" />
         <span className="text-sm font-medium text-healthy">All clear — no deals need immediate attention</span>
       </div>
@@ -33,10 +33,10 @@ export function AttentionStrip({ items }: AttentionStripProps) {
   const totalAtRisk = items.reduce((sum, i) => sum + i.cp_estimate, 0);
 
   return (
-    <div className="rounded-lg border-l-4 border-l-neutral border bg-card">
+    <div className="rounded-lg border-l-4 border-l-needs-attention border bg-card">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 hover:bg-brand-500/5 transition-colors"
       >
         <div className="flex items-center gap-2">
           <AlertTriangle className="size-4 text-neutral" />
@@ -53,7 +53,7 @@ export function AttentionStrip({ items }: AttentionStripProps) {
       {expanded && (
         <div className="border-t divide-y">
           {items.map((item) => (
-            <div key={`${item.account_id}-${item.type}`} className="flex items-center gap-3 px-4 py-2.5">
+            <div key={`${item.account_id}-${item.type}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-500/5 transition-colors">
               <span className="text-sm">{typeIcon(item.type)}</span>
               <a
                 href={`/deals/${item.account_id}`}
