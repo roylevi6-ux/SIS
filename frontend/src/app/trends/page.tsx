@@ -18,7 +18,7 @@ export default function TrendsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Deal Trends</h1>
+          <h1 className="text-xl font-semibold">Deal Trends</h1>
           <p className="text-muted-foreground text-sm">Pipeline analytics over time</p>
         </div>
         <div className="flex gap-1">
