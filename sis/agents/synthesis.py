@@ -97,6 +97,19 @@ class SFGapAnalysis(BaseModel):
     overall_gap_assessment: str = Field(description="2-3 sentences for the VP Sales")
 
 
+_SECTION_TITLES: dict[str, str] = {
+    "bottom_line": "The Bottom Line",
+    "deal_situation": "Deal Situation & Stage",
+    "people_power": "People & Power",
+    "commercial_competitive": "Commercial & Competitive",
+    "why_now": "Why Now?",
+    "momentum": "Momentum & Advancement",
+    "technical": "Technical & Integration",
+    "red_flags": "Red Flags & Silence Signals",
+    "expansion_dynamics": "Expansion Dynamics",
+}
+
+
 class DealMemoSection(BaseModel):
     """One section of the structured deal memo."""
 
@@ -104,7 +117,7 @@ class DealMemoSection(BaseModel):
         description="Stable ID: bottom_line, deal_situation, people_power, "
         "commercial_competitive, why_now, momentum, technical, red_flags, expansion_dynamics"
     )
-    title: str = Field(description="Section display title")
+    title: str = Field(default="", description="Section display title")
     content: str = Field(description="The section content (1-2 paragraphs)")
     health_signal: str = Field(
         description="green (strength area, related health components >= 70% of max), "
@@ -113,6 +126,13 @@ class DealMemoSection(BaseModel):
     related_components: list[str] = Field(
         description="Health breakdown component names this section relates to"
     )
+
+    def model_post_init(self, __context: object) -> None:
+        if not self.title:
+            self.title = _SECTION_TITLES.get(
+                self.section_id,
+                self.section_id.replace("_", " ").title(),
+            )
 
 
 # --- Output Model (NOT envelope -- this is the pipeline endpoint) ---
