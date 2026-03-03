@@ -371,6 +371,16 @@ export interface GDriveImportResult {
   skipped: number;
 }
 
+// ── Hierarchy Teams ──
+export interface HierarchyTeam {
+  id: string;
+  name: string;
+  level: string;
+  parent_id: string | null;
+  leader_id: string | null;
+  leader_name: string | null;
+}
+
 // ── IC Users ──
 export interface ICUser {
   id: string;

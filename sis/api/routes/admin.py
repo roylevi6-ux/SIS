@@ -233,9 +233,9 @@ def get_rep_scorecard(ae_owner: Optional[str] = None, user: dict = Depends(get_c
 
 
 @router.get("/api/forecast/data")
-def load_forecast_data(team: Optional[str] = None, user: dict = Depends(get_current_user)):
+def load_forecast_data(team: Optional[str] = None, team_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     """Load deal-level forecast data for the comparison view."""
-    return forecast_data_service.load_forecast_data(team=team)
+    return forecast_data_service.load_forecast_data(team=team, team_id=team_id)
 
 
 @router.get("/api/forecast/teams")

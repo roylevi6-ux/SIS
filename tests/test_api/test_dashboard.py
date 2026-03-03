@@ -78,7 +78,7 @@ class TestDivergenceReport:
     def test_divergence_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_divergence_report.return_value = []
         client.get("/api/dashboard/divergence?team=Team+Beta", headers=auth_headers)
-        mock_svc.get_divergence_report.assert_called_once_with(team="Team Beta", visible_user_ids=None)
+        mock_svc.get_divergence_report.assert_called_once_with(team="Team Beta", team_id=None, visible_user_ids=None)
 
     @patch("sis.api.routes.dashboard.dashboard_service")
     def test_divergence_empty(self, mock_svc, client, auth_headers):
@@ -179,8 +179,8 @@ class TestTeamRollupHierarchy:
     @patch("sis.api.routes.dashboard.dashboard_service")
     def test_hierarchy_passes_team_filter(self, mock_svc, client, auth_headers):
         mock_svc.get_team_rollup_hierarchy.return_value = []
-        client.get("/api/dashboard/team-rollup/hierarchy?team=Team+Alpha", headers=auth_headers)
-        mock_svc.get_team_rollup_hierarchy.assert_called_once_with(team="Team Alpha", visible_user_ids=None)
+        client.get("/api/dashboard/team-rollup/hierarchy?team_id=t1", headers=auth_headers)
+        mock_svc.get_team_rollup_hierarchy.assert_called_once_with(team_id="t1", visible_user_ids=None)
 
 
 # ── GET /api/dashboard/insights ───────────────────────────────────────

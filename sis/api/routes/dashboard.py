@@ -27,12 +27,13 @@ def pipeline_overview(
 @router.get("/divergence")
 def divergence_report(
     team: Optional[str] = None,
+    team_id: Optional[str] = None,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Deals where AI and IC forecasts diverge."""
     visible_ids = resolve_scoping(user, db)
-    return dashboard_service.get_divergence_report(team=team, visible_user_ids=visible_ids)
+    return dashboard_service.get_divergence_report(team=team, team_id=team_id, visible_user_ids=visible_ids)
 
 
 @router.get("/team-rollup")
@@ -48,13 +49,13 @@ def team_rollup(
 
 @router.get("/team-rollup/hierarchy")
 def team_rollup_hierarchy(
-    team: Optional[str] = None,
+    team_id: Optional[str] = None,
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Hierarchical team rollup: Team → Reps → Deals with aggregates."""
     visible_ids = resolve_scoping(user, db)
-    return dashboard_service.get_team_rollup_hierarchy(team=team, visible_user_ids=visible_ids)
+    return dashboard_service.get_team_rollup_hierarchy(team_id=team_id, visible_user_ids=visible_ids)
 
 
 @router.get("/insights")
