@@ -99,6 +99,9 @@ class AssessmentDetail(BaseModel):
     stage_gap_magnitude: Optional[int] = None
     forecast_gap_direction: Optional[str] = None
     sf_gap_interpretation: Optional[str] = None
+    manager_brief: Optional[str] = None
+    attention_level: Optional[str] = None
+    deal_memo_sections: list = []
     created_at: str
 
 

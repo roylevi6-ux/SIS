@@ -369,6 +369,9 @@ def get_account_detail(account_id: str) -> dict:
                 "stage_gap_magnitude": latest_assessment.stage_gap_magnitude,
                 "forecast_gap_direction": latest_assessment.forecast_gap_direction,
                 "sf_gap_interpretation": latest_assessment.sf_gap_interpretation,
+                "manager_brief": latest_assessment.manager_brief,
+                "attention_level": latest_assessment.attention_level,
+                "deal_memo_sections": json.loads(latest_assessment.deal_memo_sections) if latest_assessment.deal_memo_sections else [],
                 "created_at": latest_assessment.created_at,
             }
 
