@@ -79,12 +79,21 @@ function findNewRisks(
 // Metric badge sub-component
 // ---------------------------------------------------------------------------
 
+/** Convert 0.0–1.0 decimal to whole-number percentage. */
+function toDisplayPercent(val: unknown): number {
+  const n = Number(val);
+  return Math.round(n <= 1 ? n * 100 : n);
+}
+
 function MetricChip({
   label,
   field,
+  percent,
 }: {
   label: string;
   field: DeltaField | undefined;
+  /** When true, convert 0.0–1.0 values to whole-number percentages. */
+  percent?: boolean;
 }) {
   if (!field || !field.changed) return null;
 
@@ -103,9 +112,17 @@ function MetricChip({
       'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800';
   }
 
-  const valueText = isNumeric
-    ? `${String(field.previous)} → ${String(field.current)} (${isPositive ? '+' : ''}${field.delta})`
-    : `${String(field.previous)} → ${String(field.current)}`;
+  let valueText: string;
+  if (isNumeric && percent) {
+    const prev = toDisplayPercent(field.previous);
+    const curr = toDisplayPercent(field.current);
+    const delta = curr - prev;
+    valueText = `${prev}% → ${curr}% (${delta > 0 ? '+' : ''}${delta})`;
+  } else if (isNumeric) {
+    valueText = `${String(field.previous)} → ${String(field.current)} (${isPositive ? '+' : ''}${field.delta})`;
+  } else {
+    valueText = `${String(field.previous)} → ${String(field.current)}`;
+  }
 
   return (
     <Badge variant="outline" className={`text-xs font-medium ${colorClasses}`}>
@@ -174,7 +191,7 @@ export function WhatChangedCard({ accountId }: { accountId: string }) {
             <MetricChip label="Stage" field={deltaFields?.stage_name ?? deltaFields?.inferred_stage} />
             <MetricChip label="Forecast" field={deltaFields?.ai_forecast_category} />
             <MetricChip label="Momentum" field={deltaFields?.momentum_direction} />
-            <MetricChip label="Confidence" field={deltaFields?.overall_confidence} />
+            <MetricChip label="Confidence" field={deltaFields?.overall_confidence} percent />
           </div>
         )}
 
