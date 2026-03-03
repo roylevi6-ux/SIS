@@ -13,8 +13,8 @@ export const DEFAULT_DEAL_WIDGETS: WidgetConfig[] = [
   // Active widgets — default visible, ordered for clean first impression
   { id: 'status_strip', label: 'Status Strip', description: 'Health, stage, forecast, and confidence badges', visible: true, order: 0 },
   { id: 'call_timeline', label: 'Call Timeline', description: 'Chronological view of all calls', visible: true, order: 1 },
-  { id: 'vp_brief', label: 'VP Brief', description: 'Blunt advisor brief for VP/leadership', visible: true, order: 2 },
-  { id: 'what_changed', label: 'What Changed', description: 'Metric deltas between latest and previous run', visible: true, order: 3 },
+  { id: 'what_changed', label: 'What Changed', description: 'Metric deltas between latest and previous run', visible: true, order: 2 },
+  { id: 'vp_brief', label: 'VP Brief', description: 'Blunt advisor brief for VP/leadership', visible: true, order: 3 },
   { id: 'rep_action_plan', label: 'Rep Action Plan', description: 'Actions grouped by owner (AE/SE/Manager)', visible: true, order: 4 },
   { id: 'deal_narrative', label: 'Deal Narrative', description: 'Structured deal memo with health-coded sections', visible: true, order: 5 },
   { id: 'health_breakdown', label: 'Health Breakdown', description: 'Radar chart and score table for health components', visible: true, order: 6 },

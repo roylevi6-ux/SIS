@@ -193,8 +193,8 @@ function getVisibleWidgets(prefs: WidgetConfig[] | undefined, _vpMode: boolean):
 
   // Fallback order (both VP and non-VP use the same consolidated layout)
   return [
-    'status_strip', 'call_timeline', 'vp_brief',
-    'what_changed', 'rep_action_plan', 'deal_narrative',
+    'status_strip', 'call_timeline', 'what_changed',
+    'vp_brief', 'rep_action_plan', 'deal_narrative',
     'health_breakdown', 'sf_gap', 'agent_analyses',
     'deal_timeline', 'analysis_history', 'transcript_list',
   ];
@@ -766,9 +766,7 @@ export default function DealDetailPage({
         ) : null;
       case 'rep_action_plan':
         return assessment ? (
-          <CollapsibleWidget key={widgetId} title="Rep Action Plan">
-            <RepActionPlan actions={assessment.recommended_actions ?? []} />
-          </CollapsibleWidget>
+          <RepActionPlan key={widgetId} actions={assessment.recommended_actions ?? []} />
         ) : null;
       default:
         return null;
