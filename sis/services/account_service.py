@@ -287,6 +287,55 @@ def delete_account(account_id: str) -> dict:
         return {"account_name": account_name, "rows_deleted": total_deleted}
 
 
+def resolve_account_by_name(
+    name: str,
+    visible_user_ids: set[str] | None = None,
+) -> dict | None:
+    """Fuzzy-match an account name from user input.
+
+    Handles underscores vs spaces, case differences, partial matches.
+    Returns the best-matching account summary dict or None.
+    """
+    accounts = list_accounts(visible_user_ids=visible_user_ids)
+    if not accounts:
+        return None
+
+    def _normalize(s: str) -> str:
+        return s.replace("_", " ").lower().strip()
+
+    query_norm = _normalize(name)
+    best_match = None
+    best_length = 0
+
+    for acct in accounts:
+        acct_name = acct.get("account_name", "")
+        if not acct_name:
+            continue
+        acct_norm = _normalize(acct_name)
+
+        # Exact normalized match
+        if acct_norm == query_norm:
+            return acct
+
+        # Full-name substring match (prefer longest)
+        if acct_norm in query_norm or query_norm in acct_norm:
+            match_len = len(acct_norm)
+            if match_len > best_length:
+                best_match = acct
+                best_length = match_len
+            continue
+
+        # Multi-word: all significant words present
+        words = [w for w in query_norm.split() if len(w) > 2]
+        if words and all(w in acct_norm for w in words):
+            match_len = sum(len(w) for w in words)
+            if match_len > best_length:
+                best_match = acct
+                best_length = match_len
+
+    return best_match
+
+
 def get_account_detail(account_id: str) -> dict:
     """Full account detail with latest assessment, transcripts, feedback history."""
     with get_session() as session:

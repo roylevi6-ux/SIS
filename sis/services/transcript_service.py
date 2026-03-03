@@ -280,3 +280,63 @@ def _normalize_speakers(text: str) -> str:
         else:
             result.append(line)
     return '\n'.join(result)
+
+
+# ── Keyword search ─────────────────────────────────────────────────────
+
+MAX_SEARCH_MATCHES = 10
+
+
+def search_transcript(transcript_id: str, query: str) -> dict | None:
+    """Keyword search within a transcript. Returns matching paragraphs.
+
+    Args:
+        transcript_id: UUID of the transcript to search.
+        query: Keyword or phrase to search for (case-insensitive).
+
+    Returns:
+        Dict with metadata + matching text snippets, or None if transcript not found.
+    """
+    with get_session() as session:
+        t = session.query(Transcript).filter_by(id=transcript_id).first()
+        if not t:
+            return None
+
+        text = t.preprocessed_text or t.raw_text
+        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+
+        query_lower = query.lower()
+        query_words = query_lower.split()
+
+        matches = []
+        for i, para in enumerate(paragraphs):
+            para_lower = para.lower()
+            # Match if all words in the query appear in the paragraph
+            if all(w in para_lower for w in query_words):
+                # Include +-1 paragraph of context
+                context_parts = []
+                if i > 0:
+                    context_parts.append(paragraphs[i - 1])
+                context_parts.append(para)
+                if i < len(paragraphs) - 1:
+                    context_parts.append(paragraphs[i + 1])
+
+                matches.append({
+                    "text": "\n\n".join(context_parts),
+                    "position": round(i / max(len(paragraphs), 1), 2),
+                })
+
+                if len(matches) >= MAX_SEARCH_MATCHES:
+                    break
+
+        participants = json.loads(t.participants) if t.participants else []
+
+        return {
+            "transcript_id": t.id,
+            "call_title": t.call_title,
+            "call_date": t.call_date,
+            "participants": participants,
+            "query": query,
+            "matches": matches,
+            "total_matches": len(matches),
+        }
