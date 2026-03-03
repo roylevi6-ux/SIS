@@ -30,6 +30,92 @@ AGENT_NAMES = {
 }
 
 
+def _compute_divergence(session, account_id: str, assessment: "DealAssessment") -> None:
+    """Set divergence_flag and divergence_explanation on assessment in place.
+
+    Compares the account's current sf_forecast_category (from Salesforce) with
+    the AI-generated ai_forecast_category.  "At Risk" is SIS-only — it maps
+    to the same rank as SF "Upside", so they are treated as aligned.
+
+    Args:
+        session: Active SQLAlchemy session.
+        account_id: Account to look up sf_forecast_category from.
+        assessment: DealAssessment instance to mutate.
+    """
+    account = session.query(Account).filter_by(id=account_id).one_or_none()
+    if account and account.sf_forecast_category and assessment.ai_forecast_category:
+        sf = account.sf_forecast_category
+        ai = assessment.ai_forecast_category
+        is_match = (sf == ai) or (ai == "At Risk" and sf == "Upside")
+        if not is_match:
+            assessment.divergence_flag = 1
+            assessment.divergence_explanation = (
+                f"AI forecasts '{ai}' but rep set "
+                f"'{sf}' in Salesforce."
+            )
+        else:
+            assessment.divergence_flag = 0
+            assessment.divergence_explanation = None
+
+
+def _prepare_analysis_context(account_id: str) -> tuple[list[str], dict, dict | None]:
+    """Load transcripts, account metadata, and SF data needed before running the pipeline.
+
+    Both analyze_account() and analyze_account_async() execute identical DB
+    queries before invoking the pipeline.  This helper centralises that work.
+
+    Returns:
+        (transcript_texts, deal_context, sf_data)
+        - transcript_texts: list of raw transcript strings (raises if empty)
+        - deal_context: dict with deal_type, prior_contract_value,
+          most_recent_transcript_age_days
+        - sf_data: dict with SF fields if any are populated, else None
+    """
+    transcript_texts = get_active_transcript_texts(account_id)
+    if not transcript_texts:
+        raise ValueError(f"No active transcripts for account {account_id}")
+
+    with get_session() as session:
+        account = session.query(Account).filter_by(id=account_id).one_or_none()
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
+        from sis.constants import normalize_deal_type
+        deal_type = normalize_deal_type(account.deal_type)
+        prior_contract_value = account.prior_contract_value
+
+        sf_data = None
+        if any([account.sf_stage, account.sf_forecast_category, account.sf_close_quarter, account.cp_estimate]):
+            sf_data = {
+                "sf_stage": account.sf_stage,
+                "sf_forecast_category": account.sf_forecast_category,
+                "sf_close_quarter": account.sf_close_quarter,
+                "cp_estimate": account.cp_estimate,
+            }
+
+        from sis.db.models import Transcript
+        from sqlalchemy import func
+        latest_date_str = (
+            session.query(func.max(Transcript.call_date))
+            .filter_by(account_id=account_id, is_active=1)
+            .scalar()
+        )
+        transcript_age_days = None
+        if latest_date_str:
+            from datetime import date
+            try:
+                latest_date = date.fromisoformat(latest_date_str)
+                transcript_age_days = (date.today() - latest_date).days
+            except (ValueError, TypeError):
+                pass
+
+    deal_context = {
+        "deal_type": deal_type,
+        "prior_contract_value": prior_contract_value,
+        "most_recent_transcript_age_days": transcript_age_days,
+    }
+    return transcript_texts, deal_context, sf_data
+
+
 def create_analysis_run(account_id: str) -> str:
     """Create an AnalysisRun row immediately and return its ID.
 
@@ -66,51 +152,8 @@ def analyze_account(
     Returns:
         dict with run_id, status, deal_assessment summary, cost
     """
-    transcript_texts = get_active_transcript_texts(account_id)
-    if not transcript_texts:
-        raise ValueError(f"No active transcripts for account {account_id}")
-
-    # Fetch deal context from account + transcript age
-    with get_session() as session:
-        account = session.query(Account).filter_by(id=account_id).one_or_none()
-        if not account:
-            raise ValueError(f"Account not found: {account_id}")
-        from sis.constants import normalize_deal_type
-        deal_type = normalize_deal_type(account.deal_type)
-        prior_contract_value = account.prior_contract_value
-
-        # Read SF indication fields for gap analysis (Agent 10 Step 5 only)
-        sf_data = None
-        if any([account.sf_stage, account.sf_forecast_category, account.sf_close_quarter, account.cp_estimate]):
-            sf_data = {
-                "sf_stage": account.sf_stage,
-                "sf_forecast_category": account.sf_forecast_category,
-                "sf_close_quarter": account.sf_close_quarter,
-                "cp_estimate": account.cp_estimate,
-            }
-
-        # Compute days since most recent transcript for confidence penalties
-        from sis.db.models import Transcript
-        from sqlalchemy import func
-        latest_date_str = (
-            session.query(func.max(Transcript.call_date))
-            .filter_by(account_id=account_id, is_active=1)
-            .scalar()
-        )
-        transcript_age_days = None
-        if latest_date_str:
-            from datetime import date
-            try:
-                latest_date = date.fromisoformat(latest_date_str)
-                transcript_age_days = (date.today() - latest_date).days
-            except (ValueError, TypeError):
-                pass
-
-    deal_context = {
-        "deal_type": deal_type,
-        "prior_contract_value": prior_contract_value,
-        "most_recent_transcript_age_days": transcript_age_days,
-    }
+    transcript_texts, deal_context, sf_data = _prepare_analysis_context(account_id)
+    deal_type = deal_context["deal_type"]
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
     result = pipeline.run(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data)
@@ -140,50 +183,8 @@ async def analyze_account_async(
     run_id: str | None = None,
 ) -> dict:
     """Async version of analyze_account."""
-    transcript_texts = get_active_transcript_texts(account_id)
-    if not transcript_texts:
-        raise ValueError(f"No active transcripts for account {account_id}")
-
-    # Fetch deal context from account + transcript age
-    with get_session() as session:
-        account = session.query(Account).filter_by(id=account_id).one_or_none()
-        if not account:
-            raise ValueError(f"Account not found: {account_id}")
-        from sis.constants import normalize_deal_type
-        deal_type = normalize_deal_type(account.deal_type)
-        prior_contract_value = account.prior_contract_value
-
-        # Read SF indication fields for gap analysis (Agent 10 Step 5 only)
-        sf_data = None
-        if any([account.sf_stage, account.sf_forecast_category, account.sf_close_quarter, account.cp_estimate]):
-            sf_data = {
-                "sf_stage": account.sf_stage,
-                "sf_forecast_category": account.sf_forecast_category,
-                "sf_close_quarter": account.sf_close_quarter,
-                "cp_estimate": account.cp_estimate,
-            }
-
-        from sis.db.models import Transcript
-        from sqlalchemy import func
-        latest_date_str = (
-            session.query(func.max(Transcript.call_date))
-            .filter_by(account_id=account_id, is_active=1)
-            .scalar()
-        )
-        transcript_age_days = None
-        if latest_date_str:
-            from datetime import date
-            try:
-                latest_date = date.fromisoformat(latest_date_str)
-                transcript_age_days = (date.today() - latest_date).days
-            except (ValueError, TypeError):
-                pass
-
-    deal_context = {
-        "deal_type": deal_type,
-        "prior_contract_value": prior_contract_value,
-        "most_recent_transcript_age_days": transcript_age_days,
-    }
+    transcript_texts, deal_context, sf_data = _prepare_analysis_context(account_id)
+    deal_type = deal_context["deal_type"]
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
     result = await pipeline.run_async(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data)
@@ -318,6 +319,9 @@ def _persist_pipeline_result(
                 top_positive_signals=json.dumps(syn.get("top_positive_signals", [])),
                 top_risks=json.dumps(syn.get("top_risks", [])),
                 recommended_actions=json.dumps(syn.get("recommended_actions", [])),
+                manager_brief=syn.get("manager_brief", ""),
+                attention_level=syn.get("attention_level", "none"),
+                deal_memo_sections=json.dumps(syn.get("deal_memo_sections", [])),
             )
 
             # Snapshot SF indication fields at run time
@@ -356,23 +360,7 @@ def _persist_pipeline_result(
             if sf_gap:
                 assessment.sf_gap_interpretation = sf_gap.get("overall_gap_assessment", "")
 
-            # Auto-compute divergence: SF forecast vs AI forecast
-            # "At Risk" is SIS-only (not a SF category) — treat as aligned with SF "Upside"
-            account = session.query(Account).filter_by(id=account_id).one_or_none()
-            if account and account.sf_forecast_category and assessment.ai_forecast_category:
-                sf = account.sf_forecast_category
-                ai = assessment.ai_forecast_category
-                is_match = (sf == ai) or (ai == "At Risk" and sf == "Upside")
-                if not is_match:
-                    assessment.divergence_flag = 1
-                    assessment.divergence_explanation = (
-                        f"AI forecasts '{ai}' but rep set "
-                        f"'{sf}' in Salesforce."
-                    )
-                else:
-                    assessment.divergence_flag = 0
-                    assessment.divergence_explanation = None
-
+            _compute_divergence(session, account_id, assessment)
             session.add(assessment)
 
         session.flush()
@@ -811,6 +799,9 @@ def resynthesize(run_id: str) -> dict:
         assessment.top_positive_signals = json.dumps(syn.get("top_positive_signals", []))
         assessment.top_risks = json.dumps(syn.get("top_risks", []))
         assessment.recommended_actions = json.dumps(syn.get("recommended_actions", []))
+        assessment.manager_brief = syn.get("manager_brief", "")
+        assessment.attention_level = syn.get("attention_level", "none")
+        assessment.deal_memo_sections = json.dumps(syn.get("deal_memo_sections", []))
 
         # Snapshot SF indication fields and compute gap
         if sf_data:
@@ -829,22 +820,7 @@ def resynthesize(run_id: str) -> dict:
                     assessment.stage_gap_direction = "SIS-ahead"
                 assessment.stage_gap_magnitude = abs(sf_stage - sis_stage)
 
-        # Auto-compute divergence: SF forecast vs AI forecast
-        # "At Risk" is SIS-only (not a SF category) — treat as aligned with SF "Upside"
-        acct = session.query(Account).filter_by(id=account_id).one_or_none()
-        if acct and acct.sf_forecast_category and assessment.ai_forecast_category:
-            sf = acct.sf_forecast_category
-            ai = assessment.ai_forecast_category
-            is_match = (sf == ai) or (ai == "At Risk" and sf == "Upside")
-            if not is_match:
-                assessment.divergence_flag = 1
-                assessment.divergence_explanation = (
-                    f"AI forecasts '{ai}' but rep set "
-                    f"'{sf}' in Salesforce."
-                )
-            else:
-                assessment.divergence_flag = 0
-                assessment.divergence_explanation = None
+        _compute_divergence(session, account_id, assessment)
 
         # Mark the run as completed now that Agent 10 has succeeded
         run = session.query(AnalysisRun).filter_by(id=run_id).first()
