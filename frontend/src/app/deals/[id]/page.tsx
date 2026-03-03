@@ -187,7 +187,7 @@ function getVisibleWidgets(prefs: WidgetConfig[] | undefined, vpMode: boolean): 
   if (vpMode) {
     return [
       'status_strip', 'vp_brief', 'what_changed', 'key_metrics',
-      'deal_memo', 'health_breakdown', 'actions_risks',
+      'deal_narrative', 'health_breakdown', 'actions_risks',
       'agent_analyses', 'deal_timeline', 'analysis_history',
     ];
   }
