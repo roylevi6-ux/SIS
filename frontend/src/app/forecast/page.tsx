@@ -153,7 +153,7 @@ export default function ForecastPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">AI vs SF Forecast</h1>
+          <h1 className="text-xl font-semibold tracking-tight">AI vs SF Forecast</h1>
           <p className="text-sm text-muted-foreground">
             {isLoading ? 'Loading forecast data...' : `${items.length} deals in view`}
           </p>
@@ -240,8 +240,8 @@ export default function ForecastPage() {
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="AI" fill="#6366f1" name="AI Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                  <Bar dataKey="SF" fill="#0ea5e9" name="SF Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="AI" fill="#60a5fa" name="AI Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="SF" fill="#34d399" name="SF Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}

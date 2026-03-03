@@ -141,7 +141,7 @@ export default function TeamRollupPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Team Performance</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Team Performance</h1>
           <p className="text-sm text-muted-foreground">
             {isLoading
               ? 'Loading team data...'
