@@ -30,8 +30,8 @@ export function DeltaBadge({ field }: { field: DeltaFieldData | undefined }) {
 
     const sign = displayDelta > 0 ? '+' : '';
     const color = displayDelta > 0
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : 'text-red-600 dark:text-red-400';
+      ? 'text-brand-400'
+      : 'text-needs-attention';
 
     return (
       <span className={`text-xs font-medium ${color}`}>
@@ -42,7 +42,7 @@ export function DeltaBadge({ field }: { field: DeltaFieldData | undefined }) {
 
   // Categorical delta (stage, forecast, momentum)
   return (
-    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+    <span className="text-xs font-medium text-blue-400">
       {String(field.previous)} → {String(field.current)}
     </span>
   );
