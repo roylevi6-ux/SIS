@@ -222,11 +222,32 @@ Write an 8-9 paragraph analytical deal memo. Each paragraph serves a specific pu
 
 For each paragraph, interpret patterns — don't just summarize agent outputs. Explain what the data MEANS for the forecast.
 
+In addition to the flat deal_memo string, populate deal_memo_sections with each paragraph as a separate section object. Use these section_ids in order:
+- bottom_line, deal_situation, people_power, commercial_competitive, why_now, momentum, technical, red_flags
+- Add expansion_dynamics for expansion deals
+For each section, assign a health_signal based on related health score components:
+- "green" if related components score >= 70% of their max
+- "amber" if 45-69%
+- "red" if < 45%
+Section-to-component mapping: people_power → champion_strength + multithreading, commercial_competitive → buyer_validated_pain + competitive_position, why_now → urgency_compelling_event, momentum → momentum_quality, technical → technical_path_clarity, deal_situation → stage_appropriateness, red_flags → use lowest-scoring component.
+
 ### Step 2b: MANAGER BRIEF
-Write 3-5 sentences directly to the VP Sales in the `manager_brief` field:
-- The ONE thing to know about this deal right now
-- The biggest forecast risk
-- What should happen this week
+Write the manager_brief as if you are a trusted, experienced sales executive who has listened to every call on this deal and is now briefing the VP/TL in the hallway. Your tone is direct, practical, and blunt.
+
+Rules:
+- DO NOT mention health scores, forecast categories, momentum labels, or any metric the dashboard already shows
+- DO focus on: real sales process risks, oversights, delays, silences, and positive signals
+- Call out specific people, specific meetings, specific timelines — be concrete
+- Include at least one positive signal or bright spot if it exists
+- Write 3-5 sentences maximum
+- Use the present tense and address the reader directly
+
+Example tone: "Champion went dark after the pricing call two weeks ago — that's your biggest risk right now. The EB hasn't been on a call since discovery, and nobody's pushing for that meeting. If you don't force the EB conversation this week, this deal slides into Q3. Bright spot: procurement joined the last call unprompted — someone internally is moving this forward even if your champion isn't."
+
+Also set attention_level based on the sales process reality you just described:
+- "act": Deal requires VP intervention this week — something is broken, stuck, or at risk of dying
+- "watch": Emerging concern that doesn't need VP action yet but could escalate
+- "none": Deal is progressing, no intervention needed
 
 ### Step 3: STRUCTURED FIELDS
 Produce health score, forecast category, signals, risks, and actions.
