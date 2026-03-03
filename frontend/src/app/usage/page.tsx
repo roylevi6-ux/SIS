@@ -30,8 +30,8 @@ function statusBadge(status: MetricStatus) {
 }
 
 function cardBorderClass(status: MetricStatus): string {
-  if (status === 'pass') return 'border-green-200 bg-green-50/30';
-  if (status === 'fail') return 'border-red-200 bg-red-50/30';
+  if (status === 'pass') return 'border-green-500/30 bg-green-500/10';
+  if (status === 'fail') return 'border-red-500/30 bg-red-500/10';
   return '';
 }
 

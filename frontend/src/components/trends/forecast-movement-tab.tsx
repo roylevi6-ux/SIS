@@ -156,12 +156,12 @@ export function ForecastMovementTab({ weeks }: { weeks: number }) {
                     key={m.account_id}
                     className={
                       m.direction === 'upgrade'
-                        ? 'bg-green-50 dark:bg-green-950/20'
-                        : 'bg-red-50 dark:bg-red-950/20'
+                        ? 'bg-green-500/8'
+                        : 'bg-red-500/8'
                     }
                   >
                     <TableCell>
-                      <Link href={`/deals/${m.account_id}`} className="text-blue-600 hover:underline">
+                      <Link href={`/deals/${m.account_id}`} className="text-brand-400 hover:underline">
                         {m.account_name}
                       </Link>
                     </TableCell>

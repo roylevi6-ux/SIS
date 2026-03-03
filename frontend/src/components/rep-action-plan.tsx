@@ -49,10 +49,10 @@ export function RepActionPlan({ actions }: RepActionPlanProps) {
                     variant="outline"
                     className={`text-[10px] px-1 py-0 shrink-0 mt-0.5 ${
                       priority === 'P0'
-                        ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800'
+                        ? 'bg-orange-500/15 text-orange-400 border-orange-500/30'
                         : priority === 'P1'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700'
+                          ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                          : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
                     }`}
                   >
                     {priority}

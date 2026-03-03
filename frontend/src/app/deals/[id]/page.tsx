@@ -485,7 +485,7 @@ function AnalysisHistorySection({ accountId }: { accountId: string }) {
                         ? 'bg-brand-500/10 text-brand-400 border-transparent'
                         : run.status === 'failed'
                           ? 'bg-needs-attention-bg text-needs-attention border-transparent'
-                          : 'bg-blue-100 text-blue-700 border-transparent dark:bg-blue-950 dark:text-blue-400'
+                          : 'bg-blue-500/15 text-blue-400 border-transparent'
                     }
                   >
                     {run.status}
