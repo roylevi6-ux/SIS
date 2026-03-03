@@ -22,6 +22,7 @@ import { DealTimeline } from '@/components/deal-timeline';
 import { CallTimeline } from '@/components/call-timeline';
 import { DeltaBadge } from '@/components/delta-badge';
 import { WhatChangedCard } from '@/components/what-changed-card';
+import { ScoreFeedbackDialog } from '@/components/score-feedback-dialog';
 import type { AgentAnalysis, HealthBreakdownEntry } from '@/components/agent-card';
 
 // ---------------------------------------------------------------------------
@@ -498,7 +499,7 @@ export default function DealDetailPage({
   const { id } = use(params);
   const { data, isLoading, isError, error } = useAccount(id);
   const account = data as AccountDetail | undefined;
-  const [_feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { data: deltaData } = useAssessmentDelta(id);
   const deltaFields = deltaData?.fields as Record<string, { previous: unknown; current: unknown; changed: boolean; delta?: number }> | undefined;
 
@@ -770,6 +771,15 @@ export default function DealDetailPage({
             <MessageSquarePlus className="size-4" />
             Give Feedback
           </Button>
+
+          {/* Feedback dialog */}
+          <ScoreFeedbackDialog
+            open={feedbackOpen}
+            onOpenChange={setFeedbackOpen}
+            accountId={id}
+            assessmentId={assessment?.id ?? ''}
+            currentHealthScore={assessment?.health_score ?? 0}
+          />
         </div>
       </div>
 

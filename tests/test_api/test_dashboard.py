@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 
 # ── GET /api/dashboard/pipeline ──────────────────────────────────────
@@ -255,13 +255,13 @@ class TestDealTrends:
     def test_deal_trends_passes_params(self, mock_svc, client, auth_headers):
         mock_svc.get_deal_trends.return_value = []
         client.get("/api/dashboard/trends/deals?account_id=acct-5&weeks=8", headers=auth_headers)
-        mock_svc.get_deal_trends.assert_called_once_with(account_id="acct-5", weeks=8)
+        mock_svc.get_deal_trends.assert_called_once_with(db=ANY, account_id="acct-5", weeks=8, visible_user_ids=None)
 
     @patch("sis.api.routes.dashboard.trend_service")
     def test_deal_trends_default_params(self, mock_svc, client, auth_headers):
         mock_svc.get_deal_trends.return_value = []
         client.get("/api/dashboard/trends/deals", headers=auth_headers)
-        mock_svc.get_deal_trends.assert_called_once_with(account_id=None, weeks=4)
+        mock_svc.get_deal_trends.assert_called_once_with(db=ANY, account_id=None, weeks=4, visible_user_ids=None)
 
 
 # ── GET /api/dashboard/trends/teams ───────────────────────────────────
@@ -306,7 +306,7 @@ class TestTeamTrends:
         mock_svc.get_deal_trends.return_value = sentinel_deals
         mock_svc.get_team_trends.return_value = []
         client.get("/api/dashboard/trends/teams?weeks=8", headers=auth_headers)
-        mock_svc.get_deal_trends.assert_called_once_with(weeks=8)
+        mock_svc.get_deal_trends.assert_called_once_with(db=ANY, weeks=8, visible_user_ids=None)
         mock_svc.get_team_trends.assert_called_once_with(
             weeks=8, deal_trends=sentinel_deals
         )
@@ -347,7 +347,7 @@ class TestPortfolioSummary:
         mock_svc.get_deal_trends.return_value = sentinel_deals
         mock_svc.get_portfolio_summary.return_value = {"total_deals": 0}
         client.get("/api/dashboard/trends/portfolio?weeks=12", headers=auth_headers)
-        mock_svc.get_deal_trends.assert_called_once_with(weeks=12)
+        mock_svc.get_deal_trends.assert_called_once_with(db=ANY, weeks=12, visible_user_ids=None)
         mock_svc.get_portfolio_summary.assert_called_once_with(
             weeks=12, deal_trends=sentinel_deals
         )
@@ -357,7 +357,7 @@ class TestPortfolioSummary:
         mock_svc.get_deal_trends.return_value = []
         mock_svc.get_portfolio_summary.return_value = {"total_deals": 0}
         client.get("/api/dashboard/trends/portfolio", headers=auth_headers)
-        mock_svc.get_deal_trends.assert_called_once_with(weeks=4)
+        mock_svc.get_deal_trends.assert_called_once_with(db=ANY, weeks=4, visible_user_ids=None)
         mock_svc.get_portfolio_summary.assert_called_once_with(
             weeks=4, deal_trends=[]
         )

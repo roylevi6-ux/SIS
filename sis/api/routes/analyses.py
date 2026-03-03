@@ -11,7 +11,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from sis.api.deps import get_current_user
+from sis.api.deps import get_current_user, require_role
 from sis.services import analysis_service
 from sis.api.schemas.analyses import (
     AgentAnalysisResponse,
@@ -272,7 +272,8 @@ def get_agents(run_id: str, user: dict = Depends(get_current_user)):
 
 @router.post("/{run_id}/rerun/{agent_id}")
 def rerun_agent(run_id: str, agent_id: str, user: dict = Depends(get_current_user)):
-    """Re-run a single agent for an existing analysis run."""
+    """Re-run a single agent for an existing analysis run. Team lead+ only."""
+    require_role(user, "team_lead")
     try:
         return analysis_service.rerun_agent(run_id, agent_id)
     except ValueError as e:
@@ -289,7 +290,8 @@ def get_carry_forward_actions(account_id: str, user: dict = Depends(get_current_
 
 @router.post("/{run_id}/resynthesize")
 def resynthesize(run_id: str, user: dict = Depends(get_current_user)):
-    """Re-run synthesis (Agent 10) for an existing analysis run."""
+    """Re-run synthesis (Agent 10) for an existing analysis run. Team lead+ only."""
+    require_role(user, "team_lead")
     try:
         return analysis_service.resynthesize(run_id)
     except ValueError as e:

@@ -233,9 +233,12 @@ export interface FeedbackItem {
 
 export interface FeedbackSubmit {
   account_id: string;
-  agent_id: string;
-  feedback_text: string;
-  author?: string;
+  assessment_id: string;
+  author: string;
+  direction: 'too_high' | 'too_low';
+  reason: string;
+  free_text?: string;
+  off_channel?: boolean;
 }
 
 export interface FeedbackSummary {

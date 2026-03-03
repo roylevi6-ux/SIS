@@ -86,6 +86,7 @@ def get_pipeline_overview(
                     "stage_gap_direction": latest.stage_gap_direction,
                     "stage_gap_magnitude": latest.stage_gap_magnitude,
                     "forecast_gap_direction": latest.forecast_gap_direction,
+                    "attention_level": latest.attention_level or "none",
                 })
             else:
                 deal.update({
@@ -100,6 +101,7 @@ def get_pipeline_overview(
                     "stage_gap_direction": None,
                     "stage_gap_magnitude": None,
                     "forecast_gap_direction": None,
+                    "attention_level": None,
                 })
 
             deals.append(deal)
@@ -621,6 +623,7 @@ def get_command_center(
                 "stage_gap_direction": latest.stage_gap_direction,
                 "stage_gap_magnitude": latest.stage_gap_magnitude,
                 "forecast_gap_direction": latest.forecast_gap_direction,
+                "attention_level": latest.attention_level or "none",
             })
         else:
             deal.update({
@@ -635,6 +638,7 @@ def get_command_center(
                 "stage_gap_direction": None,
                 "stage_gap_magnitude": None,
                 "forecast_gap_direction": None,
+                "attention_level": None,
             })
 
         deals.append(deal)

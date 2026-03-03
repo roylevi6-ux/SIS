@@ -185,19 +185,19 @@ class TestUpdateAccount:
         mock_svc.update_account.assert_called_once_with("acct-1", cp_estimate=75000)
 
 
-# ── POST /api/accounts/{account_id}/ic-forecast ────────────────────
+# ── POST /api/accounts/{account_id}/forecast ────────────────────────
 
 
 class TestICForecast:
 
     @patch("sis.api.routes.accounts.account_service")
-    def test_set_ic_forecast_returns_result(self, mock_svc, client, auth_headers):
-        mock_svc.set_ic_forecast.return_value = {
+    def test_set_forecast_returns_result(self, mock_svc, client, auth_headers):
+        mock_svc.set_rep_forecast.return_value = {
             "divergence_flag": True,
-            "explanation": "AI forecasts 'Commit' but IC forecasts 'At Risk'.",
+            "explanation": "AI forecasts 'Commit' but rep set 'At Risk' in Salesforce.",
         }
         resp = client.post(
-            "/api/accounts/acct-1/ic-forecast",
+            "/api/accounts/acct-1/forecast",
             json={"category": "At Risk"},
             headers=auth_headers,
         )
@@ -207,33 +207,33 @@ class TestICForecast:
         assert "AI forecasts" in data["explanation"]
 
     @patch("sis.api.routes.accounts.account_service")
-    def test_set_ic_forecast_not_found_returns_404(self, mock_svc, client, auth_headers):
-        mock_svc.set_ic_forecast.side_effect = ValueError("Account not found: bad-id")
+    def test_set_forecast_not_found_returns_404(self, mock_svc, client, auth_headers):
+        mock_svc.set_rep_forecast.side_effect = ValueError("Account not found: bad-id")
         resp = client.post(
-            "/api/accounts/bad-id/ic-forecast",
+            "/api/accounts/bad-id/forecast",
             json={"category": "Commit"},
             headers=auth_headers,
         )
         assert resp.status_code == 404
 
     @patch("sis.api.routes.accounts.account_service")
-    def test_set_ic_forecast_invalid_category_returns_422(self, mock_svc, client, auth_headers):
+    def test_set_forecast_invalid_category_returns_422(self, mock_svc, client, auth_headers):
         """Invalid category caught by Pydantic schema validator before hitting service."""
         resp = client.post(
-            "/api/accounts/acct-1/ic-forecast",
+            "/api/accounts/acct-1/forecast",
             json={"category": "InvalidCat"},
             headers=auth_headers,
         )
         assert resp.status_code == 422
 
     @patch("sis.api.routes.accounts.account_service")
-    def test_set_ic_forecast_no_divergence(self, mock_svc, client, auth_headers):
-        mock_svc.set_ic_forecast.return_value = {
+    def test_set_forecast_no_divergence(self, mock_svc, client, auth_headers):
+        mock_svc.set_rep_forecast.return_value = {
             "divergence_flag": False,
             "explanation": None,
         }
         resp = client.post(
-            "/api/accounts/acct-1/ic-forecast",
+            "/api/accounts/acct-1/forecast",
             json={"category": "Commit"},
             headers=auth_headers,
         )
