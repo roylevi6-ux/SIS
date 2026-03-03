@@ -95,6 +95,13 @@ export function AgentCard({ analysis, healthBreakdown }: AgentCardProps) {
     Array.isArray(healthBreakdown) ? healthBreakdown : [],
   );
 
+  // Extract manager_insight from findings (if present)
+  const managerInsight =
+    analysis.findings && typeof analysis.findings === 'object'
+      ? (analysis.findings as Record<string, unknown>).manager_insight
+      : null;
+  const insightText = typeof managerInsight === 'string' ? managerInsight : null;
+
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="py-0 overflow-hidden">
@@ -137,6 +144,13 @@ export function AgentCard({ analysis, healthBreakdown }: AgentCardProps) {
             </div>
           </div>
         </CollapsibleTrigger>
+
+        {/* Manager insight — always visible below the header */}
+        {insightText && (
+          <div className="px-4 pb-2 -mt-1">
+            <p className="text-sm text-muted-foreground leading-snug">{insightText}</p>
+          </div>
+        )}
 
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 space-y-4">

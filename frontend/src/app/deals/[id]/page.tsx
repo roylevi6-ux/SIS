@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, MessageSquarePlus, AlertTriangle, Zap } from 'lucide-react';
+import { ArrowLeft, MessageSquarePlus, AlertTriangle, Zap, ChevronRight } from 'lucide-react';
 import { useAccount } from '@/lib/hooks/use-accounts';
 import { useAnalysisHistory, useAgentAnalyses, useAssessmentDelta } from '@/lib/hooks/use-analyses';
 import { useDealPageWidgets, type WidgetConfig } from '@/lib/hooks/use-preferences';
@@ -30,6 +30,12 @@ import { KeyMetricsRow } from '@/components/key-metrics-row';
 import { DealNarrative } from '@/components/deal-narrative';
 import { KeyFindings } from '@/components/key-findings';
 import { RepActionPlan } from '@/components/rep-action-plan';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types for the account detail response
@@ -177,7 +183,7 @@ function formatDuration(minutes: number | null): string {
 // Widget visibility helpers
 // ---------------------------------------------------------------------------
 
-function getVisibleWidgets(prefs: WidgetConfig[] | undefined, vpMode: boolean): string[] {
+function getVisibleWidgets(prefs: WidgetConfig[] | undefined, _vpMode: boolean): string[] {
   if (prefs) {
     return prefs
       .filter((w) => w.visible)
@@ -185,20 +191,12 @@ function getVisibleWidgets(prefs: WidgetConfig[] | undefined, vpMode: boolean): 
       .map((w) => w.id);
   }
 
-  if (vpMode) {
-    return [
-      'status_strip', 'vp_brief', 'what_changed', 'key_metrics',
-      'deal_narrative', 'health_breakdown', 'actions_risks',
-      'agent_analyses', 'deal_timeline', 'analysis_history',
-    ];
-  }
-
+  // Fallback order (both VP and non-VP use the same consolidated layout)
   return [
-    'status_strip', 'deal_narrative', 'key_findings', 'what_changed',
-    'rep_action_plan', 'health_breakdown', 'actions_risks',
-    'positive_contradictions', 'forecast_divergence', 'key_unknowns',
-    'forecast_rationale', 'sf_gap', 'agent_analyses', 'deal_timeline',
-    'analysis_history', 'transcript_list',
+    'status_strip', 'call_timeline', 'vp_brief',
+    'what_changed', 'rep_action_plan', 'deal_narrative',
+    'health_breakdown', 'sf_gap', 'agent_analyses',
+    'deal_timeline', 'analysis_history', 'transcript_list',
   ];
 }
 
@@ -286,8 +284,63 @@ function SFGapCard({ assessment }: { assessment: Assessment }) {
             <p className="text-sm text-muted-foreground">{assessment.sf_gap_interpretation}</p>
           </>
         )}
+
+        {/* Forecast rationale (folded in from standalone widget) */}
+        {assessment.forecast_rationale && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Forecast Rationale</p>
+              <p className="text-sm leading-relaxed">{assessment.forecast_rationale}</p>
+            </div>
+          </>
+        )}
+
+        {/* Divergence explanation (folded in from standalone widget) */}
+        {assessment.divergence_flag && assessment.divergence_explanation && (
+          <>
+            <Separator />
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+              <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                <AlertTriangle className="size-3" />
+                Forecast Divergence
+              </p>
+              <p className="text-sm text-amber-800 dark:text-amber-300">{assessment.divergence_explanation}</p>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collapsible widget wrapper — default-collapsed sections
+// ---------------------------------------------------------------------------
+
+function CollapsibleWidget({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="w-full text-left">
+        <div className="flex items-center gap-2 py-2 hover:opacity-80 transition-opacity">
+          <ChevronRight
+            className={cn(
+              'size-4 text-muted-foreground transition-transform',
+              open && 'rotate-90',
+            )}
+          />
+          <h2 className="text-lg font-semibold">{title}</h2>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>{children}</CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -395,13 +448,10 @@ function AgentAnalysesSection({ agents, healthBreakdown }: { agents: AgentAnalys
   if (agents.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-semibold">Per-Agent Analysis</h2>
-      <div className="space-y-2">
-        {agents.map((agent) => (
-          <AgentCard key={agent.agent_id} analysis={agent} healthBreakdown={healthBreakdown as HealthBreakdownEntry[] | null} />
-        ))}
-      </div>
+    <div className="space-y-2">
+      {agents.map((agent) => (
+        <AgentCard key={agent.agent_id} analysis={agent} healthBreakdown={healthBreakdown as HealthBreakdownEntry[] | null} />
+      ))}
     </div>
   );
 }
@@ -583,7 +633,11 @@ export default function DealDetailPage({
           <CallTimeline key={widgetId} transcripts={account.transcripts} />
         ) : null;
       case 'what_changed':
-        return <WhatChangedCard key={widgetId} accountId={id} />;
+        return (
+          <CollapsibleWidget key={widgetId} title="What Changed">
+            <WhatChangedCard accountId={id} />
+          </CollapsibleWidget>
+        );
       case 'deal_memo':
         return assessment ? <DealMemo key={widgetId} memo={assessment.deal_memo} /> : null;
       case 'manager_actions':
@@ -662,10 +716,16 @@ export default function DealDetailPage({
           </Card>
         ) : null;
       case 'sf_gap':
-        return assessment ? <SFGapCard key={widgetId} assessment={assessment} /> : null;
+        return assessment ? (
+          <CollapsibleWidget key={widgetId} title="SF Gap Analysis">
+            <SFGapCard assessment={assessment} />
+          </CollapsibleWidget>
+        ) : null;
       case 'agent_analyses':
         return assessment ? (
-          <AgentAnalysesSection key={widgetId} agents={agentList} healthBreakdown={assessment.health_breakdown} />
+          <CollapsibleWidget key={widgetId} title="Per-Agent Analysis">
+            <AgentAnalysesSection agents={agentList} healthBreakdown={assessment.health_breakdown} />
+          </CollapsibleWidget>
         ) : null;
       case 'deal_timeline':
         return <DealTimeline key={widgetId} accountId={id} />;
@@ -693,11 +753,12 @@ export default function DealDetailPage({
         ) : null;
       case 'deal_narrative':
         return assessment ? (
-          <DealNarrative
-            key={widgetId}
-            memo={assessment.deal_memo}
-            sections={assessment.deal_memo_sections ?? []}
-          />
+          <CollapsibleWidget key={widgetId} title="Deal Narrative">
+            <DealNarrative
+              memo={assessment.deal_memo}
+              sections={assessment.deal_memo_sections ?? []}
+            />
+          </CollapsibleWidget>
         ) : null;
       case 'key_findings':
         return assessment ? (
@@ -705,7 +766,9 @@ export default function DealDetailPage({
         ) : null;
       case 'rep_action_plan':
         return assessment ? (
-          <RepActionPlan key={widgetId} actions={assessment.recommended_actions ?? []} />
+          <CollapsibleWidget key={widgetId} title="Rep Action Plan">
+            <RepActionPlan actions={assessment.recommended_actions ?? []} />
+          </CollapsibleWidget>
         ) : null;
       default:
         return null;
