@@ -129,6 +129,7 @@ class TestCreateAccount:
             sf_stage=None,
             sf_forecast_category=None,
             sf_close_quarter=None,
+            buying_culture="direct",
         )
 
     @patch("sis.api.routes.accounts.account_service")
@@ -140,7 +141,7 @@ class TestCreateAccount:
         assert resp.status_code == 200
         mock_svc.create_account.assert_called_once_with(
             name="Minimal", cp_estimate=None, team_lead=None, ae_owner=None, team=None, owner_id=None,
-            sf_stage=None, sf_forecast_category=None, sf_close_quarter=None,
+            sf_stage=None, sf_forecast_category=None, sf_close_quarter=None, buying_culture="direct",
         )
 
     def test_create_account_missing_name_returns_422(self, client, auth_headers):
