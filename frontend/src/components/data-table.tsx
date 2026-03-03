@@ -56,8 +56,8 @@ function healthTier(score: number | null): string {
 
 function rowTintClass(deal: PipelineDeal): string {
   const tier = healthTier(deal.health_score);
-  if (tier === 'needs_attention') return 'bg-needs-attention-light/40';
-  if (tier === 'neutral') return 'bg-neutral-light/30';
+  if (tier === 'needs_attention') return 'bg-needs-attention-bg';
+  if (tier === 'neutral') return 'bg-neutral-bg';
   return '';
 }
 
@@ -88,7 +88,7 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
         <div className="min-w-[160px]" title={deal.deal_memo_preview || undefined}>
           <a
             href={`/deals/${deal.account_id}`}
-            className="font-medium text-foreground hover:text-primary hover:underline"
+            className="font-medium text-foreground hover:text-brand-400 hover:underline"
           >
             {deal.account_name}
           </a>
@@ -120,7 +120,7 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
         <span className={cn(
           'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
           val.toLowerCase() === 'expansion'
-            ? 'bg-brand-100 text-brand-700'
+            ? 'bg-brand-500/15 text-brand-400'
             : 'bg-muted text-muted-foreground'
         )}>
           {val}
@@ -152,7 +152,7 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
       return (
         <div className={cn(
           'flex flex-col gap-0.5',
-          divergent && 'rounded px-1.5 py-0.5 bg-neutral-light/50'
+          divergent && 'rounded px-1.5 py-0.5 bg-neutral-bg'
         )}>
           <ForecastBadge category={ai} />
           {divergent && sf && (
@@ -276,13 +276,13 @@ export function DataTable({ deals, pageSize = 25 }: DataTableProps) {
     <div>
       <div className="rounded-lg border overflow-hidden">
         <Table>
-          <TableHeader className="bg-muted/30">
+          <TableHeader className="bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:bg-muted/50"
+                    className="text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:bg-brand-500/8"
                     onClick={header.column.getToggleSortingHandler()}
                     style={{ width: header.getSize() }}
                   >
@@ -307,10 +307,11 @@ export function DataTable({ deals, pageSize = 25 }: DataTableProps) {
                 <TableRow
                   key={row.id}
                   className={cn(
-                    'transition-colors hover:bg-brand-50/50',
-                    idx % 2 === 1 && 'bg-muted/15',
+                    'transition-colors hover:bg-brand-500/5 animate-row-reveal',
+                    idx % 2 === 1 && 'bg-muted/10',
                     rowTintClass(row.original),
                   )}
+                  style={{ animationDelay: `${idx * 20}ms` }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="whitespace-normal align-top py-2.5">
