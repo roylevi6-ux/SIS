@@ -32,6 +32,7 @@ class ImportRequest(BaseModel):
     team_lead: Optional[str] = None
     team_name: Optional[str] = None
     owner_id: Optional[str] = None
+    buying_culture: str = "direct"
 
 
 # ── Routes ───────────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ def import_from_drive(body: ImportRequest, user: dict = Depends(get_current_user
             team_lead=body.team_lead,
             team=body.team_name,
             owner_id=body.owner_id,
+            buying_culture=body.buying_culture,
         )
         account_id = acct_obj.id
 

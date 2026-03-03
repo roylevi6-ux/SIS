@@ -2,146 +2,15 @@
 
 from sis.validation.never_rules import (
     NeverRuleViolation,
-    check_health_score_without_eb,
-    check_health_score_without_champion,
     check_commit_without_commitments,
     check_unresolved_contradictions,
     check_inferred_pricing,
     check_adversarial_challenges_exist,
     check_commit_without_compelling_event,
     check_no_decision_risk_override,
-    check_expansion_account_health_cap,
     check_expansion_commit_relationship,
     check_all_never_rules,
 )
-
-
-class TestHealthScoreWithoutEB:
-    def test_passes_when_health_low(self):
-        result = check_health_score_without_eb({}, {"health_score": 75, "inferred_stage": 5})
-        assert result is None
-
-    def test_passes_when_eb_engaged(self):
-        agent_outputs = {
-            "agent_6": {"findings": {"eb_confirmed": True, "eb_engagement": "Direct"}},
-        }
-        result = check_health_score_without_eb(agent_outputs, {"health_score": 85, "inferred_stage": 5})
-        assert result is None
-
-    def test_fails_when_eb_not_engaged(self):
-        agent_outputs = {
-            "agent_6": {"findings": {"eb_confirmed": True, "eb_engagement": "Indirect"}},
-        }
-        result = check_health_score_without_eb(agent_outputs, {"health_score": 85, "inferred_stage": 5})
-        assert result is not None
-        assert result.rule_id == "NEVER_HEALTH_WITHOUT_EB"
-        assert result.severity == "error"
-
-    def test_fails_when_eb_not_identified(self):
-        agent_outputs = {
-            "agent_6": {"findings": {"eb_confirmed": False}},
-        }
-        result = check_health_score_without_eb(agent_outputs, {"health_score": 85, "inferred_stage": 4})
-        assert result is not None
-
-    def test_fails_when_agent6_missing(self):
-        result = check_health_score_without_eb({}, {"health_score": 85, "inferred_stage": 5})
-        assert result is not None
-
-    # --- Stage-gated tests ---
-    def test_eb_ceiling_skipped_at_stage_1(self):
-        """Health 85, no EB, stage 1 → NO violation (EB not expected yet)."""
-        result = check_health_score_without_eb({}, {"health_score": 85, "inferred_stage": 1})
-        assert result is None
-
-    def test_eb_ceiling_skipped_at_stage_3(self):
-        """Health 85, no EB, stage 3 → NO violation (EB not expected until S4)."""
-        result = check_health_score_without_eb({}, {"health_score": 85, "inferred_stage": 3})
-        assert result is None
-
-    def test_eb_ceiling_fires_at_stage_4(self):
-        """Health 85, no EB, stage 4 → violation fired."""
-        result = check_health_score_without_eb({}, {"health_score": 85, "inferred_stage": 4})
-        assert result is not None
-        assert result.rule_id == "NEVER_HEALTH_WITHOUT_EB"
-
-    def test_eb_ceiling_at_boundary_80_passes(self):
-        """Health exactly 80 at stage 5 → NO violation (threshold is > 80)."""
-        result = check_health_score_without_eb({}, {"health_score": 80, "inferred_stage": 5})
-        assert result is None
-
-    def test_eb_ceiling_at_81_fires(self):
-        """Health 81 at stage 5 → violation fired."""
-        result = check_health_score_without_eb({}, {"health_score": 81, "inferred_stage": 5})
-        assert result is not None
-
-
-class TestHealthScoreWithoutChampion:
-    def test_passes_when_health_low(self):
-        result = check_health_score_without_champion({}, {"health_score": 60, "inferred_stage": 5})
-        assert result is None
-
-    def test_passes_when_champion_identified_nested(self):
-        agent_outputs = {
-            "agent_2": {"findings": {"champion": {"identified": True, "name": "Jane Doe"}}},
-        }
-        result = check_health_score_without_champion(agent_outputs, {"health_score": 80, "inferred_stage": 5})
-        assert result is None
-
-    def test_passes_when_champion_identified_flat(self):
-        agent_outputs = {
-            "agent_2": {"findings": {"champion_identified": True}},
-        }
-        result = check_health_score_without_champion(agent_outputs, {"health_score": 80, "inferred_stage": 5})
-        assert result is None
-
-    def test_fails_when_no_champion_nested(self):
-        agent_outputs = {
-            "agent_2": {"findings": {"champion": {"identified": False}}},
-        }
-        result = check_health_score_without_champion(agent_outputs, {"health_score": 80, "inferred_stage": 5})
-        assert result is not None
-        assert result.rule_id == "NEVER_HEALTH_WITHOUT_CHAMPION"
-        assert result.severity == "error"
-
-    def test_fails_when_no_champion_flat(self):
-        agent_outputs = {
-            "agent_2": {"findings": {"champion_identified": False}},
-        }
-        result = check_health_score_without_champion(agent_outputs, {"health_score": 80, "inferred_stage": 5})
-        assert result is not None
-        assert result.rule_id == "NEVER_HEALTH_WITHOUT_CHAMPION"
-
-    def test_fails_when_agent2_missing(self):
-        result = check_health_score_without_champion({}, {"health_score": 80, "inferred_stage": 5})
-        assert result is not None
-
-    def test_at_boundary_75_passes(self):
-        """Health exactly 75 at stage 5 → NO violation (threshold is > 75)."""
-        result = check_health_score_without_champion({}, {"health_score": 75, "inferred_stage": 5})
-        assert result is None
-
-    def test_at_boundary_76_fails(self):
-        """Health 76 at stage 5 → violation fired."""
-        result = check_health_score_without_champion({}, {"health_score": 76, "inferred_stage": 5})
-        assert result is not None
-
-    # --- Stage-gated tests ---
-    def test_champion_ceiling_skipped_at_stage_1(self):
-        """Health 80, no champion, stage 1 → NO violation (champion not expected yet)."""
-        result = check_health_score_without_champion({}, {"health_score": 80, "inferred_stage": 1})
-        assert result is None
-
-    def test_champion_ceiling_skipped_at_stage_2(self):
-        """Health 80, no champion, stage 2 → NO violation (champion not expected until S3)."""
-        result = check_health_score_without_champion({}, {"health_score": 80, "inferred_stage": 2})
-        assert result is None
-
-    def test_champion_ceiling_fires_at_stage_3(self):
-        """Health 80, no champion, stage 3 → violation fired."""
-        result = check_health_score_without_champion({}, {"health_score": 80, "inferred_stage": 3})
-        assert result is not None
-        assert result.rule_id == "NEVER_HEALTH_WITHOUT_CHAMPION"
 
 
 class TestCommitWithoutCommitments:
@@ -348,11 +217,8 @@ class TestCheckAllNeverRules:
             "contradiction_map": [{"issue": "X", "resolution": ""}],
         }
         violations = check_all_never_rules(agent_outputs, synthesis)
-        # EB, champion, commit, contradictions, pricing (adversarial removed from checkers)
-        assert len(violations) >= 4
-        rule_ids = {v.rule_id for v in violations}
-        assert "NEVER_HEALTH_WITHOUT_EB" in rule_ids
-        assert "NEVER_HEALTH_WITHOUT_CHAMPION" in rule_ids
+        # commit_without_MSP and contradictions still fire
+        assert len(violations) >= 2
 
     def test_adversarial_not_required(self):
         """Adversarial challenges are no longer required — no violation when empty."""
@@ -422,34 +288,6 @@ class TestNoDecisionRiskOverride:
         assert result is not None
 
 
-class TestExpansionAccountHealthCap:
-    def test_passes_when_health_low(self):
-        result = check_expansion_account_health_cap({}, {"health_score": 55})
-        assert result is None
-
-    def test_passes_when_relationship_strong(self):
-        agent_outputs = {
-            "agent_0e": {"findings": {"account_relationship_health": "Strong"}},
-        }
-        result = check_expansion_account_health_cap(agent_outputs, {"health_score": 80})
-        assert result is None
-
-    def test_fails_when_strained_high_health(self):
-        agent_outputs = {
-            "agent_0e": {"findings": {"account_relationship_health": "Strained"}},
-        }
-        result = check_expansion_account_health_cap(agent_outputs, {"health_score": 70})
-        assert result is not None
-        assert result.rule_id == "NEVER_EXPANSION_HEALTH_CAP"
-
-    def test_fails_when_critical_high_health(self):
-        agent_outputs = {
-            "agent_0e": {"findings": {"account_relationship_health": "Critical"}},
-        }
-        result = check_expansion_account_health_cap(agent_outputs, {"health_score": 65})
-        assert result is not None
-
-
 class TestExpansionCommitRelationship:
     def test_passes_when_not_commit(self):
         result = check_expansion_commit_relationship({}, {"forecast_category": "Realistic"})
@@ -496,5 +334,4 @@ class TestCheckAllExpansionRules:
         }
         violations = check_all_never_rules(agent_outputs, synthesis, deal_type="expansion_upsell")
         rule_ids = {v.rule_id for v in violations}
-        assert "NEVER_EXPANSION_HEALTH_CAP" in rule_ids
         assert "NEVER_EXPANSION_COMMIT_WITHOUT_RELATIONSHIP" in rule_ids

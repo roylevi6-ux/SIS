@@ -33,6 +33,7 @@ class AccountCreate(BaseModel):
     sf_stage: Optional[int] = None
     sf_forecast_category: Optional[str] = None
     sf_close_quarter: Optional[str] = None
+    buying_culture: str = "direct"
 
 
 class AccountUpdate(BaseModel):
@@ -47,6 +48,7 @@ class AccountUpdate(BaseModel):
     sf_stage: Optional[int] = None
     sf_forecast_category: Optional[str] = None
     sf_close_quarter: Optional[str] = None
+    buying_culture: Optional[str] = None
 
 
 class ForecastUpdate(BaseModel):
@@ -117,6 +119,7 @@ class AccountSummary(BaseModel):
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
     deal_type: str = "new_logo"
+    buying_culture: str = "direct"
     health_score: Optional[int] = None
     momentum_direction: Optional[str] = None
     ai_forecast_category: Optional[str] = None
@@ -145,6 +148,7 @@ class AccountDetail(BaseModel):
     ae_owner: Optional[str] = None
     team_name: Optional[str] = None
     deal_type: str = "new_logo"
+    buying_culture: str = "direct"
     prior_contract_value: Optional[float] = None
     transcripts: List[TranscriptItem] = []
     assessment: Optional[AssessmentDetail] = None

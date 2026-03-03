@@ -140,11 +140,27 @@ def build_call(
     transcript_texts: list[str],
     stage_context: dict,
     timeline_entries: list[str] | None = None,
+    deal_context: dict | None = None,
 ) -> dict:
     """Build kwargs dict for run_agent / run_agent_async."""
+    system = SYSTEM_PROMPT
+
+    # Inject proxy-delegated buying culture context
+    buying_culture = (deal_context or {}).get("buying_culture", "direct")
+    if buying_culture == "proxy_delegated":
+        system += """
+
+## BUYING CULTURE: PROXY-DELEGATED
+This account uses a proxy-delegated buying culture (common in Japan, China, Korea). The economic buyer typically does NOT appear on vendor calls — this is expected behavior, not a risk signal. Adjust your analysis:
+- Focus on whether the champion has credible authority signals (proxy for EB authority)
+- Evaluate budget language quality — proxy authority indicators like "I have approval" or "my VP has signed off" count as Indirect engagement
+- Score eb_engagement as "Indirect" when champion relays credible EB context with specifics
+- If EB never appears, this is CULTURALLY EXPECTED — frame the narrative accordingly, not as a gap
+- If EB does appear on a call, this is an exceptionally strong positive signal"""
+
     return {
         "agent_name": "Agent 6: Economic Buyer",
-        "system_prompt": SYSTEM_PROMPT,
+        "system_prompt": system,
         "user_prompt": build_analysis_prompt(
             transcript_texts, stage_context, timeline_entries,
             "Based on the above, assess the economic buyer presence and budget authority.",

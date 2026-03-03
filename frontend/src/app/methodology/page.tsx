@@ -34,6 +34,7 @@ import {
   Users,
   Gauge,
   ArrowUp,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +45,7 @@ import { cn } from '@/lib/utils';
 const TOC_ITEMS = [
   { id: 'research', label: 'Sales Methodology Research', icon: BookOpen },
   { id: 'health-score', label: 'Health Score System', icon: Brain },
+  { id: 'buying-cultures', label: 'Buying Culture Profiles', icon: Globe },
   { id: 'stages', label: 'Deal Stages, Exit Criteria & Objectives', icon: Layers },
   { id: 'forecast', label: 'Forecast Categories', icon: Target },
   { id: 'agents', label: 'Active Agents & Roles', icon: Users },
@@ -760,6 +762,75 @@ function HealthScoreSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Section 2b — Buying Culture Profiles
+// ---------------------------------------------------------------------------
+
+const BUYING_CULTURE_WEIGHTS = [
+  { component: 'Buyer-Validated Pain & Commercial Clarity', direct: 14, proxy: 14, differs: false },
+  { component: 'Momentum Quality', direct: 13, proxy: 13, differs: false },
+  { component: 'Champion Strength', direct: 12, proxy: 19, differs: true },
+  { component: 'Commitment Quality', direct: 11, proxy: 11, differs: false },
+  { component: 'Economic Buyer Engagement', direct: 11, proxy: 0, differs: true },
+  { component: 'Urgency / Compelling Event', direct: 10, proxy: 10, differs: false },
+  { component: 'Stage Appropriateness', direct: 9, proxy: 9, differs: false },
+  { component: 'Multithreading / Stakeholder Coverage', direct: 7, proxy: 11, differs: true },
+  { component: 'Competitive Position', direct: 7, proxy: 7, differs: false },
+  { component: 'Technical Path Clarity', direct: 6, proxy: 6, differs: false },
+];
+
+function BuyingCultureSection() {
+  return (
+    <Section id="buying-cultures" title="Buying Culture Profiles" icon={Globe}>
+      <p className="text-sm text-muted-foreground">
+        Health score weights adjust based on regional buying patterns. In markets where economic buyers
+        delegate entirely to a trusted internal proxy, measuring direct EB engagement would unfairly penalize
+        deals that are actually well-structured. SIS applies culture-aware weight profiles so assessments
+        reflect how decisions are actually made in each region.
+      </p>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-normal">Component</TableHead>
+                  <TableHead className="w-[12%] text-right whitespace-normal">Direct</TableHead>
+                  <TableHead className="w-[22%] text-right whitespace-normal">Proxy-Delegated (APAC)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {BUYING_CULTURE_WEIGHTS.map((row) => (
+                  <TableRow
+                    key={row.component}
+                    className={row.differs ? 'bg-amber-50 dark:bg-amber-950/20' : undefined}
+                  >
+                    <TableCell className="text-xs font-medium align-top whitespace-normal break-words">
+                      {row.component}
+                    </TableCell>
+                    <TableCell className="text-xs text-right tabular-nums font-semibold align-top">
+                      {row.direct}
+                    </TableCell>
+                    <TableCell className="text-xs text-right tabular-nums font-semibold align-top">
+                      {row.proxy}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground italic">
+        Proxy-Delegated applies to Japan, China, and Korea where the economic buyer typically delegates
+        entirely to a trusted proxy and rarely appears on recorded calls.
+      </p>
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Section 3 — Deal Stages
 // ---------------------------------------------------------------------------
 
@@ -1251,18 +1322,6 @@ function AgentsSection() {
 
 const NEVER_RULES = [
   {
-    id: 'NEVER_HEALTH_WITHOUT_EB',
-    rule: 'Health > 80 requires EB engagement (Stage 4+)',
-    description: 'At Stage 4 or later, if the synthesis health score exceeds 80, Agent 6 must show direct or champion-relayed EB engagement. Per MEDDIC, budget authority must be identified before late-stage commitment. Does NOT fire at Stage 1-3.',
-    agent: 'Agent 6 / Agent 10',
-  },
-  {
-    id: 'NEVER_HEALTH_WITHOUT_CHAMPION',
-    rule: 'Health > 75 requires a champion identified (Stage 3+)',
-    description: 'At Stage 3 or later, if the synthesis health score exceeds 75, Agent 2 must confirm a champion is identified. Per Sandler/MEDDIC, internal advocates are critical for deal progression. Does NOT fire at Stage 1-2.',
-    agent: 'Agent 2 / Agent 10',
-  },
-  {
     id: 'NEVER_COMMIT_WITHOUT_MSP',
     rule: 'Commit forecast requires MSP + High specificity next steps',
     description: 'A "Commit" forecast must be backed by a mutual success plan with high next-step specificity from Agent 7. Buyer-confirmed milestones with dates and owners are required.',
@@ -1297,12 +1356,6 @@ const NEVER_RULES = [
     rule: 'Commit requires a catalyst + consequence of inaction',
     description: 'A "Commit" forecast is blocked if Agent 8 reports no consequence of inaction AND no catalyst strength. A deal with no pain of inaction and no catalyst is not committable.',
     agent: 'Agent 8 / Agent 10',
-  },
-  {
-    id: 'NEVER_EXPANSION_HEALTH_CAP',
-    rule: 'Strained/Critical relationship caps expansion health at 60',
-    description: 'For expansion deals, if Agent 0E reports account relationship as "Strained" or "Critical", the health score must not exceed 60 regardless of other signals.',
-    agent: 'Agent 0E / Agent 10',
   },
   {
     id: 'NEVER_EXPANSION_COMMIT_WITHOUT_RELATIONSHIP',
@@ -1552,6 +1605,7 @@ export default function MethodologyPage() {
         <div className="flex-1 min-w-0 overflow-x-hidden space-y-2">
           <ResearchSection />
           <HealthScoreSection />
+          <BuyingCultureSection />
           <StagesSection />
           <ForecastSection />
           <AgentsSection />

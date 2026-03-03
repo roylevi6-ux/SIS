@@ -332,8 +332,11 @@ class AnalysisPipeline:
                     call_kwargs = builder(
                         transcript_texts, timeline_entries, deal_context, stage_context,
                     )
+                elif agent_id == "agent_6":
+                    # Agent 6: needs deal_context for buying_culture awareness
+                    call_kwargs = builder(transcript_texts, stage_context, timeline_entries, deal_context)
                 else:
-                    # Agents 2-8: (transcripts, stage_context, timeline)
+                    # Agents 2-5, 7-8: (transcripts, stage_context, timeline)
                     call_kwargs = builder(transcript_texts, stage_context, timeline_entries)
                 build_times[agent_id] = time.time() - build_start
                 call_kwargs.setdefault("transcript_count", num_transcripts)
@@ -468,7 +471,7 @@ class AnalysisPipeline:
                 mark_agent_running(self._run_id, "agent_10")
             try:
                 build_start = time.time()
-                agent10_call = synthesis_build_call(result.agent_outputs, stage_context, sf_data)
+                agent10_call = synthesis_build_call(result.agent_outputs, stage_context, sf_data, deal_context)
                 build_elapsed = time.time() - build_start
                 agent10_result = await run_agent_async(**agent10_call)
                 total_prep = build_elapsed + agent10_result.prep_seconds
