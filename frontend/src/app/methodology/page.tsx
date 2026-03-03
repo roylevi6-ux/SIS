@@ -479,26 +479,19 @@ function HealthScoreSection() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Champion absent ceiling</p>
-            <p className="text-2xl font-bold tabular-nums">75 <span className="text-sm font-normal text-muted-foreground">at S3+</span></p>
-            <p className="text-xs text-muted-foreground mt-1">Max health score when no champion identified (Stage 3+). No cap at Stage 1-2.</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">EB absent ceiling</p>
-            <p className="text-2xl font-bold tabular-nums">80 <span className="text-sm font-normal text-muted-foreground">at S4+</span></p>
-            <p className="text-xs text-muted-foreground mt-1">Max health score when no EB engagement (Stage 4+). No cap at Stage 1-3.</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Sparse data ceiling</p>
-            <p className="text-2xl font-bold tabular-nums">60%</p>
-            <p className="text-xs text-muted-foreground mt-1">Max confidence when fewer than 3 transcripts analyzed</p>
+            <p className="text-2xl font-bold tabular-nums">75%</p>
+            <p className="text-xs text-muted-foreground mt-1">Max confidence when fewer than 3 transcripts analyzed (sparse_data_flag=true)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Buying culture weights</p>
+            <p className="text-2xl font-bold tabular-nums">2 <span className="text-sm font-normal text-muted-foreground">profiles</span></p>
+            <p className="text-xs text-muted-foreground mt-1">Direct (standard) and Proxy-Delegated (APAC) &mdash; EB weight shifts to champion and multi-threading</p>
           </CardContent>
         </Card>
       </div>
@@ -518,7 +511,6 @@ function HealthScoreSection() {
             <li>Buyer-validated pain: 12% (vs. 14% for new logo)</li>
             <li>Technical path clarity: 9% (vs. 6% for new logo &mdash; integration is already proven)</li>
             <li>Competitive position: 4% (vs. 7% for new logo &mdash; incumbent advantage)</li>
-            <li>Strained/Critical relationship caps health at 60</li>
             <li>Commit requires Strong or Adequate relationship status</li>
           </ul>
         </CardContent>
@@ -999,7 +991,7 @@ const FORECAST_CATEGORIES = [
       'Health score 75 or above',
       'Verbal/pricing agreement secured',
       'Mutual success plan (MSP) exists with high specificity',
-      'Economic Buyer directly engaged',
+      'Economic Buyer engaged (direct cultures) or proxy-confirmed (APAC)',
       'Strong buyer-confirmed commitments',
       'Catalyst and consequence of inaction present',
     ],
@@ -1103,6 +1095,19 @@ function ForecastSection() {
 
 const AGENTS = [
   {
+    id: 'Agent 0E',
+    name: 'Account Relationship Health (Expansion only)',
+    model: 'Sonnet',
+    role: 'Assesses the existing customer relationship for expansion deals. Runs in parallel with Agents 1-8.',
+    topics: [
+      'Account relationship health classification (Strong, Adequate, Strained, Critical)',
+      'Historical engagement quality and support interactions',
+      'Product adoption depth and usage patterns',
+      'Renewal risk signals and customer satisfaction indicators',
+      'Relationship trajectory (improving, stable, declining)',
+    ],
+  },
+  {
     id: 'Agent 1',
     name: 'Stage & Progress',
     model: 'Haiku',
@@ -1176,7 +1181,7 @@ const AGENTS = [
       'EB identification by merchant size (Enterprise: CFO/VP Finance; Mid-market: Controller; Growth: CEO/COO)',
       'Direct vs. secondhand EB engagement (call presence required)',
       'Budget language analysis ("approved" vs. "need to present" vs. "not sure")',
-      'EB absence in late-stage deals as critical risk signal',
+      'EB absence assessment adjusted by buying culture profile (direct vs. proxy-delegated)',
       'Authority verification through behavior, not job title',
     ],
   },
@@ -1238,8 +1243,9 @@ function AgentsSection() {
   return (
     <Section id="agents" title="Active Agents & Roles" icon={Users}>
       <p className="text-sm text-muted-foreground">
-        SIS runs 10 specialized agents in sequence. Agents 1-8 analyze transcripts independently in parallel.
-        Agent 9 reads all 8 outputs for adversarial validation. Agent 10 synthesizes everything into the final assessment.
+        SIS runs 10 specialized agents (11 for expansion deals). Agents 1-8 analyze transcripts independently in parallel,
+        with Agent 0E running alongside for expansion deals.
+        Agent 9 reads all outputs for adversarial validation. Agent 10 synthesizes everything into the final assessment.
         All agents include anti-sycophancy rules and measure the <em>buyer</em>, not the seller.
       </p>
 
@@ -1290,26 +1296,27 @@ function AgentsSection() {
         <CardContent className="px-4 pb-4 text-sm text-muted-foreground space-y-2">
           <div className="font-mono text-xs bg-muted rounded-md p-4 overflow-x-auto whitespace-pre">{`Transcripts
     │
-    ├─► Agent 1 (Stage)         ─┐
-    ├─► Agent 2 (Relationship)  ─┤
-    ├─► Agent 3 (Commercial)    ─┤
-    ├─► Agent 4 (Momentum)      ─┤  Parallel
-    ├─► Agent 5 (Technical)     ─┤  Analysis
-    ├─► Agent 6 (Economic Buyer)─┤
-    ├─► Agent 7 (MSP/Next Steps)─┤
-    └─► Agent 8 (Competitive)   ─┘
-                                  │
-                                  ▼
-                     Agent 9 (Adversarial Validator)
-                                  │
-                                  ▼
-                     Agent 10 (Synthesis)
-                                  │
-                                  ▼
-                     NEVER Rules Check
-                                  │
-                                  ▼
-                     Final Output`}</div>
+    ├─► Agent 0E (Account Health) ─┐  Expansion
+    ├─► Agent 1 (Stage)            ─┤  deals only
+    ├─► Agent 2 (Relationship)     ─┤
+    ├─► Agent 3 (Commercial)       ─┤
+    ├─► Agent 4 (Momentum)         ─┤  Parallel
+    ├─► Agent 5 (Technical)        ─┤  Analysis
+    ├─► Agent 6 (Economic Buyer)   ─┤
+    ├─► Agent 7 (MSP/Next Steps)   ─┤
+    └─► Agent 8 (Competitive)      ─┘
+                                     │
+                                     ▼
+                        Agent 9 (Adversarial Validator)
+                                     │
+                                     ▼
+                        Agent 10 (Synthesis)
+                                     │
+                                     ▼
+                        NEVER Rules Check
+                                     │
+                                     ▼
+                        Final Output`}</div>
         </CardContent>
       </Card>
     </Section>
@@ -1445,7 +1452,7 @@ function NeverRulesSection() {
             <div className="border rounded-md p-2">
               <p className="font-medium text-foreground text-xs">Agent 6 — Economic Buyer</p>
               <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
-                <li>NEVER count secondhand EB mentions as EB engagement. &quot;My CFO likes this&quot; without CFO on a call = EB NOT engaged.</li>
+                <li>NEVER count vague secondhand EB mentions as EB engagement. In proxy-delegated cultures, champion-relayed EB context with specifics counts as &quot;Indirect&quot; engagement.</li>
                 <li>NEVER assume budget approval from enthusiastic champion language.</li>
                 <li>NEVER infer budget authority from job title alone &mdash; verify through behavior and language.</li>
               </ul>
@@ -1477,8 +1484,6 @@ function NeverRulesSection() {
             <div className="border rounded-md p-2 sm:col-span-2">
               <p className="font-medium text-foreground text-xs">Agent 10 — Synthesis</p>
               <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
-                <li>NEVER produce health score &gt;70 if EB has never appeared on calls.</li>
-                <li>NEVER produce health score &gt;65 if no champion identified.</li>
                 <li>NEVER produce Commit forecast without Level 3+ commitments and MSP.</li>
                 <li>NEVER leave contradictions unresolved.</li>
                 <li>NEVER ignore Agent 9&apos;s adversarial challenges.</li>
