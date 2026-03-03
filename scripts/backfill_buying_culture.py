@@ -12,8 +12,19 @@ from sis.db.models import Account
 # Mapping: account_name (case-insensitive) -> buying_culture
 # Default is "direct" — only list proxy_delegated accounts here
 PROXY_DELEGATED_ACCOUNTS: list[str] = [
-    # To be filled in by Roy during backfill session
-    # Example: "Xtool", "Makeblock", etc.
+    "ANA_X",
+    "Adastria_Co___Ltd_",
+    "BASE__Inc_",
+    "JTB",
+    "Japan_Airlines",
+    "Mont_bell_Co___Ltd_",
+    "Poke_mon_Center",
+    "Rakuten_Ichiba",
+    "Tokyo_Disney_Resort_Oriental_Land_",
+    "VELTRA_Corporation",
+    "monotaro",
+    "nintendo",
+    "zaiko",
 ]
 
 
