@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface ForecastBadgeProps {
@@ -18,14 +17,17 @@ export function ForecastBadge({ category, className }: ForecastBadgeProps) {
     return <span className="text-muted-foreground text-sm">--</span>;
   }
 
-  const colorClass = categoryColors[category] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+  const colorClass = categoryColors[category] ?? 'bg-muted text-muted-foreground';
 
   return (
-    <Badge
-      variant="outline"
-      className={cn('border-transparent font-medium', colorClass, className)}
+    <span
+      className={cn(
+        'inline-flex items-center rounded-[5px] px-2.5 py-0.5 text-[11.5px] font-semibold',
+        colorClass,
+        className,
+      )}
     >
       {category}
-    </Badge>
+    </span>
   );
 }

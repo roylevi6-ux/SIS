@@ -156,12 +156,12 @@ export function ForecastMovementTab({ weeks }: { weeks: number }) {
                     key={m.account_id}
                     className={
                       m.direction === 'upgrade'
-                        ? 'bg-green-50 dark:bg-green-950/20'
-                        : 'bg-red-50 dark:bg-red-950/20'
+                        ? 'bg-green-500/8'
+                        : 'bg-red-500/8'
                     }
                   >
                     <TableCell>
-                      <Link href={`/deals/${m.account_id}`} className="text-blue-600 hover:underline">
+                      <Link href={`/deals/${m.account_id}`} className="text-brand-400 hover:underline">
                         {m.account_name}
                       </Link>
                     </TableCell>
@@ -191,8 +191,8 @@ export function ForecastMovementTab({ weeks }: { weeks: number }) {
               <ComposedChart data={trend} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="week" className="text-xs" />
-                <YAxis yAxisId="left" className="text-xs" label={{ value: 'Deals with Gap', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }} />
-                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} className="text-xs" label={{ value: 'Alignment %', angle: 90, position: 'insideRight', style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }} />
+                <YAxis yAxisId="left" className="text-xs" label={{ value: 'Deals with Gap', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'var(--muted-foreground)' } }} />
+                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} className="text-xs" label={{ value: 'Alignment %', angle: 90, position: 'insideRight', style: { fontSize: 11, fill: 'var(--muted-foreground)' } }} />
                 <Tooltip content={<AlignmentTooltip />} />
                 <Bar yAxisId="left" dataKey="stage_gap_count" stackId="gaps" name="Stage Gaps" fill="#f59e0b" opacity={0.85} isAnimationActive={false} />
                 <Bar yAxisId="left" dataKey="forecast_gap_count" stackId="gaps" name="Forecast Gaps" fill="#8b5cf6" opacity={0.85} isAnimationActive={false} />

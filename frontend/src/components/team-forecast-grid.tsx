@@ -162,7 +162,7 @@ export function TeamForecastGrid({
       </div>
       <div className="rounded-lg border overflow-hidden">
         <Table>
-          <TableHeader className="bg-muted/30">
+          <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead className="text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap">
                 Team
@@ -172,8 +172,8 @@ export function TeamForecastGrid({
                   key={key}
                   className={cn(
                     'text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap text-right',
-                    onCellClick && 'cursor-pointer hover:text-brand-700',
-                    isColumnActive(key) && !activeTeamLead && 'font-bold text-brand-700',
+                    onCellClick && 'cursor-pointer hover:text-brand-400',
+                    isColumnActive(key) && !activeTeamLead && 'font-bold text-brand-400',
                   )}
                   onClick={() => onCellClick?.(null, key)}
                 >
@@ -200,22 +200,22 @@ export function TeamForecastGrid({
                   <TableRow
                     className={cn(
                       'transition-colors',
-                      rowActive && !activeForecastCategory && 'bg-brand-50/50',
+                      rowActive && !activeForecastCategory && 'bg-brand-500/10',
                     )}
                   >
                     {/* Team name cell with chevron */}
                     <TableCell
                       className={cn(
                         'font-medium whitespace-nowrap',
-                        onCellClick && 'cursor-pointer hover:bg-muted/50',
-                        rowActive && 'font-semibold text-brand-700',
+                        onCellClick && 'cursor-pointer hover:bg-brand-500/8',
+                        rowActive && 'font-semibold text-brand-400',
                       )}
                     >
                       <div className="flex items-center gap-1">
                         {hasReps ? (
                           <button
                             type="button"
-                            className="shrink-0 rounded p-0.5 hover:bg-muted/60 transition-colors"
+                            className="shrink-0 rounded p-0.5 hover:bg-brand-500/10 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleExpand(row.team_lead);
@@ -252,9 +252,9 @@ export function TeamForecastGrid({
                             'text-right font-mono tabular-nums',
                             colorClass,
                             onCellClick && 'cursor-pointer hover:bg-muted/50',
-                            isCellExactMatch(row.team_lead, key) && 'ring-2 ring-brand-500 bg-brand-50',
-                            !isCellExactMatch(row.team_lead, key) && rowActive && 'bg-brand-50/50',
-                            !isCellExactMatch(row.team_lead, key) && isColumnActive(key) && !activeTeamLead && 'bg-brand-50/50',
+                            isCellExactMatch(row.team_lead, key) && 'ring-1 ring-brand-500/30 bg-brand-500/15',
+                            !isCellExactMatch(row.team_lead, key) && rowActive && 'bg-brand-500/10',
+                            !isCellExactMatch(row.team_lead, key) && isColumnActive(key) && !activeTeamLead && 'bg-brand-500/10',
                           )}
                           onClick={() => onCellClick?.(row.team_lead, key)}
                         >
@@ -267,8 +267,8 @@ export function TeamForecastGrid({
                     <TableCell
                       className={cn(
                         'text-right font-mono tabular-nums font-semibold',
-                        onCellClick && 'cursor-pointer hover:bg-muted/50',
-                        rowActive && 'bg-brand-50/50',
+                        onCellClick && 'cursor-pointer hover:bg-brand-500/8',
+                        rowActive && 'bg-brand-500/10',
                       )}
                       onClick={() => onCellClick?.(row.team_lead, null)}
                     >
@@ -279,8 +279,8 @@ export function TeamForecastGrid({
                     <TableCell
                       className={cn(
                         'text-right text-muted-foreground',
-                        onCellClick && 'cursor-pointer hover:bg-muted/50',
-                        rowActive && 'bg-brand-50/50',
+                        onCellClick && 'cursor-pointer hover:bg-brand-500/8',
+                        rowActive && 'bg-brand-500/10',
                       )}
                       onClick={() => onCellClick?.(row.team_lead, null)}
                     >
@@ -296,15 +296,15 @@ export function TeamForecastGrid({
                       <TableRow
                         key={`${row.team_lead}-${rep.ae_owner}`}
                         className={cn(
-                          'transition-colors bg-muted/10',
-                          isRepActive && 'bg-brand-50/60',
+                          'transition-colors bg-muted/20',
+                          isRepActive && 'bg-brand-500/12',
                         )}
                       >
                         <TableCell className="pl-10 whitespace-nowrap">
                           <span
                             className={cn(
-                              'text-sm cursor-pointer hover:text-brand-700 transition-colors',
-                              isRepActive && 'font-semibold text-brand-700',
+                              'text-sm cursor-pointer hover:text-brand-400 transition-colors',
+                              isRepActive && 'font-semibold text-brand-400',
                             )}
                             onClick={() => onRepClick?.(rep.ae_owner)}
                           >
@@ -325,7 +325,7 @@ export function TeamForecastGrid({
                               className={cn(
                                 'text-right font-mono tabular-nums text-sm',
                                 colorClass,
-                                onCellClick && 'cursor-pointer hover:bg-muted/50',
+                                onCellClick && 'cursor-pointer hover:bg-brand-500/8',
                               )}
                               onClick={() => onCellClick?.(row.team_lead, key)}
                             >
@@ -349,7 +349,7 @@ export function TeamForecastGrid({
             })}
 
             {/* Totals row — not clickable */}
-            <TableRow className="bg-muted/20 font-semibold border-t-2">
+            <TableRow className="bg-muted/30 font-semibold border-t-2">
               <TableCell>Total</TableCell>
               <TableCell className="text-right font-mono tabular-nums">{formatMrr(totals.commit)}</TableCell>
               <TableCell className="text-right font-mono tabular-nums">{formatMrr(totals.realistic)}</TableCell>

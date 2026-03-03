@@ -54,7 +54,7 @@ export function ManagerActionsPanel({ agents }: ManagerActionsPanelProps) {
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="py-0 overflow-hidden">
         <CollapsibleTrigger className="w-full text-left">
-          <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+          <div className="flex items-center justify-between px-4 py-3 hover:bg-brand-500/8 transition-colors">
             <div className="flex items-center gap-2">
               <ChevronRight
                 className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
@@ -97,7 +97,7 @@ function CategoryRow({ label, insight }: { label: string; insight: string }) {
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="w-full text-left">
-        <div className="flex items-center gap-2 px-1 py-1.5 rounded-md hover:bg-muted/50 transition-colors">
+        <div className="flex items-center gap-2 px-1 py-1.5 rounded-md hover:bg-brand-500/8 transition-colors">
           <ChevronRight
             className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
           />

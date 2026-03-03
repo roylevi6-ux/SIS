@@ -65,9 +65,9 @@ function findBreakdownEntry(
 
 function getScoreColor(score: number, maxScore: number): string {
   const pct = maxScore > 0 ? (score / maxScore) * 100 : score;
-  if (pct >= 70) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400';
-  if (pct >= 45) return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400';
-  return 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400';
+  if (pct >= 70) return 'bg-brand-500/10 text-brand-400';
+  if (pct >= 45) return 'bg-neutral-bg text-neutral';
+  return 'bg-needs-attention-bg text-needs-attention';
 }
 
 /** Normalize confidence from 0.0-1.0 scale to 0-100 percentage. */
@@ -79,10 +79,10 @@ function toPercent(value: number | null | undefined): number | null {
 
 function getConfidenceColor(confidence: number | null | undefined): string {
   const pct = toPercent(confidence);
-  if (pct == null) return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
-  if (pct >= 70) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400';
-  if (pct >= 45) return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400';
-  return 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400';
+  if (pct == null) return 'bg-muted text-muted-foreground';
+  if (pct >= 70) return 'bg-brand-500/10 text-brand-400';
+  if (pct >= 45) return 'bg-neutral-bg text-neutral';
+  return 'bg-needs-attention-bg text-needs-attention';
 }
 
 export function AgentCard({ analysis, healthBreakdown }: AgentCardProps) {
@@ -106,7 +106,7 @@ export function AgentCard({ analysis, healthBreakdown }: AgentCardProps) {
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="py-0 overflow-hidden">
         <CollapsibleTrigger className="w-full text-left">
-          <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+          <div className="flex items-center justify-between px-4 py-3 hover:bg-brand-500/8 transition-colors">
             <div className="flex items-center gap-3">
               <ChevronRight
                 className={cn(

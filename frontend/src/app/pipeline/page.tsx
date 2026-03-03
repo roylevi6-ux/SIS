@@ -224,7 +224,7 @@ export default function PipelineCommandCenter() {
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pipeline Command Center</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Pipeline Command Center</h1>
           <p className="text-sm text-muted-foreground">
             {data
               ? `${data.pipeline.total_deals} deals across your pipeline`
@@ -235,7 +235,7 @@ export default function PipelineCommandCenter() {
         <div className="flex items-center gap-2">
           {/* Quarter filter */}
           <Select value={quarter} onValueChange={setQuarter}>
-            <SelectTrigger className="w-[140px] bg-brand-50 border-brand-200">
+            <SelectTrigger className="w-[140px] bg-card border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
