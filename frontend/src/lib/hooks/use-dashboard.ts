@@ -1,17 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api';
 
-export function useDivergence(team?: string) {
+export function useDivergence(teamId?: string) {
   return useQuery({
-    queryKey: ['dashboard', 'divergence', team],
-    queryFn: () => api.dashboard.divergence(team),
+    queryKey: ['dashboard', 'divergence', teamId],
+    queryFn: () => api.dashboard.divergence(teamId),
   });
 }
 
-export function useTeamRollupHierarchy(team?: string) {
+export function useTeamRollupHierarchy(teamId?: string) {
   return useQuery({
-    queryKey: ['dashboard', 'team-rollup-hierarchy', team],
-    queryFn: () => api.dashboard.teamRollupHierarchy(team),
+    queryKey: ['dashboard', 'team-rollup-hierarchy', teamId],
+    queryFn: () => api.dashboard.teamRollupHierarchy(teamId),
   });
 }
 

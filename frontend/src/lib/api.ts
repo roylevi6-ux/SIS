@@ -24,6 +24,7 @@ import type {
   FeedbackSummary,
   ForecastData,
   ForecastMovementResponse,
+  HierarchyTeam,
   GDriveAccount,
   GDriveCall,
   GDriveConfig,
@@ -142,12 +143,12 @@ export const api = {
   dashboard: {
     pipeline: (team?: string) =>
       apiFetch<PipelineOverview>(`/api/dashboard/pipeline${team ? `?team=${team}` : ''}`),
-    divergence: (team?: string) =>
-      apiFetch<DivergenceItem[]>(`/api/dashboard/divergence${team ? `?team=${team}` : ''}`),
+    divergence: (teamId?: string) =>
+      apiFetch<DivergenceItem[]>(`/api/dashboard/divergence${teamId ? `?team_id=${teamId}` : ''}`),
     teamRollup: (team?: string) =>
       apiFetch<TeamRollup[]>(`/api/dashboard/team-rollup${team ? `?team=${team}` : ''}`),
-    teamRollupHierarchy: (team?: string) =>
-      apiFetch<TeamRollupHierarchyTeam[]>(`/api/dashboard/team-rollup/hierarchy${team ? `?team=${team}` : ''}`),
+    teamRollupHierarchy: (teamId?: string) =>
+      apiFetch<TeamRollupHierarchyTeam[]>(`/api/dashboard/team-rollup/hierarchy${teamId ? `?team_id=${teamId}` : ''}`),
     insights: () => apiFetch<InsightsResponse>('/api/dashboard/insights'),
     dealTrends: (params?: { account_id?: string; weeks?: number }) =>
       apiFetch<DealTrend[]>(`/api/dashboard/trends/deals?${new URLSearchParams(params as Record<string, string>)}`),
@@ -224,8 +225,8 @@ export const api = {
       apiFetch<RepScorecard[]>(`/api/scorecard/reps${aeOwner ? `?ae_owner=${aeOwner}` : ''}`),
   },
   forecast: {
-    data: (team?: string) =>
-      apiFetch<ForecastData[]>(`/api/forecast/data${team ? `?team=${team}` : ''}`),
+    data: (teamId?: string) =>
+      apiFetch<ForecastData[]>(`/api/forecast/data${teamId ? `?team_id=${teamId}` : ''}`),
     teams: () => apiFetch<string[]>('/api/forecast/teams'),
   },
   export: {
@@ -276,7 +277,7 @@ export const api = {
 
   // Team & User management (admin)
   teams: {
-    list: () => apiFetch<any[]>('/api/teams/'),
+    list: () => apiFetch<HierarchyTeam[]>('/api/teams/'),
     create: (data: { name: string; level: string; parent_id?: string; leader_id?: string }) =>
       apiFetch<any>('/api/teams/', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: { name?: string; parent_id?: string; leader_id?: string }) =>

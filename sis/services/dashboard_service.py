@@ -132,6 +132,7 @@ def get_pipeline_overview(
 
 def get_divergence_report(
     team: Optional[str] = None,
+    team_id: Optional[str] = None,
     visible_user_ids: Optional[set[str]] = None,
 ) -> list[dict]:
     """Deals where AI and SF forecasts differ, sorted by value impact."""
@@ -143,6 +144,9 @@ def get_divergence_report(
         )
         if visible_user_ids is not None:
             query = query.filter(Account.owner_id.in_(visible_user_ids))
+        if team_id:
+            # Filter via hierarchy: Account.owner_id → User.team_id == team_id
+            query = query.join(User, Account.owner_id == User.id).filter(User.team_id == team_id)
         elif team:
             query = query.filter(Account.team_name == team)
 
@@ -227,7 +231,7 @@ def get_team_rollup(
 
 
 def get_team_rollup_hierarchy(
-    team: Optional[str] = None,
+    team_id: Optional[str] = None,
     visible_user_ids: Optional[set[str]] = None,
 ) -> list[dict]:
     """Hierarchical team rollup: Team → Reps → Deals with aggregates at each level.
@@ -293,8 +297,8 @@ def get_team_rollup_hierarchy(
                 team_name_resolved = acct.team_name
                 team_leader_name = acct.team_lead
 
-            # Apply team filter
-            if team and team_name_resolved != team:
+            # Apply team filter by ID
+            if team_id and team_key != team_id:
                 continue
 
             if team_key not in hierarchy:

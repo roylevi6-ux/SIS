@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useDivergence } from '@/lib/hooks/use-dashboard';
-import { useForecastTeams } from '@/lib/hooks/use-admin';
+import { useHierarchyTeams } from '@/lib/hooks/use-admin';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
@@ -71,10 +71,10 @@ function SkeletonRow() {
 // ---------------------------------------------------------------------------
 
 export default function DivergencePage() {
-  const [team, setTeam] = useState<string | undefined>(undefined);
+  const [teamId, setTeamId] = useState<string | undefined>(undefined);
 
-  const { data: rawData, isLoading, isError, error } = useDivergence(team);
-  const { data: teams = [] } = useForecastTeams();
+  const { data: rawData, isLoading, isError, error } = useDivergence(teamId);
+  const { data: teams = [] } = useHierarchyTeams();
 
   const items = useMemo<DivergenceItem[]>(() => {
     if (!rawData) return [];
@@ -98,17 +98,17 @@ export default function DivergencePage() {
 
         {teams.length > 0 && (
           <Select
-            value={team ?? 'all'}
-            onValueChange={(v) => setTeam(v === 'all' ? undefined : v)}
+            value={teamId ?? 'all'}
+            onValueChange={(v) => setTeamId(v === 'all' ? undefined : v)}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Teams" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
-              {teams.map((t: string) => (
-                <SelectItem key={t} value={t}>
-                  {t}
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
                 </SelectItem>
               ))}
             </SelectContent>

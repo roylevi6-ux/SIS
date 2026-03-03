@@ -5,17 +5,20 @@ from __future__ import annotations
 from typing import Optional
 
 from sis.db.session import get_session
-from sis.db.models import Account, DealAssessment
+from sis.db.models import Account, DealAssessment, User
 
 
-def load_forecast_data(team: Optional[str] = None) -> list[dict]:
+def load_forecast_data(team: Optional[str] = None, team_id: Optional[str] = None) -> list[dict]:
     """Load deal-level forecast data for the comparison view.
 
     Returns list of dicts with account info, AI/IC forecasts, health, momentum, divergence.
     """
     with get_session() as session:
         query = session.query(Account)
-        if team:
+        if team_id:
+            # Filter via hierarchy: Account.owner_id → User.team_id == team_id
+            query = query.join(User, Account.owner_id == User.id).filter(User.team_id == team_id)
+        elif team:
             query = query.filter_by(team_name=team)
         accounts = query.all()
 

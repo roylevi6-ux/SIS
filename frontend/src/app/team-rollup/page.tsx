@@ -4,7 +4,7 @@ import { useState, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTeamRollupHierarchy } from '@/lib/hooks/use-dashboard';
-import { useForecastTeams } from '@/lib/hooks/use-admin';
+import { useHierarchyTeams } from '@/lib/hooks/use-admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -97,12 +97,12 @@ const CHART_COLORS = {
 // ---------------------------------------------------------------------------
 
 export default function TeamRollupPage() {
-  const [team, setTeam] = useState<string | undefined>(undefined);
+  const [teamId, setTeamId] = useState<string | undefined>(undefined);
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [expandedRep, setExpandedRep] = useState<string | null>(null);
 
-  const { data: rawData, isLoading, isError, error } = useTeamRollupHierarchy(team);
-  const { data: teams = [] } = useForecastTeams();
+  const { data: rawData, isLoading, isError, error } = useTeamRollupHierarchy(teamId);
+  const { data: teams = [] } = useHierarchyTeams();
 
   const items = useMemo<TeamRollupHierarchyTeam[]>(() => {
     if (!rawData) return [];
@@ -111,7 +111,7 @@ export default function TeamRollupPage() {
 
   // Chart data: when a team is selected, show rep-level bars; otherwise team-level
   const chartData = useMemo(() => {
-    if (team && items.length === 1 && items[0].reps.length > 0) {
+    if (teamId && items.length === 1 && items[0].reps.length > 0) {
       return items[0].reps.map((rep) => ({
         name: rep.rep_name,
         Healthy: rep.healthy_count,
@@ -125,7 +125,7 @@ export default function TeamRollupPage() {
       Neutral: item.neutral_count,
       'Needs Attention': item.needs_attention_count,
     }));
-  }, [items, team]);
+  }, [items, teamId]);
 
   function toggleTeam(teamName: string) {
     setExpandedTeam(expandedTeam === teamName ? null : teamName);
@@ -151,9 +151,9 @@ export default function TeamRollupPage() {
 
         {teams.length > 0 && (
           <Select
-            value={team ?? 'all'}
+            value={teamId ?? 'all'}
             onValueChange={(v) => {
-              setTeam(v === 'all' ? undefined : v);
+              setTeamId(v === 'all' ? undefined : v);
               setExpandedTeam(null);
               setExpandedRep(null);
             }}
@@ -163,9 +163,9 @@ export default function TeamRollupPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
-              {teams.map((t: string) => (
-                <SelectItem key={t} value={t}>
-                  {t}
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -190,7 +190,7 @@ export default function TeamRollupPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              {team ? `Rep Health — ${team}` : 'Deal Health by Team'}
+              {teamId && items.length === 1 ? `Rep Health — ${items[0].team_name}` : 'Deal Health by Team'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -220,8 +220,12 @@ export default function TeamRollupPage() {
                   <Tooltip
                     contentStyle={{
                       fontSize: '12px',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--card)',
+                      border: '1px solid var(--border)',
                     }}
+                    labelStyle={{ color: 'var(--foreground)' }}
+                    itemStyle={{ color: 'var(--muted-foreground)' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                   <Bar dataKey="Healthy" stackId="a" fill={CHART_COLORS.healthy} isAnimationActive={false} />

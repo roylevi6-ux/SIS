@@ -783,13 +783,13 @@ class TestForecastData:
     def test_data_passes_team(self, mock_svc, client, auth_headers):
         mock_svc.load_forecast_data.return_value = []
         client.get("/api/forecast/data?team=Team+Alpha", headers=auth_headers)
-        mock_svc.load_forecast_data.assert_called_once_with(team="Team Alpha")
+        mock_svc.load_forecast_data.assert_called_once_with(team="Team Alpha", team_id=None)
 
     @patch("sis.api.routes.admin.forecast_data_service")
     def test_data_default_params(self, mock_svc, client, auth_headers):
         mock_svc.load_forecast_data.return_value = []
         client.get("/api/forecast/data", headers=auth_headers)
-        mock_svc.load_forecast_data.assert_called_once_with(team=None)
+        mock_svc.load_forecast_data.assert_called_once_with(team=None, team_id=None)
 
 
 class TestTeamNames:

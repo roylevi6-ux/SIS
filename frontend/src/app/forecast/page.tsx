@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useForecastData, useForecastTeams } from '@/lib/hooks/use-admin';
+import { useForecastData, useHierarchyTeams } from '@/lib/hooks/use-admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -129,10 +129,10 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 // ---------------------------------------------------------------------------
 
 export default function ForecastPage() {
-  const [team, setTeam] = useState<string | undefined>(undefined);
+  const [teamId, setTeamId] = useState<string | undefined>(undefined);
 
-  const { data: rawData, isLoading, isError, error } = useForecastData(team);
-  const { data: teams = [] } = useForecastTeams();
+  const { data: rawData, isLoading, isError, error } = useForecastData(teamId);
+  const { data: teams = [] } = useHierarchyTeams();
 
   const items = useMemo<ForecastDataItem[]>(() => {
     if (!rawData) return [];
@@ -161,17 +161,17 @@ export default function ForecastPage() {
 
         {teams.length > 0 && (
           <Select
-            value={team ?? 'all'}
-            onValueChange={(v) => setTeam(v === 'all' ? undefined : v)}
+            value={teamId ?? 'all'}
+            onValueChange={(v) => setTeamId(v === 'all' ? undefined : v)}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Teams" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
-              {teams.map((t: string) => (
-                <SelectItem key={t} value={t}>
-                  {t}
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -236,8 +236,12 @@ export default function ForecastPage() {
                   <Tooltip
                     contentStyle={{
                       fontSize: '12px',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--card)',
+                      border: '1px solid var(--border)',
                     }}
+                    labelStyle={{ color: 'var(--foreground)' }}
+                    itemStyle={{ color: 'var(--muted-foreground)' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                   <Bar dataKey="AI" fill="#60a5fa" name="AI Forecast" radius={[4, 4, 0, 0]} isAnimationActive={false} />

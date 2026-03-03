@@ -186,7 +186,7 @@ class TestDashboardService:
     def test_get_team_rollup_hierarchy_with_team_filter(self, seeded_db, mock_get_session):
         """Team filter narrows to one team."""
         from sis.services.dashboard_service import get_team_rollup_hierarchy
-        hierarchy = get_team_rollup_hierarchy(team="Team Alpha")
+        hierarchy = get_team_rollup_hierarchy(team_id=seeded_db["team_alpha_id"])
         assert len(hierarchy) == 1
         assert hierarchy[0]["team_name"] == "Team Alpha"
 

@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { api } from '../api';
+import type { HierarchyTeam } from '../api-types';
 
 // Tracking
 export function useUsageSummary(days?: number) {
@@ -72,10 +74,10 @@ export function useRepScorecard(aeOwner?: string) {
 }
 
 // Forecast
-export function useForecastData(team?: string) {
+export function useForecastData(teamId?: string) {
   return useQuery({
-    queryKey: ['forecast', 'data', team],
-    queryFn: () => api.forecast.data(team),
+    queryKey: ['forecast', 'data', teamId],
+    queryFn: () => api.forecast.data(teamId),
   });
 }
 
@@ -84,6 +86,19 @@ export function useForecastTeams() {
     queryKey: ['forecast', 'teams'],
     queryFn: () => api.forecast.teams(),
   });
+}
+
+// Hierarchy Teams — returns leaf-level teams (level === 'team') from the org tree
+export function useHierarchyTeams() {
+  const query = useQuery({
+    queryKey: ['teams', 'hierarchy'],
+    queryFn: () => api.teams.list(),
+  });
+  const teams = useMemo<HierarchyTeam[]>(
+    () => (query.data ?? []).filter((t) => t.level === 'team'),
+    [query.data],
+  );
+  return { ...query, data: teams };
 }
 
 // Action logs
