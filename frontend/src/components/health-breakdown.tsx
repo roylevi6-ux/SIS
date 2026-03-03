@@ -119,11 +119,11 @@ const ZONE_LABEL: Record<'healthy' | 'neutral' | 'needs-attention', string> = {
 
 const ZONE_BADGE_CLASS: Record<'healthy' | 'neutral' | 'needs-attention', string> = {
   healthy:
-    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800',
+    'bg-brand-500/10 text-brand-400 border-brand-500/20',
   neutral:
-    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800',
+    'bg-neutral-bg text-neutral border-amber-500/20',
   'needs-attention':
-    'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800',
+    'bg-needs-attention-bg text-needs-attention border-red-500/20',
 };
 
 // ---------------------------------------------------------------------------
@@ -370,17 +370,17 @@ function WeaknessPanel({ data }: { data: RadarDataItem[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-3">
       {critical.length > 0 && (
-        <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/30 p-3">
-          <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 mb-2 uppercase tracking-wide">
+        <div className="rounded-lg border border-red-500/20 bg-needs-attention-bg p-3">
+          <p className="text-[11px] font-semibold text-needs-attention mb-2 uppercase tracking-wide">
             Needs Attention
           </p>
           <div className="space-y-1.5">
             {critical.map((item) => (
               <div key={item.dimension} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-red-700 dark:text-red-300 truncate">
+                <span className="text-xs text-needs-attention truncate">
                   {item.dimension}
                 </span>
-                <span className="text-xs font-bold tabular-nums text-red-600 dark:text-red-400">
+                <span className="text-xs font-bold tabular-nums text-needs-attention">
                   {item.score}%
                 </span>
               </div>
@@ -390,17 +390,17 @@ function WeaknessPanel({ data }: { data: RadarDataItem[] }) {
       )}
 
       {atRisk.length > 0 && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/30 p-3">
-          <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mb-2 uppercase tracking-wide">
+        <div className="rounded-lg border border-amber-500/20 bg-neutral-bg p-3">
+          <p className="text-[11px] font-semibold text-neutral mb-2 uppercase tracking-wide">
             Watch List
           </p>
           <div className="space-y-1.5">
             {atRisk.map((item) => (
               <div key={item.dimension} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-amber-700 dark:text-amber-300 truncate">
+                <span className="text-xs text-neutral truncate">
                   {item.dimension}
                 </span>
-                <span className="text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                <span className="text-xs font-bold tabular-nums text-neutral">
                   {item.score}%
                 </span>
               </div>
