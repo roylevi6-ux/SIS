@@ -16,13 +16,6 @@ const WELCOME_MESSAGE: Message = {
     'Welcome! Ask me anything about your pipeline deals, forecast, or team performance. I have context from all your analyzed accounts.',
 };
 
-const SUGGESTED_QUERIES = [
-  'How is my pipeline looking overall?',
-  'Which deals are most at risk?',
-  'What should I focus on this week?',
-  'Show me forecast divergences',
-];
-
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
@@ -65,10 +58,6 @@ export default function ChatPage() {
     }
   }
 
-  function handleSuggestion(query: string) {
-    handleSend(query);
-  }
-
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] lg:h-screen p-0">
       {/* Header */}
@@ -92,7 +81,7 @@ export default function ChatPage() {
               <span className="text-xs font-medium text-muted-foreground px-1">
                 AI Assistant
               </span>
-              <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="bg-card rounded-2xl rounded-bl-sm px-4 py-3">
                 <div className="flex gap-1 items-center">
                   <span
                     className="size-2 rounded-full bg-muted-foreground/50 animate-bounce"
@@ -123,24 +112,6 @@ export default function ChatPage() {
           onSubmit={() => handleSend()}
           disabled={isPending}
         />
-
-        {/* Suggested queries */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          {SUGGESTED_QUERIES.map((query) => (
-            <button
-              key={query}
-              type="button"
-              onClick={() => handleSuggestion(query)}
-              disabled={isPending}
-              className="text-xs px-3 py-1.5 rounded-full border border-border bg-background
-                         text-muted-foreground hover:text-foreground hover:bg-muted
-                         transition-colors disabled:pointer-events-none disabled:opacity-50
-                         min-h-[32px]"
-            >
-              {query}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );
