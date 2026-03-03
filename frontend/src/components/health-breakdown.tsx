@@ -271,7 +271,7 @@ function CustomAngleTick({
         dominantBaseline="auto"
         style={{
           fontSize: 12,
-          fill: 'hsl(var(--muted-foreground))',
+          fill: 'var(--muted-foreground)',
           fontWeight: 500,
         }}
       >
@@ -539,7 +539,7 @@ export function HealthBreakdown({ breakdown, healthScore }: HealthBreakdownProps
 
               {/* Polar grid */}
               <PolarGrid
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
                 strokeOpacity={0.45}
               />
 
@@ -584,7 +584,7 @@ export function HealthBreakdown({ breakdown, healthScore }: HealthBreakdownProps
                       cy={cy}
                       r={4.5}
                       fill={dotColor}
-                      stroke="hsl(var(--background))"
+                      stroke="var(--background)"
                       strokeWidth={2}
                     />
                   );
@@ -604,7 +604,7 @@ export function HealthBreakdown({ breakdown, healthScore }: HealthBreakdownProps
                       cy={cy}
                       r={6}
                       fill={dotColor}
-                      stroke="hsl(var(--background))"
+                      stroke="var(--background)"
                       strokeWidth={2}
                     />
                   );
