@@ -217,7 +217,7 @@ export function DataTable({ deals, pageSize = 25 }: DataTableProps) {
                   headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground px-4 py-3.5 text-left bg-[#142518] cursor-pointer select-none hover:bg-[#1c3020] transition-colors whitespace-nowrap"
+                      className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground px-4 py-3.5 text-left bg-muted cursor-pointer select-none hover:bg-accent transition-colors whitespace-nowrap"
                       onClick={header.column.getToggleSortingHandler()}
                       style={{ width: header.getSize() }}
                     >

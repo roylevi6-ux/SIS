@@ -29,7 +29,7 @@ function KpiCard({
 }) {
   return (
     <div
-      className="relative rounded-xl border border-border bg-[#142518] px-5 py-5 overflow-hidden animate-row-reveal"
+      className="relative rounded-xl border border-border bg-muted px-5 py-5 overflow-hidden animate-row-reveal"
       style={{ animationDelay: `${delay}ms` }}
     >
       {/* Top accent bar */}
@@ -78,7 +78,7 @@ function DistributionBar({ forecast }: { forecast: ForecastBreakdown }) {
       <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         Forecast Distribution
       </div>
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[#142518]">
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
         {segments.map((seg) => {
           const pct = (seg.value / total) * 100;
           if (pct < 1) return null;
@@ -159,7 +159,7 @@ export function NumberLine({ quota, pipeline, forecast }: NumberLineProps) {
       </div>
 
       {/* Distribution Bar — below the card grid */}
-      <div className="rounded-xl border border-border bg-[#142518] p-5">
+      <div className="rounded-xl border border-border bg-muted p-5">
         <DistributionBar forecast={forecast} />
       </div>
     </div>
