@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface HealthBadgeProps {
@@ -8,30 +7,31 @@ interface HealthBadgeProps {
 
 function getHealthTier(score: number | null) {
   if (score === null || score === undefined) {
-    return { label: 'N/A', colorClass: 'bg-muted text-muted-foreground' };
+    return { dotColor: 'bg-muted-foreground', textColor: 'text-muted-foreground', bgColor: 'bg-muted' };
   }
   if (score >= 70) {
-    return { label: String(score), colorClass: 'bg-healthy-bg text-healthy' };
+    return { dotColor: 'bg-healthy', textColor: 'text-healthy', bgColor: 'bg-healthy-bg' };
   }
   if (score >= 40) {
-    return { label: String(score), colorClass: 'bg-neutral-bg text-neutral' };
+    return { dotColor: 'bg-neutral', textColor: 'text-neutral', bgColor: 'bg-neutral-bg' };
   }
-  return { label: String(score), colorClass: 'bg-needs-attention-bg text-needs-attention' };
+  return { dotColor: 'bg-needs-attention', textColor: 'text-needs-attention', bgColor: 'bg-needs-attention-bg' };
 }
 
 export function HealthBadge({ score, className }: HealthBadgeProps) {
-  const { label, colorClass } = getHealthTier(score);
+  const { dotColor, textColor, bgColor } = getHealthTier(score);
 
   return (
-    <Badge
-      variant="outline"
+    <span
       className={cn(
-        'border-transparent font-semibold tabular-nums',
-        colorClass,
+        'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold font-mono tabular-nums',
+        bgColor,
+        textColor,
         className,
       )}
     >
-      {label}
-    </Badge>
+      <span className={cn('inline-block size-2 rounded-full', dotColor)} />
+      {score !== null ? score : 'N/A'}
+    </span>
   );
 }
