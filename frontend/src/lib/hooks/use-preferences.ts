@@ -42,17 +42,20 @@ const DEPRECATED_WIDGETS = new Set([
   'key_unknowns', 'forecast_divergence', 'forecast_rationale', 'key_findings',
 ]);
 
-/** Merge new widgets into saved prefs and hide deprecated ones. */
+/** Merge new widgets into saved prefs, hide deprecated ones, and re-apply default order. */
 function mergeNewDefaults(saved: WidgetConfig[], defaults: WidgetConfig[]): WidgetConfig[] {
+  const defaultMap = new Map(defaults.map((d) => [d.id, d]));
   const savedIds = new Set(saved.map((w) => w.id));
-  const maxOrder = Math.max(...saved.map((w) => w.order), 0);
-  const newWidgets = defaults
-    .filter((d) => !savedIds.has(d.id))
-    .map((d, i) => ({ ...d, order: maxOrder + 1 + i }));
+  // Add widgets that exist in defaults but not yet in saved prefs
+  const newWidgets = defaults.filter((d) => !savedIds.has(d.id));
   const merged = newWidgets.length > 0 ? [...saved, ...newWidgets] : saved;
-  return merged.map((w) =>
-    DEPRECATED_WIDGETS.has(w.id) ? { ...w, visible: false } : w,
-  );
+  return merged.map((w) => {
+    if (DEPRECATED_WIDGETS.has(w.id)) return { ...w, visible: false };
+    // Re-apply default order so layout consolidations take effect
+    const def = defaultMap.get(w.id);
+    if (def) return { ...w, order: def.order };
+    return w;
+  });
 }
 
 export function useDealPageWidgets() {
