@@ -112,6 +112,7 @@ class Account(Base):
     sf_stage = Column(Integer, nullable=True)  # SF stage number (1-7)
     sf_forecast_category = Column(Text, nullable=True)  # "Commit" / "Realistic" / "Upside" / "At Risk"
     sf_close_quarter = Column(Text, nullable=True)  # Expected close quarter, e.g. "Q2 2026"
+    buying_culture = Column(Text, nullable=False, default="direct")  # "direct" | "proxy_delegated"
     owner_id = Column(Text, ForeignKey("users.id"), nullable=True)
     created_at = Column(Text, nullable=False, default=_now)
     updated_at = Column(Text, nullable=False, default=_now, onupdate=_now)

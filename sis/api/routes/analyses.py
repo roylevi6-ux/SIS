@@ -103,6 +103,7 @@ def _run_batch_item(batch_id: str, index: int, item_data: dict):
                 sf_stage=item_data.get("sf_stage"),
                 sf_forecast_category=item_data.get("sf_forecast_category"),
                 sf_close_quarter=item_data.get("sf_close_quarter"),
+                buying_culture=item_data.get("buying_culture", "direct"),
             )
             account_id = acct_obj.id
 

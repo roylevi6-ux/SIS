@@ -52,6 +52,7 @@ def create_account(body: AccountCreate, user: dict = Depends(get_current_user)):
         sf_stage=body.sf_stage,
         sf_forecast_category=body.sf_forecast_category,
         sf_close_quarter=body.sf_close_quarter,
+        buying_culture=body.buying_culture,
     )
     return {"id": account.id, "account_name": account.account_name}
 

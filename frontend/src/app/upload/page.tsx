@@ -156,6 +156,7 @@ interface BatchRow {
   selected: boolean;
   maxCalls: number;
   dealType: string;
+  buyingCulture: string;
   ownerId: string;
   sfStage?: number;
   sfForecast?: string;
@@ -216,6 +217,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
           selected: false,
           maxCalls: Math.min(5, a.call_count),
           dealType: '',
+          buyingCulture: 'direct',
           ownerId: '',
         })));
         setIsLoadingAccounts(false);
@@ -243,6 +245,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
           selected: false,
           maxCalls: Math.min(5, a.call_count),
           dealType: '',
+          buyingCulture: 'direct',
           ownerId: '',
         })));
       }
@@ -276,6 +279,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
         drive_path: r.account.path,
         max_calls: r.maxCalls,
         deal_type: r.dealType || undefined,
+        buying_culture: r.buyingCulture || 'direct',
         owner_id: r.ownerId || undefined,
         sf_stage: r.sfStage,
         sf_forecast_category: r.sfForecast,
@@ -371,6 +375,7 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
                         <TableHead>Account</TableHead>
                         <TableHead className="w-32">Calls</TableHead>
                         <TableHead className="w-40">Deal Type</TableHead>
+                        <TableHead className="whitespace-normal">Culture</TableHead>
                         <TableHead className="w-44">AE Owner</TableHead>
                         <TableHead className="text-xs w-16">SF Stg</TableHead>
                         <TableHead className="text-xs w-20">SF Fct</TableHead>
@@ -423,6 +428,22 @@ function DriveImportTab({ onImportComplete: _onImportComplete }: { onImportCompl
                                   {DEAL_TYPES.map((t) => (
                                     <SelectItem key={t} value={t}>{t}</SelectItem>
                                   ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-normal">
+                            {row.selected && (
+                              <Select
+                                value={row.buyingCulture || 'direct'}
+                                onValueChange={(v) => updateRow(index, { buyingCulture: v })}
+                              >
+                                <SelectTrigger className="h-8 w-[140px] text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="direct">Direct</SelectItem>
+                                  <SelectItem value="proxy_delegated">Proxy-Delegated</SelectItem>
                                 </SelectContent>
                               </Select>
                             )}
@@ -560,6 +581,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
   const [analysisAccountId, setAnalysisAccountId] = useState<string | null>(null);
 
   const [dealType, setDealType] = useState<string>('');
+  const [buyingCulture, setBuyingCulture] = useState<string>('direct');
   const [cpEstimate, setCpEstimate] = useState<string>('');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
   const [selectedIC, setSelectedIC] = useState<ICUser | null>(null);
@@ -659,6 +681,7 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
     try {
       const dealArgs = {
         deal_type: dealType || undefined,
+        buying_culture: buyingCulture || 'direct',
         cp_estimate: cpEstimate ? parseFloat(cpEstimate) : undefined,
         owner_id: selectedOwnerId || undefined,
         sf_stage: sfStage,
@@ -850,6 +873,16 @@ function LocalFolderTab({ onImportComplete }: { onImportComplete?: () => void })
                     <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                     <SelectContent>
                       {DEAL_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Buying Culture</label>
+                  <Select value={buyingCulture} onValueChange={setBuyingCulture}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="direct">Direct</SelectItem>
+                      <SelectItem value="proxy_delegated">Proxy-Delegated</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

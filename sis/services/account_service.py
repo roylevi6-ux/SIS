@@ -22,7 +22,7 @@ def normalize_account_name(name: str) -> str:
 
 
 # Whitelist of fields that can be updated via update_account
-UPDATABLE_FIELDS = {"account_name", "cp_estimate", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id", "sf_stage", "sf_forecast_category", "sf_close_quarter"}
+UPDATABLE_FIELDS = {"account_name", "cp_estimate", "team_lead", "ae_owner", "team_name", "deal_type", "prior_contract_value", "owner_id", "sf_stage", "sf_forecast_category", "sf_close_quarter", "buying_culture"}
 
 # Whitelist of fields that can be used for sorting
 SORTABLE_FIELDS = {"account_name", "cp_estimate", "team_name", "created_at", "updated_at"}
@@ -40,6 +40,7 @@ def create_account(
     sf_stage: Optional[int] = None,
     sf_forecast_category: Optional[str] = None,
     sf_close_quarter: Optional[str] = None,
+    buying_culture: str = "direct",
 ) -> Account:
     """Create a new account.
 
@@ -73,6 +74,7 @@ def create_account(
             sf_stage=sf_stage,
             sf_forecast_category=sf_forecast_category,
             sf_close_quarter=sf_close_quarter,
+            buying_culture=buying_culture,
         )
         session.add(account)
         session.flush()

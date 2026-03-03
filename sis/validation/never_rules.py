@@ -21,99 +21,6 @@ class NeverRuleViolation:
     context: dict
 
 
-def check_health_score_without_eb(
-    agent_outputs: dict, synthesis_output: dict
-) -> NeverRuleViolation | None:
-    """Rule 1: Health > 80 requires EB engagement (stage-gated: S4+).
-
-    If synthesis health_score exceeds 80, Agent 6 must show direct or
-    champion-relayed EB engagement. Only fires at Stage 4+.
-    """
-    # Stage gate: only fire at S4+
-    inferred_stage = synthesis_output.get("inferred_stage", 7)
-    if inferred_stage < 4:
-        return None
-
-    health_score = synthesis_output.get("health_score", 0)
-    if health_score <= 80:
-        return None
-
-    agent6 = agent_outputs.get("agent_6", {})
-    findings = agent6.get("findings", {})
-
-    # Check for EB direct engagement signals
-    # Primary: Agent 6 schema fields; fallback: legacy field names
-    eb_identified = findings.get("eb_confirmed", findings.get("eb_identified", False))
-    eb_engagement = findings.get("eb_engagement", "")
-    eb_engaged = eb_engagement == "Direct" if eb_engagement else findings.get(
-        "eb_directly_engaged", findings.get("direct_engagement", False)
-    )
-
-    if not eb_identified or not eb_engaged:
-        return NeverRuleViolation(
-            rule_id="NEVER_HEALTH_WITHOUT_EB",
-            agent_id="agent_10",
-            severity="error",
-            description=(
-                f"Health score {health_score} exceeds 80 at Stage {inferred_stage} "
-                f"but Agent 6 shows no direct Economic Buyer engagement. "
-                f"EB identified: {eb_identified}, EB directly engaged: {eb_engaged}."
-            ),
-            context={
-                "health_score": health_score,
-                "inferred_stage": inferred_stage,
-                "eb_identified": eb_identified,
-                "eb_engaged": eb_engaged,
-            },
-        )
-    return None
-
-
-def check_health_score_without_champion(
-    agent_outputs: dict, synthesis_output: dict
-) -> NeverRuleViolation | None:
-    """Rule 8: Health > 75 requires champion identified (stage-gated: S3+).
-
-    If synthesis health_score exceeds 75, Agent 2 must show a champion
-    has been identified. Only fires at Stage 3+.
-    """
-    # Stage gate: only fire at S3+
-    inferred_stage = synthesis_output.get("inferred_stage", 7)
-    if inferred_stage < 3:
-        return None
-
-    health_score = synthesis_output.get("health_score", 0)
-    if health_score <= 75:
-        return None
-
-    agent2 = agent_outputs.get("agent_2", {})
-    findings = agent2.get("findings", {})
-
-    # Check for champion identification — handle both nested dict and flat field
-    champion = findings.get("champion")
-    if isinstance(champion, dict) and champion:
-        champion_identified = champion.get("identified", False)
-    else:
-        champion_identified = findings.get("champion_identified", False)
-
-    if not champion_identified:
-        return NeverRuleViolation(
-            rule_id="NEVER_HEALTH_WITHOUT_CHAMPION",
-            agent_id="agent_10",
-            severity="error",
-            description=(
-                f"Health score {health_score} exceeds 75 at Stage {inferred_stage} "
-                f"but Agent 2 shows no champion identified."
-            ),
-            context={
-                "health_score": health_score,
-                "inferred_stage": inferred_stage,
-                "champion_identified": champion_identified,
-            },
-        )
-    return None
-
-
 def check_commit_without_commitments(
     agent_outputs: dict, synthesis_output: dict
 ) -> NeverRuleViolation | None:
@@ -355,36 +262,6 @@ def check_no_decision_risk_override(
 # --- Expansion-specific rules ---
 
 
-def check_expansion_account_health_cap(
-    agent_outputs: dict, synthesis_output: dict
-) -> NeverRuleViolation | None:
-    """Expansion Rule 1: Strained/Critical relationship caps health at 60."""
-    health_score = synthesis_output.get("health_score", 0)
-    if health_score <= 60:
-        return None
-
-    agent_0e = agent_outputs.get("agent_0e", {})
-    findings = agent_0e.get("findings", {})
-    relationship = findings.get("account_relationship_health", "Not Assessed")
-
-    if relationship in ("Strained", "Critical"):
-        return NeverRuleViolation(
-            rule_id="NEVER_EXPANSION_HEALTH_CAP",
-            agent_id="agent_10",
-            severity="error",
-            description=(
-                f"Health score {health_score} exceeds 60 but Agent 0E reports "
-                f"account relationship as '{relationship}'. Expansion deals with "
-                f"strained/critical relationships must not exceed 60."
-            ),
-            context={
-                "health_score": health_score,
-                "relationship_health": relationship,
-            },
-        )
-    return None
-
-
 def check_expansion_commit_relationship(
     agent_outputs: dict, synthesis_output: dict
 ) -> NeverRuleViolation | None:
@@ -426,16 +303,11 @@ _COMMON_RULE_CHECKERS = [
 
 # Deal-type-specific rules
 _NEW_LOGO_RULE_CHECKERS = [
-    check_health_score_without_eb,
-    check_health_score_without_champion,
     check_commit_without_commitments,
 ]
 
 _EXPANSION_RULE_CHECKERS = [
-    check_health_score_without_eb,
-    check_health_score_without_champion,
     check_commit_without_commitments,
-    check_expansion_account_health_cap,
     check_expansion_commit_relationship,
 ]
 

@@ -82,6 +82,7 @@ def _prepare_analysis_context(account_id: str) -> tuple[list[str], dict, dict | 
         from sis.constants import normalize_deal_type
         deal_type = normalize_deal_type(account.deal_type)
         prior_contract_value = account.prior_contract_value
+        buying_culture = account.buying_culture or "direct"
 
         sf_data = None
         if any([account.sf_stage, account.sf_forecast_category, account.sf_close_quarter, account.cp_estimate]):
@@ -112,6 +113,7 @@ def _prepare_analysis_context(account_id: str) -> tuple[list[str], dict, dict | 
         "deal_type": deal_type,
         "prior_contract_value": prior_contract_value,
         "most_recent_transcript_age_days": transcript_age_days,
+        "buying_culture": buying_culture,
     }
     return transcript_texts, deal_context, sf_data
 

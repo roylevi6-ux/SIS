@@ -102,6 +102,7 @@ interface AccountDetail {
   ae_owner: string | null;
   team_name: string | null;
   deal_type: string;
+  buying_culture: string;
   prior_contract_value: number | null;
   sf_forecast_category: string | null;
   transcripts: Transcript[];
@@ -797,6 +798,11 @@ export default function DealDetailPage({
               {account.deal_type && account.deal_type !== 'new_logo' && (
                 <Badge variant="outline" className="text-xs border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-400">
                   {account.deal_type.replace('expansion_', 'Expansion: ').replace('_', ' ')}
+                </Badge>
+              )}
+              {account.buying_culture === 'proxy_delegated' && (
+                <Badge variant="outline" className="text-xs border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                  Proxy-Delegated
                 </Badge>
               )}
               {account.ae_owner && <span>AE: {account.ae_owner}</span>}

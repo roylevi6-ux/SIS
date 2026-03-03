@@ -401,11 +401,10 @@ For expansion deals (deal_type starts with "expansion"), use this modified weigh
 ### Account Relationship Health Scoring (13 points max, expansion only)
 11-13: Strong — existing product praised, no complaints, renewal not at risk, relationship health enables expansion
 7-10:  Adequate — generally positive, minor issues resolved, no active escalations
-3-6:   Strained — product complaints present, discount pressure, or renewal at risk. Cap health at 60 for Strained/Critical.
-0-2:   Critical — active escalation, competitive evaluation of existing product, or explicit dissatisfaction. Cap health at 60 for Strained/Critical.
+3-6:   Strained — product complaints present, discount pressure, or renewal at risk.
+0-2:   Critical — active escalation, competitive evaluation of existing product, or explicit dissatisfaction.
 
 Expansion NEVER Rules:
-- NEVER produce health > 60 if Agent 0E account_relationship_health is "Strained" or "Critical"
 - NEVER produce Commit forecast if Agent 0E account_relationship_health is not "Strong" or "Adequate"
 
 ## Stage-Aware Baseline Scoring
@@ -435,8 +434,6 @@ The Health Score measures deal QUALITY at its current stage — not progress thr
 Components marked "Always" have no neutral baseline — they are expected at every stage and scored on merit or penalized when missing.
 
 ## NEVER Rules
-- NEVER produce health score >80 when NO direct or champion-relayed Economic Buyer engagement AND deal is Stage 4 or later.
-- NEVER produce health score >75 when NO champion identified (Agent 2 champion.identified=false) AND deal is Stage 3 or later.
 - NEVER produce Commit forecast without Level 3+ commitments (Agent 7) and MSP. See Commitment Levels definition above for what constitutes Level 3+.
 - NEVER leave contradictions unresolved. Every contradiction must have a resolution.
 - Address Agent 9's adversarial challenges in your deal memo when they are evidence-based.
@@ -477,6 +474,7 @@ def build_call(
     upstream_outputs: dict[str, dict],
     stage_context: dict,
     sf_data: dict | None = None,
+    deal_context: dict | None = None,
 ) -> dict:
     """Build kwargs dict for run_agent.
 
@@ -485,6 +483,7 @@ def build_call(
         stage_context: Stage classifier output dict (for quick reference)
         sf_data: Optional Salesforce indication data for Step 5 gap analysis.
                  Keys: sf_stage, sf_forecast_category, sf_close_quarter, cp_estimate.
+        deal_context: Optional dict with deal_type, buying_culture, etc.
     """
     agent_labels = {
         "agent_1": "Agent 1: Stage & Progress",
@@ -554,17 +553,70 @@ def build_call(
     )
 
     user_prompt = "\n".join(parts)
+
+    # Build culture-aware system prompt
+    system = SYSTEM_PROMPT
+    buying_culture = (deal_context or {}).get("buying_culture", "direct")
+    if buying_culture == "proxy_delegated":
+        # Replace NEW LOGO weight table values for proxy-delegated profile
+        system = system.replace(
+            "| Champion strength | 12 | Agent 2 |",
+            "| Champion strength | 19 | Agent 2 |",
+        ).replace(
+            "| Economic buyer engagement | 11 | Agent 6 |",
+            "| Economic buyer engagement | 0 | Agent 6 |",
+        ).replace(
+            "| Multi-threading & stakeholder coverage | 7 | Agent 2 |",
+            "| Multi-threading & stakeholder coverage | 11 | Agent 2 |",
+        )
+        # Replace EXPANSION weight table values (different base weights)
+        system = system.replace(
+            "| Champion strength | 10 | Agent 2 |",
+            "| Champion strength | 16 | Agent 2 |",
+        ).replace(
+            "| Economic buyer engagement | 9 | Agent 6 |",
+            "| Economic buyer engagement | 0 | Agent 6 |",
+        ).replace(
+            "| Multi-threading & stakeholder coverage | 6 | Agent 2 |",
+            "| Multi-threading & stakeholder coverage | 9 | Agent 2 |",
+        )
+        # Replace neutral midpoint table
+        system = system.replace(
+            "| Economic buyer engagement (11)               | 4             | S4+         |",
+            "| Economic buyer engagement (0)                | 0             | N/A         |",
+        ).replace(
+            "| Champion strength (12)                       | 5             | S3+         |",
+            "| Champion strength (19)                       | 8             | S3+         |",
+        ).replace(
+            "| Multi-threading & stakeholder coverage (7)   | 3             | S3+         |",
+            "| Multi-threading & stakeholder coverage (11)  | 5             | S3+         |",
+        )
+        system += """
+
+## BUYING CULTURE: PROXY-DELEGATED
+This deal uses a proxy-delegated buying culture (Japan, China, Korea). Both the new-logo and expansion weight tables above have been adjusted:
+- Economic Buyer engagement weight is 0 (EB absence is culturally expected, not a risk)
+- Champion strength weight is increased (the champion carries EB authority in proxy cultures)
+- Multi-threading weight is increased (relationship breadth signals organizational buy-in)
+
+IMPORTANT overrides for proxy-delegated deals:
+- When scoring Economic Buyer engagement, assign 0 regardless of evidence (weight is 0).
+- Ignore "EB engaged" in the Commit forecast criteria — proxy authority from champion is sufficient.
+- Ignore "EB absent" as a stage inconsistency in the Stage Appropriateness rubric.
+- Champion introducing you to the EB is NOT required for top-tier champion scores — champion demonstrating proxy authority (budget approval language, internal advocacy, decision-making power) replaces EB introduction.
+Score accordingly — do NOT penalize for EB absence."""
+
     logger.info(
         "[Agent 10 build_call] Total user_prompt: %d chars (~%d tokens), "
-        "system_prompt: %d chars (~%d tokens), max_output_tokens=%d",
+        "system_prompt: %d chars (~%d tokens), max_output_tokens=%d, buying_culture=%s",
         len(user_prompt), len(user_prompt) // 4,
-        len(SYSTEM_PROMPT), len(SYSTEM_PROMPT) // 4,
-        MAX_OUTPUT_TOKENS_SYNTHESIS,
+        len(system), len(system) // 4,
+        MAX_OUTPUT_TOKENS_SYNTHESIS, buying_culture,
     )
 
     return {
         "agent_name": "Agent 10: Synthesis",
-        "system_prompt": SYSTEM_PROMPT,
+        "system_prompt": system,
         "user_prompt": user_prompt,
         "output_model": SynthesisOutput,
         "model": MODEL_AGENT_10,
@@ -576,6 +628,7 @@ def run_synthesis(
     upstream_outputs: dict[str, dict],
     stage_context: dict,
     sf_data: dict | None = None,
+    deal_context: dict | None = None,
 ) -> AgentResult[SynthesisOutput]:
     """Run Agent 10: Synthesis."""
-    return run_agent(**build_call(upstream_outputs, stage_context, sf_data))
+    return run_agent(**build_call(upstream_outputs, stage_context, sf_data, deal_context))
