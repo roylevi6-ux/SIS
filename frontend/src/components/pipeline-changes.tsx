@@ -51,7 +51,7 @@ export function PipelineChanges({ changes }: PipelineChangesProps) {
         icon={ArrowRight}
         colorClass={changes.net >= 0 ? 'text-healthy' : 'text-needs-attention'}
       />
-      <span className="text-border">|</span>
+      <span className="text-muted-foreground/30">|</span>
       <span className="text-xs text-muted-foreground">
         {changes.stage_advances} advances &middot; {changes.forecast_flips} flips &middot; {changes.new_risks} new risks
       </span>
