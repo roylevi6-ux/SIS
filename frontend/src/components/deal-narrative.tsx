@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -96,6 +96,7 @@ export function DealNarrative({ memo, sections }: DealNarrativeProps) {
 
 function NarrativeSection({ section, defaultOpen }: { section: DealMemoSection; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => setOpen(defaultOpen), [defaultOpen]);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
