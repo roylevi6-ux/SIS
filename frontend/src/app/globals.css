@@ -94,24 +94,24 @@
 :root {
   --radius: 0.625rem;
 
-  /* Signal Clarity — lightened surfaces for better readability */
-  --background: #0d1912;            /* canvas (lifted from #060d09) */
+  /* Signal Clarity — mid-tone surfaces (between original dark & lightened) */
+  --background: #0a130e;            /* canvas */
   --foreground: #e2fdf1;            /* text-primary */
-  --card: #15241b;                  /* surface-1 (lifted from #0d1a12) */
+  --card: #111f17;                  /* surface-1 */
   --card-foreground: #e2fdf1;
-  --popover: #1c2f21;               /* surface-2 (lifted from #142518) */
+  --popover: #182a1d;               /* surface-2 */
   --popover-foreground: #e2fdf1;
   --primary: #10b981;               /* brand-500 */
   --primary-foreground: #ffffff;
-  --secondary: #1c2f21;             /* surface-2 */
+  --secondary: #182a1d;             /* surface-2 */
   --secondary-foreground: #e2fdf1;
-  --muted: #1c2f21;                 /* surface-2 (lifted from #142518) */
-  --muted-foreground: #5a8a72;      /* text-tertiary (lifted from #4b7a62) */
-  --accent: #253a29;                /* surface-3 (lifted from #1c3020) */
+  --muted: #182a1d;                 /* surface-2 */
+  --muted-foreground: #53826a;      /* text-tertiary */
+  --accent: #213525;                /* surface-3 */
   --accent-foreground: #e2fdf1;
   --destructive: #f87171;
-  --border: #274531;                /* lifted from #1e3a27 */
-  --input: #274531;
+  --border: #23402c;
+  --input: #23402c;
   --ring: #10b981;
   --chart-1: #10b981;
   --chart-2: #34d399;
@@ -119,15 +119,15 @@
   --chart-4: #60a5fa;
   --chart-5: #f87171;
 
-  --sidebar: #101e18;               /* lifted from #081410 */
+  --sidebar: #0c1914;
   --sidebar-foreground: #e2fdf1;
   --sidebar-primary: #10b981;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1c2f21;
+  --sidebar-accent: #182a1d;
   --sidebar-accent-foreground: #e2fdf1;
-  --sidebar-border: #274531;
+  --sidebar-border: #23402c;
   --sidebar-ring: #10b981;
-  --sidebar-muted: #5a8a72;
+  --sidebar-muted: #53826a;
 }
 
 @layer base {
