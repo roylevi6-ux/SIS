@@ -31,7 +31,7 @@ from sis.services.dashboard_service import (
 
 logger = logging.getLogger(__name__)
 
-MAX_TOOL_ROUNDS = 3
+MAX_TOOL_ROUNDS = 5
 
 # ── System prompt ────────────────────────────────────────────────────
 
@@ -42,16 +42,20 @@ You have:
 1. A pipeline summary provided below with all deals at a glance.
 2. Tools to fetch detailed data: deal assessments, agent analyses, transcript evidence, and transcript search.
 
+TOOL STRATEGY (follow this order):
+1. For simple pipeline questions (counts, lists, comparisons) — answer from the summary data directly, no tools needed.
+2. For deal-specific questions (health, risks, forecast) — call get_deal_assessment first.
+3. For evidence/quote questions — call get_all_agent_evidence FIRST. This returns curated transcript quotes already extracted by our analysis agents. This is usually sufficient.
+4. For specific agent dimension questions — call get_agent_analysis with the agent name.
+5. ONLY use search_transcript if agent evidence doesn't contain what's needed. Call list_deal_transcripts first to see available calls, then search the most relevant one.
+
 Rules:
-- For simple pipeline questions (counts, lists, comparisons), answer from the summary data directly.
-- For deal-specific questions, USE YOUR TOOLS to fetch the relevant data before answering.
-- When asked about evidence, quotes, or "why" questions, use get_all_agent_evidence or search_transcript.
+- Always complete your research and give a FINAL ANSWER. Never respond with just "Let me search..." — finish the search and present results.
 - Always cite your sources: agent name, call date, or direct quotes when available.
 - Be concise and specific. Use bullet points for lists.
 - If a tool returns no results or an error, say so honestly — never hallucinate.
 - Reference deal names, scores, and categories exactly as shown in the data.
-- When comparing deals, cite specific health scores and momentum directions.
-- For rep performance questions, reference avg health, deal count, MRR, and momentum trends.
+- Some transcripts are in Japanese. When searching Japanese transcripts, use both English and Japanese keywords.
 """
 
 # ── Tool definitions (Anthropic format) ──────────────────────────────
