@@ -94,24 +94,24 @@
 :root {
   --radius: 0.625rem;
 
-  /* Exact colors from Signal Clarity mockup */
-  --background: #060d09;            /* canvas */
+  /* Signal Clarity — lightened surfaces for better readability */
+  --background: #0d1912;            /* canvas (lifted from #060d09) */
   --foreground: #e2fdf1;            /* text-primary */
-  --card: #0d1a12;                  /* surface-1 */
+  --card: #15241b;                  /* surface-1 (lifted from #0d1a12) */
   --card-foreground: #e2fdf1;
-  --popover: #142518;               /* surface-2 */
+  --popover: #1c2f21;               /* surface-2 (lifted from #142518) */
   --popover-foreground: #e2fdf1;
   --primary: #10b981;               /* brand-500 */
   --primary-foreground: #ffffff;
-  --secondary: #142518;             /* surface-2 */
+  --secondary: #1c2f21;             /* surface-2 */
   --secondary-foreground: #e2fdf1;
-  --muted: #142518;                 /* surface-2 */
-  --muted-foreground: #4b7a62;      /* text-tertiary */
-  --accent: #1c3020;                /* surface-3 */
+  --muted: #1c2f21;                 /* surface-2 (lifted from #142518) */
+  --muted-foreground: #5a8a72;      /* text-tertiary (lifted from #4b7a62) */
+  --accent: #253a29;                /* surface-3 (lifted from #1c3020) */
   --accent-foreground: #e2fdf1;
   --destructive: #f87171;
-  --border: #1e3a27;
-  --input: #1e3a27;
+  --border: #274531;                /* lifted from #1e3a27 */
+  --input: #274531;
   --ring: #10b981;
   --chart-1: #10b981;
   --chart-2: #34d399;
@@ -119,15 +119,15 @@
   --chart-4: #60a5fa;
   --chart-5: #f87171;
 
-  --sidebar: #081410;
+  --sidebar: #101e18;               /* lifted from #081410 */
   --sidebar-foreground: #e2fdf1;
   --sidebar-primary: #10b981;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #142518;
+  --sidebar-accent: #1c2f21;
   --sidebar-accent-foreground: #e2fdf1;
-  --sidebar-border: #1e3a27;
+  --sidebar-border: #274531;
   --sidebar-ring: #10b981;
-  --sidebar-muted: #4b7a62;
+  --sidebar-muted: #5a8a72;
 }
 
 @layer base {
