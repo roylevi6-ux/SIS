@@ -7,10 +7,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from sis.api.deps import get_current_user, get_db
+from sis.api.deps import get_current_user, get_db, require_role, resolve_scoping
 from sis.services import account_service
-from sis.services.scoping_service import get_visible_user_ids
-from sis.db.models import User
 from sis.api.schemas.accounts import (
     AccountCreate,
     AccountUpdate,
@@ -18,17 +16,6 @@ from sis.api.schemas.accounts import (
 )
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
-
-
-def _resolve_scoping(user: dict, db: Session) -> Optional[set[str]]:
-    """Compute visible user IDs from JWT user dict. None = no restriction."""
-    user_id = user.get("user_id") if user else None
-    if not user_id:
-        return None
-    db_user = db.query(User).filter_by(id=user_id).first()
-    if not db_user or db_user.role in ("admin", "gm"):
-        return None
-    return get_visible_user_ids(db_user, db)
 
 
 @router.get("/")
@@ -39,7 +26,7 @@ def list_accounts(
     db: Session = Depends(get_db),
 ):
     """List all accounts with latest assessment summary."""
-    visible_ids = _resolve_scoping(user, db)
+    visible_ids = resolve_scoping(user, db)
     return account_service.list_accounts(team=team, sort_by=sort_by, visible_user_ids=visible_ids)
 
 
@@ -85,7 +72,8 @@ def update_account(account_id: str, body: AccountUpdate, user: dict = Depends(ge
 
 @router.delete("/{account_id}")
 def delete_account(account_id: str, user: dict = Depends(get_current_user)):
-    """Delete an account and all associated data (cascade)."""
+    """Delete an account and all associated data (cascade). Admin only."""
+    require_role(user, "admin")
     try:
         return account_service.delete_account(account_id)
     except ValueError as e:

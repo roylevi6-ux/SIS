@@ -320,6 +320,7 @@ def run_agent(
             with client.messages.stream(
                 model=model,
                 max_tokens=max_output_tokens,
+                temperature=0.2,
                 system=enhanced_system,
                 messages=[{"role": "user", "content": current_user_prompt}],
             ) as stream:
@@ -408,6 +409,7 @@ async def run_agent_async(
             async with client.messages.stream(
                 model=model,
                 max_tokens=max_output_tokens,
+                temperature=0.2,
                 system=enhanced_system,
                 messages=[{"role": "user", "content": current_user_prompt}],
             ) as stream:

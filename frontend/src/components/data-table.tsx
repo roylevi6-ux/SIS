@@ -63,6 +63,23 @@ function rowTintClass(deal: PipelineDeal): string {
 
 const dealColumns: ColumnDef<PipelineDeal>[] = [
   {
+    accessorKey: 'attention_level',
+    header: '',
+    cell: ({ getValue }) => {
+      const level = getValue() as string | null;
+      if (!level || level === 'none') return null;
+      if (level === 'act')
+        return (
+          <span className="inline-flex size-2.5 rounded-full bg-red-500" title="VP action needed" />
+        );
+      return (
+        <span className="inline-flex size-2.5 rounded-full bg-amber-400" title="Watch" />
+      );
+    },
+    size: 32,
+    enableSorting: true,
+  },
+  {
     accessorKey: 'account_name',
     header: 'Account',
     cell: ({ row }) => {

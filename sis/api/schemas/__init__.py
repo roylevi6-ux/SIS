@@ -12,8 +12,8 @@ from .accounts import (
     AccountSummary,
     AccountUpdate,
     AssessmentDetail,
-    ICForecastResponse,
-    ICForecastUpdate,
+    ForecastResponse,
+    ForecastUpdate,
 )
 from .admin import (
     ActionLogItem,
@@ -70,8 +70,8 @@ __all__ = [
     "AccountSummary",
     "AccountUpdate",
     "AssessmentDetail",
-    "ICForecastResponse",
-    "ICForecastUpdate",
+    "ForecastResponse",
+    "ForecastUpdate",
     # admin
     "ActionLogItem",
     "ActionSummary",

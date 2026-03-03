@@ -379,18 +379,24 @@ def _build_context(accounts: list[dict]) -> str:
 # ── Public API ───────────────────────────────────────────────────────
 
 
-def query(user_message: str, history: list[dict] | None = None) -> str:
+def query(
+    user_message: str,
+    history: list[dict] | None = None,
+    visible_user_ids: set[str] | None = None,
+) -> str:
     """Process a natural language query about the pipeline.
 
     Args:
         user_message: The user's question.
         history: Previous messages as [{"role": "user"|"assistant", "content": str}].
                  Should NOT include the current user_message.
+        visible_user_ids: If provided, restrict context to accounts owned by
+                          these user IDs (role-based scoping).
 
     Returns:
         The LLM's answer as a string.
     """
-    accounts = list_accounts()
+    accounts = list_accounts(visible_user_ids=visible_user_ids)
     context = _build_context(accounts)
 
     # Early return if no pipeline data to query
@@ -422,6 +428,7 @@ def query(user_message: str, history: list[dict] | None = None) -> str:
         with client.messages.stream(
             model=MODEL_CHAT,
             max_tokens=6000,
+            temperature=0.2,
             system=SYSTEM_PROMPT,
             messages=messages,
         ) as stream:
