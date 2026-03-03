@@ -38,13 +38,13 @@ function Chip({
         'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
         active
           ? `${colorClass} text-white shadow-sm`
-          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          : 'bg-muted/50 text-muted-foreground border border-border hover:bg-brand-500/8 hover:border-brand-500/30'
       )}
     >
       {label}
       <span className={cn(
         'inline-flex items-center justify-center rounded-full px-1.5 text-[10px] font-semibold min-w-[20px]',
-        active ? 'bg-white/20 text-white' : 'bg-background text-foreground'
+        active ? 'bg-white/20 text-white' : 'bg-background/50 text-foreground'
       )}>
         {count}
       </span>
