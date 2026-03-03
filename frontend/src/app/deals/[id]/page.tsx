@@ -24,6 +24,12 @@ import { DeltaBadge } from '@/components/delta-badge';
 import { WhatChangedCard } from '@/components/what-changed-card';
 import { ScoreFeedbackDialog } from '@/components/score-feedback-dialog';
 import type { AgentAnalysis, HealthBreakdownEntry } from '@/components/agent-card';
+import { usePermissions } from '@/lib/permissions';
+import { VPBrief } from '@/components/vp-brief';
+import { KeyMetricsRow } from '@/components/key-metrics-row';
+import { DealNarrative } from '@/components/deal-narrative';
+import { KeyFindings } from '@/components/key-findings';
+import { RepActionPlan } from '@/components/rep-action-plan';
 
 // ---------------------------------------------------------------------------
 // Types for the account detail response
@@ -77,6 +83,15 @@ interface Assessment {
   stage_gap_magnitude: number | null;
   forecast_gap_direction: string | null;
   sf_gap_interpretation: string | null;
+  manager_brief: string | null;
+  attention_level: string | null;
+  deal_memo_sections: Array<{
+    section_id: string;
+    title: string;
+    content: string;
+    health_signal: string;
+    related_components: string[];
+  }>;
 }
 
 interface AccountDetail {
@@ -161,20 +176,29 @@ function formatDuration(minutes: number | null): string {
 // Widget visibility helpers
 // ---------------------------------------------------------------------------
 
-function getVisibleWidgets(prefs: WidgetConfig[] | undefined): string[] {
-  if (!prefs) {
+function getVisibleWidgets(prefs: WidgetConfig[] | undefined, vpMode: boolean): string[] {
+  if (prefs) {
+    return prefs
+      .filter((w) => w.visible)
+      .sort((a, b) => a.order - b.order)
+      .map((w) => w.id);
+  }
+
+  if (vpMode) {
     return [
-      'status_strip', 'call_timeline', 'what_changed', 'deal_memo',
-      'manager_actions', 'health_breakdown', 'actions_risks',
-      'positive_contradictions', 'forecast_divergence', 'key_unknowns',
-      'forecast_rationale', 'sf_gap', 'agent_analyses', 'deal_timeline',
-      'analysis_history', 'transcript_list',
+      'status_strip', 'vp_brief', 'what_changed', 'key_metrics',
+      'deal_memo', 'health_breakdown', 'actions_risks',
+      'agent_analyses', 'deal_timeline', 'analysis_history',
     ];
   }
-  return prefs
-    .filter((w) => w.visible)
-    .sort((a, b) => a.order - b.order)
-    .map((w) => w.id);
+
+  return [
+    'status_strip', 'deal_narrative', 'key_findings', 'what_changed',
+    'rep_action_plan', 'health_breakdown', 'actions_risks',
+    'positive_contradictions', 'forecast_divergence', 'key_unknowns',
+    'forecast_rationale', 'sf_gap', 'agent_analyses', 'deal_timeline',
+    'analysis_history', 'transcript_list',
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -512,6 +536,7 @@ export default function DealDetailPage({
 
   // Widget preferences
   const { data: widgetPrefs } = useDealPageWidgets();
+  const { isVpOrAbove } = usePermissions();
 
   // Loading state
   if (isLoading) {
@@ -647,6 +672,40 @@ export default function DealDetailPage({
         return <AnalysisHistorySection key={widgetId} accountId={id} />;
       case 'transcript_list':
         return <TranscriptListSection key={widgetId} transcripts={account.transcripts ?? []} />;
+      case 'vp_brief':
+        return assessment ? (
+          <VPBrief
+            key={widgetId}
+            brief={assessment.manager_brief}
+            attentionLevel={assessment.attention_level}
+            fallbackMemo={assessment.deal_memo}
+          />
+        ) : null;
+      case 'key_metrics':
+        return assessment ? (
+          <KeyMetricsRow
+            key={widgetId}
+            topRisk={assessment.top_risks?.[0] ?? null}
+            topAction={assessment.recommended_actions?.[0] ?? null}
+            keyUnknown={assessment.key_unknowns?.[0] ?? null}
+          />
+        ) : null;
+      case 'deal_narrative':
+        return assessment ? (
+          <DealNarrative
+            key={widgetId}
+            memo={assessment.deal_memo}
+            sections={assessment.deal_memo_sections ?? []}
+          />
+        ) : null;
+      case 'key_findings':
+        return assessment ? (
+          <KeyFindings key={widgetId} agents={agentList} />
+        ) : null;
+      case 'rep_action_plan':
+        return assessment ? (
+          <RepActionPlan key={widgetId} actions={assessment.recommended_actions ?? []} />
+        ) : null;
       default:
         return null;
     }
@@ -787,7 +846,7 @@ export default function DealDetailPage({
 
       {/* ---- Dynamic widget layout ---- */}
       {!assessment && <NoAssessmentState accountName={account.account_name} />}
-      {getVisibleWidgets(widgetPrefs).map((widgetId) => renderWidget(widgetId))}
+      {getVisibleWidgets(widgetPrefs, isVpOrAbove).map((widgetId) => renderWidget(widgetId))}
     </div>
   );
 }
