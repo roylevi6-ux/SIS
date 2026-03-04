@@ -42,10 +42,10 @@ class TestLogAction:
         assert rows[0].user_name == "tester"
 
     def test_log_action_with_metadata(self, action_log_session):
-        from sis.services.user_action_log_service import log_action, ACTION_IC_FORECAST
+        from sis.services.user_action_log_service import log_action, ACTION_FORECAST_SET
         session = action_log_session
         log_action(
-            ACTION_IC_FORECAST,
+            ACTION_FORECAST_SET,
             action_detail="Set forecast",
             metadata={"old": "Realistic", "new": "Commit"},
         )
@@ -121,8 +121,8 @@ class TestGetActionLogs:
 
     def test_get_action_logs_metadata_parsed(self, action_log_session):
         from sis.services.user_action_log_service import log_action, get_action_logs
-        from sis.services.user_action_log_service import ACTION_IC_FORECAST
-        log_action(ACTION_IC_FORECAST, metadata={"key": "val"})
+        from sis.services.user_action_log_service import ACTION_FORECAST_SET
+        log_action(ACTION_FORECAST_SET, metadata={"key": "val"})
         logs = get_action_logs(days=30)
         assert logs[0]["metadata"] == {"key": "val"}
 
