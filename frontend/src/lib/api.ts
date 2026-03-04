@@ -14,6 +14,10 @@ import type {
   CoachingNote,
   CoachingSummary,
   CROMetric,
+  DealContextEntryInput,
+  DealContextQuestion,
+  DealContextResponse,
+  DealContextUpsert,
   DealHealthResponse,
   DealTrend,
   DeltaResponse,
@@ -287,6 +291,17 @@ export const api = {
       apiFetch<any>('/api/users/', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: { name?: string; role?: string; team_id?: string; is_active?: boolean }) =>
       apiFetch<any>(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  },
+  dealContext: {
+    upsert: (data: DealContextUpsert) =>
+      apiFetch<{ account_id: string; entries: DealContextEntryInput[] }>('/api/deal-context/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    get: (accountId: string) =>
+      apiFetch<DealContextResponse>(`/api/deal-context/${accountId}`),
+    questions: () =>
+      apiFetch<Record<string, DealContextQuestion>>('/api/deal-context/questions'),
   },
 };
 

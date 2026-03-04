@@ -1,6 +1,7 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle, Zap, ChevronRight } from 'lucide-react';
 import { useAccount } from '@/lib/hooks/use-accounts';
@@ -29,6 +30,7 @@ import { KeyMetricsRow } from '@/components/key-metrics-row';
 import { DealNarrative } from '@/components/deal-narrative';
 import { KeyFindings } from '@/components/key-findings';
 import { RepActionPlan } from '@/components/rep-action-plan';
+import { DealContextForm } from '@/components/deal-context-form';
 import {
   Collapsible,
   CollapsibleContent,
@@ -192,7 +194,7 @@ function getVisibleWidgets(prefs: WidgetConfig[] | undefined, _vpMode: boolean):
 
   // Fallback order (both VP and non-VP use the same consolidated layout)
   return [
-    'status_strip', 'call_timeline', 'what_changed',
+    'status_strip', 'call_timeline', 'what_changed', 'deal_context',
     'vp_brief', 'rep_action_plan', 'deal_narrative',
     'health_breakdown', 'sf_gap', 'agent_analyses',
     'deal_timeline', 'analysis_history', 'transcript_list',
@@ -570,6 +572,7 @@ export default function DealDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const router = useRouter();
   const { id } = use(params);
   const { data, isLoading, isError, error } = useAccount(id);
   const account = data as AccountDetail | undefined;
@@ -586,6 +589,11 @@ export default function DealDetailPage({
   // Widget preferences
   const { data: widgetPrefs } = useDealPageWidgets();
   const { isVpOrAbove } = usePermissions();
+
+  // Navigate to the analyze page pre-selected on this account
+  const onAnalysisRequest = useCallback(() => {
+    router.push(`/analyze?account_id=${id}`);
+  }, [router, id]);
 
   // Loading state
   if (isLoading) {
@@ -635,6 +643,14 @@ export default function DealDetailPage({
           <CollapsibleWidget key={widgetId} title="What Changed">
             <WhatChangedCard accountId={id} />
           </CollapsibleWidget>
+        );
+      case 'deal_context':
+        return (
+          <DealContextForm
+            key={widgetId}
+            accountId={id}
+            onAnalysisRequest={onAnalysisRequest}
+          />
         );
       case 'deal_memo':
         return assessment ? <DealMemo key={widgetId} memo={assessment.deal_memo} /> : null;
