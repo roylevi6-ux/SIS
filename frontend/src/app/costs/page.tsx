@@ -93,8 +93,9 @@ function DailyChart({ byDay }: { byDay: Record<string, number> }) {
             <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
             <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
             <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 6 }}
-              labelStyle={{ fontWeight: 600 }}
+              contentStyle={{ fontSize: 12, borderRadius: 8, backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
+              labelStyle={{ fontWeight: 600, color: 'var(--foreground)' }}
+              itemStyle={{ color: 'var(--muted-foreground)' }}
             />
             <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} />
           </BarChart>

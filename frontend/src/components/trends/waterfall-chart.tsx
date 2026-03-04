@@ -29,7 +29,12 @@ export function WaterfallChart({ data }: WaterfallChartProps) {
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         <XAxis dataKey="name" className="text-xs" />
         <YAxis tickFormatter={formatValue} className="text-xs" />
-        <Tooltip formatter={(v: number | undefined) => (v !== undefined ? formatValue(v) : '--')} />
+        <Tooltip
+          formatter={(v: number | undefined) => (v !== undefined ? formatValue(v) : '--')}
+          contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+          labelStyle={{ color: 'var(--foreground)' }}
+          itemStyle={{ color: 'var(--muted-foreground)' }}
+        />
         <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={false}>
           {items.map((item, idx) => (
             <Cell key={idx} fill={item.color} />

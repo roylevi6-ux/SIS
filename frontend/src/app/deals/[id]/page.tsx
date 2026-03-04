@@ -776,7 +776,7 @@ export default function DealDetailPage({
   return (
     <div className="p-6 space-y-6">
       {/* ---- Header ---- */}
-      <div>
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b pb-3 -mx-6 px-6">
         <Link
           href="/pipeline"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3"

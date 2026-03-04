@@ -107,7 +107,11 @@ export function TeamComparisonTab({ weeks }: { weeks: number }) {
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis type="number" className="text-xs" />
               <YAxis type="category" dataKey="team_name" className="text-xs" width={140} tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                labelStyle={{ color: 'var(--foreground)' }}
+                itemStyle={{ color: 'var(--muted-foreground)' }}
+              />
               <Legend />
               <Bar dataKey="improving" name="Improving" stackId="a" fill="#22c55e" isAnimationActive={false} />
               <Bar dataKey="stable" name="Stable" stackId="a" fill="#94a3b8" isAnimationActive={false} />

@@ -85,7 +85,11 @@ export function PipelineFlowTab({ weeks }: { weeks: number }) {
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="week" className="text-xs" />
               <YAxis className="text-xs" />
-              <Tooltip />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                labelStyle={{ color: 'var(--foreground)' }}
+                itemStyle={{ color: 'var(--muted-foreground)' }}
+              />
               <ReferenceLine y={1} stroke="#ef4444" strokeDasharray="5 5" label="1x" />
               <ReferenceLine y={3} stroke="#22c55e" strokeDasharray="5 5" label="3x" />
               <Line
@@ -110,7 +114,12 @@ export function PipelineFlowTab({ weeks }: { weeks: number }) {
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="week" className="text-xs" />
               <YAxis tickFormatter={formatValue} className="text-xs" />
-              <Tooltip formatter={(v) => formatValue(v as number)} />
+              <Tooltip
+                formatter={(v) => formatValue(v as number)}
+                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                labelStyle={{ color: 'var(--foreground)' }}
+                itemStyle={{ color: 'var(--muted-foreground)' }}
+              />
               <Area type="monotone" dataKey="commit" stackId="1" fill="#22c55e" stroke="#22c55e" isAnimationActive={false} />
               <Area type="monotone" dataKey="realistic" stackId="1" fill="#3b82f6" stroke="#3b82f6" isAnimationActive={false} />
               <Area type="monotone" dataKey="upside" stackId="1" fill="#f59e0b" stroke="#f59e0b" isAnimationActive={false} />

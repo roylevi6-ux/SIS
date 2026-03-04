@@ -23,7 +23,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
           'max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap',
           isUser
             ? 'bg-primary text-primary-foreground rounded-br-sm'
-            : 'bg-muted text-foreground rounded-bl-sm',
+            : 'bg-card text-foreground rounded-bl-sm',
         )}
       >
         {content}

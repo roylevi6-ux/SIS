@@ -71,7 +71,11 @@ export function VelocityTab({ weeks }: { weeks: number }) {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="stage_name" className="text-xs" />
                 <YAxis className="text-xs" />
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                  labelStyle={{ color: 'var(--foreground)' }}
+                  itemStyle={{ color: 'var(--muted-foreground)' }}
+                />
                 <Legend />
                 <Bar dataKey="avg_days" name="Avg Days" fill="#3b82f6" isAnimationActive={false} />
                 <Bar dataKey="median_days" name="Median Days" fill="#94a3b8" isAnimationActive={false} />
