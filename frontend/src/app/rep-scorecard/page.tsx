@@ -243,7 +243,9 @@ export default function RepScorecardPage() {
                   />
                 ))}
                 <Tooltip
-                  contentStyle={{ fontSize: '12px', borderRadius: '6px' }}
+                  contentStyle={{ fontSize: '12px', borderRadius: '8px', backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
+                  labelStyle={{ color: 'var(--foreground)' }}
+                  itemStyle={{ color: 'var(--muted-foreground)' }}
                   formatter={(value: number | undefined) =>
                     value !== undefined ? [Math.round(value), ''] : ['--', '']
                   }

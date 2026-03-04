@@ -151,7 +151,7 @@ function NavGroupSection({
       <CollapsibleTrigger
         className={cn(
           'flex min-h-[44px] w-full items-center justify-between px-3 py-2',
-          'text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60',
+          'text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60',
           'hover:text-sidebar-foreground/80 transition-colors'
         )}
       >

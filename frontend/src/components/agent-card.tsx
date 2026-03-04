@@ -104,7 +104,7 @@ export function AgentCard({ analysis, healthBreakdown }: AgentCardProps) {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="py-0 overflow-hidden">
+      <Card className="py-0 overflow-hidden border-l-2 border-l-brand-500/40">
         <CollapsibleTrigger className="w-full text-left">
           <div className="flex items-center justify-between px-4 py-3 hover:bg-brand-500/8 transition-colors">
             <div className="flex items-center gap-3">

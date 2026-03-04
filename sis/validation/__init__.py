@@ -152,47 +152,6 @@ def validate_synthesis_output(
         except Exception as e:
             logger.warning("Failed to run NEVER rules: %s", e)
 
-    # Check 7b: Enforce health score ceilings (stage-gated: champion=75 at S3+, EB=80 at S4+)
-    health = synthesis_output.get("health_score")
-    inferred_stage = synthesis_output.get("inferred_stage", 7)
-    if health is not None and isinstance(health, (int, float)) and agent_outputs:
-        original_health = health
-
-        # Champion ceiling: no champion -> cap at 75 (only at S3+)
-        if inferred_stage >= 3:
-            agent2 = agent_outputs.get("agent_2", {})
-            a2_findings = agent2.get("findings", {})
-            champion = a2_findings.get("champion")
-            if isinstance(champion, dict):
-                champion_ok = champion.get("identified", False)
-            else:
-                champion_ok = a2_findings.get("champion_identified", False)
-
-            if not champion_ok and health > 75:
-                synthesis_output["health_score"] = 75
-                health = 75
-                warnings.append(
-                    f"CEILING_CHAMPION: Health capped {original_health} -> 75 "
-                    f"(no champion identified, stage {inferred_stage})"
-                )
-
-        # EB ceiling: no direct EB engagement -> cap at 80 (only at S4+)
-        if inferred_stage >= 4:
-            agent6 = agent_outputs.get("agent_6", {})
-            a6_findings = agent6.get("findings", {})
-            eb_confirmed = a6_findings.get("eb_confirmed", a6_findings.get("eb_identified", False))
-            eb_engagement = a6_findings.get("eb_engagement", "")
-            eb_engaged = eb_engagement == "Direct" if eb_engagement else a6_findings.get(
-                "eb_directly_engaged", False
-            )
-
-            if (not eb_confirmed or not eb_engaged) and health > 80:
-                synthesis_output["health_score"] = 80
-                warnings.append(
-                    f"CEILING_EB: Health capped {health} -> 80 "
-                    f"(no direct EB engagement, stage {inferred_stage})"
-                )
-
     # Check 8: Deal memo minimum length
     memo = synthesis_output.get("deal_memo", "")
     if isinstance(memo, str) and len(memo) < 100:
