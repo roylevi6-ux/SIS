@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -114,7 +115,26 @@ class TestValidateDrivePath:
         assert "not a directory" in msg
 
 
+@pytest.fixture(autouse=False)
+def mock_list_accounts():
+    """Patch list_accounts to return an empty list so tests don't need a live DB."""
+    with patch(
+        "sis.services.gdrive_service._enrich_accounts_with_db_status",
+        lambda accounts, root: [
+            acct.update(
+                {"new_count": acct["call_count"], "db_account_id": None, "has_active_analysis": False}
+            )
+            for acct in accounts
+        ],
+    ):
+        yield
+
+
 class TestListAccountFolders:
+    @pytest.fixture(autouse=True)
+    def _patch_db(self, mock_list_accounts):
+        """Apply the DB mock to every test in this class."""
+
     def test_lists_accounts(self, mock_drive_folder: Path):
         accounts = list_account_folders(str(mock_drive_folder))
         assert len(accounts) == 2
@@ -142,6 +162,14 @@ class TestListAccountFolders:
     def test_nonexistent_raises(self, tmp_path: Path):
         with pytest.raises(FileNotFoundError):
             list_account_folders(str(tmp_path / "nope"))
+
+    def test_enriched_fields_present(self, mock_drive_folder: Path):
+        """Each account dict includes new_count, db_account_id, has_active_analysis."""
+        accounts = list_account_folders(str(mock_drive_folder))
+        for acct in accounts:
+            assert "new_count" in acct
+            assert "db_account_id" in acct
+            assert "has_active_analysis" in acct
 
 
 class TestGetRecentCallsInfo:
