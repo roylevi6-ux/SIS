@@ -123,6 +123,7 @@ class Account(Base):
     analysis_runs = relationship("AnalysisRun", back_populates="account", order_by="AnalysisRun.started_at.desc()")
     deal_assessments = relationship("DealAssessment", back_populates="account", order_by="DealAssessment.created_at.desc()")
     coaching_entries = relationship("CoachingEntry", back_populates="account")
+    deal_context_entries = relationship("DealContextEntry", back_populates="account")
 
 
 # ─── transcripts ────────────────────────────────────────────────────────
@@ -466,4 +467,29 @@ class Quota(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "period", name="uq_quota_user_period"),
+    )
+
+
+# --- deal_context_entries -------------------------------------------------------
+
+
+class DealContextEntry(Base):
+    __tablename__ = "deal_context_entries"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    account_id = Column(Text, ForeignKey("accounts.id"), nullable=False)
+    author_id = Column(Text, ForeignKey("users.id"), nullable=False)
+    question_id = Column(Integer, nullable=False)
+    response_text = Column(Text, nullable=False)
+    superseded_by = Column(Text, ForeignKey("deal_context_entries.id"), nullable=True)
+    is_active = Column(Integer, default=1)
+    created_at = Column(Text, nullable=False, default=_now)
+
+    # Relationships
+    account = relationship("Account", back_populates="deal_context_entries")
+    author = relationship("User")
+
+    __table_args__ = (
+        Index("ix_deal_context_account_question", "account_id", "question_id", "created_at"),
+        Index("ix_deal_context_account_latest", "account_id", "created_at"),
     )
