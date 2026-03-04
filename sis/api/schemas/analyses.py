@@ -99,6 +99,7 @@ class BatchItemRequest(BaseModel):
     deal_type: Optional[str] = None
     cp_estimate: Optional[float] = None
     owner_id: Optional[str] = None
+    buying_culture: str = "direct"
     sf_stage: Optional[int] = None
     sf_forecast_category: Optional[str] = None
     sf_close_quarter: Optional[str] = None

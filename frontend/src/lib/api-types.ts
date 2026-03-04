@@ -420,6 +420,7 @@ export interface BatchItemRequest {
   deal_type?: string;
   cp_estimate?: number;
   owner_id?: string;
+  buying_culture?: string;
   sf_stage?: number;
   sf_forecast_category?: string;
   sf_close_quarter?: string;
