@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BatchAnalysisResponse } from '@/lib/api-types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Terminal statuses that indicate no further SSE events will arrive.
 const TERMINAL_STATUSES = new Set([

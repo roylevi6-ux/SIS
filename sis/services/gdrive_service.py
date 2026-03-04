@@ -83,12 +83,15 @@ def _get_meta_files(directory: Path, account_name: str | None = None) -> list[Pa
 
 
 def _group_by_account(meta_files: list[Path]) -> dict[str, list[Path]]:
-    """Group metadata files by account name extracted from filenames."""
+    """Group metadata files by account name extracted from filenames.
+
+    Uses lowercase normalization so 'Uphold' and 'uphold' merge into one group.
+    """
     groups: dict[str, list[Path]] = {}
     for f in meta_files:
         account = _extract_account_name(f.name)
         if account:
-            groups.setdefault(account, []).append(f)
+            groups.setdefault(account.lower(), []).append(f)
     return groups
 
 
@@ -177,8 +180,11 @@ def list_account_folders(drive_path: str) -> list[dict]:
 def _enrich_accounts_with_db_status(accounts: list[dict], root: Path) -> None:
     """Mutate each account dict to add new_count, db_account_id, has_active_analysis.
 
-    Compares the gong_call_ids found in local metadata files against the DB to
-    determine how many calls have not yet been imported.
+    new_count only counts unimported calls that are NEWER than the oldest
+    active (analyzed) call.  Older unimported calls are ignored — they don't
+    represent fresh intelligence the user hasn't seen.
+
+    For accounts not yet in the DB, all calls count as new.
 
     Degrades gracefully if the DB is unavailable — all enrichment fields fall
     back to safe defaults (new_count = call_count, no db link).
@@ -218,7 +224,7 @@ def _enrich_accounts_with_db_status(accounts: list[dict], root: Path) -> None:
         acct["db_account_id"] = db_match["id"]
         acct["has_active_analysis"] = db_match.get("health_score") is not None
 
-        # Collect gong_call_ids from local metadata files
+        # Collect gong_call_ids + dates from local metadata files
         try:
             if flat:
                 meta_files = _get_meta_files(root, account_name=acct["name"])
@@ -226,24 +232,42 @@ def _enrich_accounts_with_db_status(accounts: list[dict], root: Path) -> None:
                 account_dir = Path(acct["path"])
                 meta_files = _get_meta_files(account_dir)
 
-            gong_ids: list[str] = []
+            # gong_id → date extracted from filename
+            call_dates: dict[str, str] = {}
             for mf in meta_files:
                 try:
                     with open(mf) as fh:
                         data = _json.load(fh)
-                    gong_id = data.get("metaData", {}).get("id")
+                    gong_id = str(data.get("metadata", {}).get("call_id", "")) or None
                     if gong_id:
-                        gong_ids.append(gong_id)
+                        date_match = _DATE_RE.search(mf.name)
+                        call_dates[gong_id] = date_match.group(1) if date_match else "0000-00-00"
                 except Exception:
                     logger.warning("Failed to read gong_call_id from %s", mf.name)
 
-            if not gong_ids:
+            if not call_dates:
                 acct["new_count"] = 0
                 continue
 
-            db_lookup = get_transcripts_by_gong_ids(acct["db_account_id"], gong_ids)
+            db_lookup = get_transcripts_by_gong_ids(acct["db_account_id"], list(call_dates.keys()))
             imported_ids = set(db_lookup.keys())
-            acct["new_count"] = sum(1 for gid in gong_ids if gid not in imported_ids)
+
+            # Find the oldest active call date as the cutoff.
+            # Only unimported calls newer than this cutoff count as "new".
+            active_dates = [
+                info["call_date"] for info in db_lookup.values()
+                if info["is_active"] and info["call_date"]
+            ]
+
+            if active_dates:
+                cutoff = min(active_dates)
+                acct["new_count"] = sum(
+                    1 for gid, date in call_dates.items()
+                    if gid not in imported_ids and date > cutoff
+                )
+            else:
+                # No active analysis yet — all unimported calls are new
+                acct["new_count"] = sum(1 for gid in call_dates if gid not in imported_ids)
 
         except Exception:
             logger.warning(
@@ -303,14 +327,15 @@ def get_recent_calls_info(
 
     all_json = list(account_dir.glob("*.json"))
 
-    # Filter by account name if provided (flat layout)
+    # Filter by account name if provided (flat layout, case-insensitive)
     if account_name:
+        target = account_name.lower()
         all_json = [
             f for f in all_json
-            if _extract_account_name(f.name) == account_name
-            or _extract_account_name(
+            if (_extract_account_name(f.name) or "").lower() == target
+            or (_extract_account_name(
                 f.name.replace("-transcript.json", ".json").replace("_transcript.json", ".json")
-            ) == account_name
+            ) or "").lower() == target
         ]
 
     meta_files = [
@@ -382,14 +407,15 @@ def get_all_calls_with_status(
 
     all_json = list(account_dir.glob("*.json"))
 
-    # Filter by account name if provided (flat layout)
+    # Filter by account name if provided (flat layout, case-insensitive)
     if account_name:
+        target = account_name.lower()
         all_json = [
             f for f in all_json
-            if _extract_account_name(f.name) == account_name
-            or _extract_account_name(
+            if (_extract_account_name(f.name) or "").lower() == target
+            or (_extract_account_name(
                 f.name.replace("-transcript.json", ".json").replace("_transcript.json", ".json")
-            ) == account_name
+            ) or "").lower() == target
         ]
 
     meta_files = [
@@ -409,7 +435,7 @@ def get_all_calls_with_status(
         try:
             with open(mf) as fh:
                 meta_data = _json.load(fh)
-            gong_call_id = meta_data.get("metaData", {}).get("id")
+            gong_call_id = str(meta_data.get("metadata", {}).get("call_id", "")) or None
         except Exception:
             logger.warning("Failed to read metadata from %s", mf.name)
 

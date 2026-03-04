@@ -54,7 +54,7 @@ interface AnalysisProgressDetailProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 function formatElapsed(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
