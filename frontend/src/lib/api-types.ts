@@ -637,3 +637,40 @@ export interface TeamComparisonResponse {
   benchmark_table: TeamBenchmark[];
   momentum_distribution: TeamMomentum[];
 }
+
+// ── Deal Context ──
+export interface DealContextEntryInput {
+  question_id: number;
+  response_text: string;
+}
+
+export interface DealContextUpsert {
+  account_id: string;
+  entries: DealContextEntryInput[];
+}
+
+export interface DealContextEntry {
+  id: string;
+  question_id: number;
+  response_text: string;
+  author: string;
+  author_id: string;
+  created_at: string;
+  is_current: boolean;
+}
+
+export interface DealContextResponse {
+  current: Record<string, DealContextEntry>;
+  history: DealContextEntry[];
+}
+
+export interface DealContextQuestion {
+  label: string;
+  category: string;
+  input_type: string;
+  options?: string[];
+  scale_min?: number;
+  scale_max?: number;
+  max_chars?: number;
+  change_categories?: string[];
+}
