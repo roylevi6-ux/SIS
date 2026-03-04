@@ -136,6 +136,29 @@ def transcript_exists(account_id: str, gong_call_id: str) -> bool:
         ) is not None
 
 
+def get_transcripts_by_gong_ids(account_id: str, gong_call_ids: list[str]) -> dict[str, dict]:
+    """Look up transcripts by gong_call_id for an account.
+
+    Returns:
+        Dict mapping gong_call_id → {"is_active": bool} for each found transcript.
+    """
+    if not gong_call_ids:
+        return {}
+    with get_session() as session:
+        rows = (
+            session.query(Transcript.gong_call_id, Transcript.is_active)
+            .filter(
+                Transcript.account_id == account_id,
+                Transcript.gong_call_id.in_(gong_call_ids),
+            )
+            .all()
+        )
+        return {
+            row.gong_call_id: {"is_active": bool(row.is_active)}
+            for row in rows
+        }
+
+
 def _enforce_active_limit(session, account_id: str) -> None:
     """Keep only the N most recent transcripts active (by call_date).
 

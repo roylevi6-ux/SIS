@@ -268,6 +268,101 @@ def get_recent_calls_info(
     return calls[:max_calls]
 
 
+def get_all_calls_with_status(
+    account_path: str,
+    db_account_id: str | None,
+    account_name: str | None = None,
+) -> dict:
+    """Get ALL calls for an account with their DB import status.
+
+    Cross-references drive folder contents against the Transcript table.
+
+    Args:
+        account_path: Path to account folder (nested) or root folder (flat).
+        db_account_id: SIS account UUID, or None if account not in DB.
+        account_name: Required for flat layout to filter by account.
+
+    Returns:
+        {"calls": [{"date", "title", "gong_call_id", "has_transcript", "status"}, ...]}
+        Status is "new", "active", or "imported". Sorted by date descending.
+    """
+    import json as _json
+
+    account_dir = Path(account_path)
+    if not account_dir.exists():
+        return {"calls": []}
+
+    all_json = list(account_dir.glob("*.json"))
+
+    # Filter by account name if provided (flat layout)
+    if account_name:
+        all_json = [
+            f for f in all_json
+            if _extract_account_name(f.name) == account_name
+            or _extract_account_name(
+                f.name.replace("-transcript.json", ".json").replace("_transcript.json", ".json")
+            ) == account_name
+        ]
+
+    meta_files = [
+        f for f in all_json
+        if not _is_transcript(f.name) and not _is_gdrive_duplicate(f.name)
+    ]
+    transcript_names = {f.name for f in all_json if _is_transcript(f.name)}
+
+    # Build call list with gong_call_id from metadata JSON
+    calls = []
+    for mf in meta_files:
+        date_match = _DATE_RE.search(mf.name)
+        call_date = date_match.group(1) if date_match else "0000-00-00"
+
+        # Read gong_call_id from metadata file
+        gong_call_id = None
+        try:
+            with open(mf) as fh:
+                meta_data = _json.load(fh)
+            gong_call_id = meta_data.get("metaData", {}).get("id")
+        except Exception:
+            logger.warning("Failed to read metadata from %s", mf.name)
+
+        # Check for companion transcript file
+        stem = mf.stem
+        has_transcript = any(
+            t.startswith(f"{stem}-transcript") or t.startswith(f"{stem}_transcript")
+            for t in transcript_names
+        )
+
+        # Title extraction (same logic as get_recent_calls_info)
+        title = mf.name
+        title_match = re.match(r"gong_call-.+?-\d{4}-\d{2}-\d{2}-(.*?)\.json$", title)
+        if not title_match:
+            title_match = re.match(r"gong_call_\d{4}-\d{2}-\d{2}_\d+_(.*?)\.json$", title)
+        if title_match:
+            title = title_match.group(1).replace("_", " ").replace("-", " ")
+
+        calls.append({
+            "date": call_date,
+            "title": title,
+            "gong_call_id": gong_call_id,
+            "has_transcript": has_transcript,
+            "status": "new",
+        })
+
+    # Cross-reference with DB if account exists
+    if db_account_id:
+        gong_ids = [c["gong_call_id"] for c in calls if c["gong_call_id"]]
+        if gong_ids:
+            from sis.services.transcript_service import get_transcripts_by_gong_ids
+            db_lookup = get_transcripts_by_gong_ids(db_account_id, gong_ids)
+            for call in calls:
+                if call["gong_call_id"] in db_lookup:
+                    info = db_lookup[call["gong_call_id"]]
+                    call["status"] = "active" if info["is_active"] else "imported"
+
+    calls.sort(key=lambda c: c["date"], reverse=True)
+    return {"calls": calls}
+
+
 def download_and_parse_calls(
     account_path: str, max_calls: int = 5, account_name: str | None = None
 ) -> list:
