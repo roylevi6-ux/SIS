@@ -362,7 +362,6 @@ function AccountDetailPanel({
 
   const configComplete =
     dealConfig.dealType !== '' &&
-    dealConfig.ownerId !== '' &&
     dealConfig.sfStage !== '' &&
     dealConfig.sfForecast !== '' &&
     dealConfig.sfCloseQuarter !== '' &&
