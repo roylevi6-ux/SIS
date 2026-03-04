@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, MessageSquarePlus, AlertTriangle, Zap, ChevronRight } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Zap, ChevronRight } from 'lucide-react';
 import { useAccount } from '@/lib/hooks/use-accounts';
 import { useAnalysisHistory, useAgentAnalyses, useAssessmentDelta } from '@/lib/hooks/use-analyses';
 import { useDealPageWidgets, type WidgetConfig } from '@/lib/hooks/use-preferences';
@@ -22,7 +22,6 @@ import { DealTimeline } from '@/components/deal-timeline';
 import { CallTimeline } from '@/components/call-timeline';
 import { DeltaBadge } from '@/components/delta-badge';
 import { WhatChangedCard } from '@/components/what-changed-card';
-import { ScoreFeedbackDialog } from '@/components/score-feedback-dialog';
 import type { AgentAnalysis, HealthBreakdownEntry } from '@/components/agent-card';
 import { usePermissions } from '@/lib/permissions';
 import { VPBrief } from '@/components/vp-brief';
@@ -574,7 +573,6 @@ export default function DealDetailPage({
   const { id } = use(params);
   const { data, isLoading, isError, error } = useAccount(id);
   const account = data as AccountDetail | undefined;
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { data: deltaData } = useAssessmentDelta(id);
   const deltaFields = deltaData?.fields as Record<string, { previous: unknown; current: unknown; changed: boolean; delta?: number }> | undefined;
 
@@ -888,24 +886,6 @@ export default function DealDetailPage({
             </div>
           </div>
 
-          {/* Feedback button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setFeedbackOpen(true)}
-          >
-            <MessageSquarePlus className="size-4" />
-            Give Feedback
-          </Button>
-
-          {/* Feedback dialog */}
-          <ScoreFeedbackDialog
-            open={feedbackOpen}
-            onOpenChange={setFeedbackOpen}
-            accountId={id}
-            assessmentId={assessment?.id ?? ''}
-            currentHealthScore={assessment?.health_score ?? 0}
-          />
         </div>
       </div>
 

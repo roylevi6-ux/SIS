@@ -122,7 +122,6 @@ class Account(Base):
     transcripts = relationship("Transcript", back_populates="account", order_by="Transcript.call_date.desc()")
     analysis_runs = relationship("AnalysisRun", back_populates="account", order_by="AnalysisRun.started_at.desc()")
     deal_assessments = relationship("DealAssessment", back_populates="account", order_by="DealAssessment.created_at.desc()")
-    score_feedback = relationship("ScoreFeedback", back_populates="account")
     coaching_entries = relationship("CoachingEntry", back_populates="account")
 
 
@@ -293,45 +292,10 @@ class DealAssessment(Base):
     # Relationships
     analysis_run = relationship("AnalysisRun", back_populates="deal_assessment")
     account = relationship("Account", back_populates="deal_assessments")
-    score_feedback = relationship("ScoreFeedback", back_populates="deal_assessment")
 
     __table_args__ = (
         Index("ix_deal_assessments_account", "account_id", "created_at"),
         UniqueConstraint("analysis_run_id", name="uq_deal_assessment_run"),
-    )
-
-
-# ─── score_feedback ─────────────────────────────────────────────────────
-
-
-class ScoreFeedback(Base):
-    __tablename__ = "score_feedback"
-
-    id = Column(Text, primary_key=True, default=_uuid)
-    account_id = Column(Text, ForeignKey("accounts.id"), nullable=False)
-    deal_assessment_id = Column(Text, ForeignKey("deal_assessments.id"), nullable=False)
-    author = Column(Text, nullable=False)
-    feedback_date = Column(Text, nullable=False, default=_now)
-
-    health_score_at_time = Column(Integer, nullable=False)
-    disagreement_direction = Column(Text, nullable=False)  # too_high / too_low
-    reason_category = Column(Text, nullable=False)  # off_channel / stakeholder_context / stage_mismatch / score_too_high / recent_change / other
-    free_text = Column(Text, nullable=True)
-    off_channel_activity = Column(Integer, default=0)  # boolean
-
-    resolution = Column(Text, default="pending")  # pending / accepted / rejected
-    resolution_notes = Column(Text, nullable=True)
-    resolved_at = Column(Text, nullable=True)
-    resolved_by = Column(Text, nullable=True)
-
-    created_at = Column(Text, nullable=False, default=_now)
-
-    # Relationships
-    account = relationship("Account", back_populates="score_feedback")
-    deal_assessment = relationship("DealAssessment", back_populates="score_feedback")
-
-    __table_args__ = (
-        Index("ix_score_feedback_account", "account_id", "created_at"),
     )
 
 

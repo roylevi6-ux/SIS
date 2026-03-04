@@ -10,7 +10,6 @@ import {
   Upload,
   MessageSquare,
   Calendar,
-  ThumbsUp,
   Settings,
   Code,
   DollarSign,
@@ -92,7 +91,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Team Management', href: '/settings/teams', icon: Users, minRole: 'admin' },
       { label: 'Display Settings', href: '/settings/display', icon: Settings },
-      { label: 'Feedback', href: '/feedback', icon: ThumbsUp, minRole: 'team_lead' },
+
       { label: 'Calibration', href: '/calibration', icon: Settings, minRole: 'admin' },
       { label: 'Prompt Versions', href: '/prompts', icon: Code, minRole: 'admin' },
       { label: 'Costs', href: '/costs', icon: DollarSign, minRole: 'admin' },
