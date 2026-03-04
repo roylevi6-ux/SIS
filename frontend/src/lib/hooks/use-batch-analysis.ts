@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BatchAnalysisResponse } from '@/lib/api-types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+// SSE connections must bypass Next.js rewrite proxy (which buffers streams).
+// Use the direct backend URL for EventSource connections.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SSE_URL || 'http://localhost:8000';
 
 // Terminal statuses that indicate no further SSE events will arrive.
 const TERMINAL_STATUSES = new Set([
