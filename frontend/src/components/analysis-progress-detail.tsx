@@ -54,7 +54,8 @@ interface AnalysisProgressDetailProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+// SSE connections must bypass Next.js rewrite proxy (which buffers streams).
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SSE_URL || 'http://localhost:8000';
 
 function formatElapsed(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
