@@ -48,7 +48,9 @@ class TestLLMClient:
         mock_async_anthropic.return_value = MagicMock()
         instance = LLMClient.get_instance()
 
-        assert instance._async_client is None
+        # Async client is thread-local, not an instance attribute
+        from sis.llm.client import _thread_local
+        assert getattr(_thread_local, "async_client", None) is None
         client = instance.async_client
         assert client is not None
         mock_async_anthropic.assert_called_once()

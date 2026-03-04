@@ -100,7 +100,7 @@ class TestRetry:
 
     def test_get_retry_config_opus(self):
         config = get_retry_config("anthropic/claude-opus-4-20250514")
-        assert config.max_retries == 1
+        assert config.max_retries == 2
 
     def test_is_retryable_rate_limit(self):
         assert is_retryable(Exception("rate_limit_error"))

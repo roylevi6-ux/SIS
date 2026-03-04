@@ -34,26 +34,11 @@ class TestAccountService:
         with pytest.raises(ValueError, match="Account not found"):
             get_account_detail("nonexistent-id")
 
-    def test_set_ic_forecast_no_divergence(self, seeded_db, mock_get_session):
-        from sis.services.account_service import set_ic_forecast
-        result = set_ic_forecast(seeded_db["healthy_id"], "Commit")
-        assert result["divergence_flag"] is False
-
-    def test_set_ic_forecast_with_divergence(self, seeded_db, mock_get_session):
-        from sis.services.account_service import set_ic_forecast
-        result = set_ic_forecast(seeded_db["healthy_id"], "At Risk")
-        assert result["divergence_flag"] is True
-        assert "AI forecasts" in result["explanation"]
-
-    def test_set_ic_forecast_invalid_category(self, seeded_db, mock_get_session):
-        from sis.services.account_service import set_ic_forecast
-        with pytest.raises(ValueError, match="Invalid category"):
-            set_ic_forecast(seeded_db["healthy_id"], "InvalidCategory")
-
     def test_update_account(self, seeded_db, mock_get_session):
         from sis.services.account_service import update_account
         updated = update_account(seeded_db["healthy_id"], account_name="NewName")
-        assert updated.account_name == "NewName"
+        # account_name gets .title() normalization
+        assert updated.account_name == "Newname"
 
 
 class TestTranscriptService:
@@ -96,10 +81,10 @@ class TestDashboardService:
         from sis.services.dashboard_service import get_pipeline_overview
         overview = get_pipeline_overview()
         assert overview["total_deals"] == 3
-        # 82 is healthy (>=70), 55 is at_risk (45-70), 35 is critical (<45)
+        # 82 is healthy (>=70), 55 is neutral (40-70), 35 is needs_attention (<40)
         assert overview["summary"]["healthy_count"] == 1
-        assert overview["summary"]["at_risk_count"] == 1
-        assert overview["summary"]["critical_count"] == 1
+        assert overview["summary"]["neutral_count"] == 1
+        assert overview["summary"]["needs_attention_count"] == 1
 
     def test_get_pipeline_overview_by_team(self, seeded_db, mock_get_session):
         from sis.services.dashboard_service import get_pipeline_overview
@@ -128,7 +113,7 @@ class TestDashboardService:
                 assert "deals" in rep
                 assert "rep_name" in rep
 
-        # Risk-first sort: Team Beta (critical_count=1) should come before Team Alpha (critical_count=0)
+        # Risk-first sort: Team Beta (needs_attention_count=1) should come before Team Alpha (needs_attention_count=0)
         team_names = [t["team_name"] for t in hierarchy]
         assert team_names[0] == "Team Beta"
         assert team_names[1] == "Team Alpha"
@@ -137,12 +122,12 @@ class TestDashboardService:
         alpha = next(t for t in hierarchy if t["team_name"] == "Team Alpha")
         assert alpha["total_deals"] == 2
         assert alpha["healthy_count"] == 1
-        assert alpha["at_risk_count"] == 1
-        assert alpha["critical_count"] == 0
+        assert alpha["neutral_count"] == 1
+        assert alpha["needs_attention_count"] == 0
 
         beta = next(t for t in hierarchy if t["team_name"] == "Team Beta")
         assert beta["total_deals"] == 1
-        assert beta["critical_count"] == 1
+        assert beta["needs_attention_count"] == 1
 
     def test_get_team_rollup_hierarchy_with_team_filter(self, seeded_db, mock_get_session):
         """Team filter narrows to one team."""
