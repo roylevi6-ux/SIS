@@ -45,7 +45,6 @@ from sis.api.routes import (  # noqa: E402
     auth,
     dashboard,
     transcripts,
-    feedback,
     calibration,
     admin,
     export,
@@ -62,7 +61,6 @@ app.include_router(accounts.router)
 app.include_router(analyses.router)
 app.include_router(dashboard.router)
 app.include_router(transcripts.router)
-app.include_router(feedback.router)
 app.include_router(calibration.router)
 app.include_router(admin.router)
 app.include_router(export.router)

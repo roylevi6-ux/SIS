@@ -7,14 +7,13 @@ from __future__ import annotations
 
 import json
 import logging
-from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
 import yaml
 
 from sis.db.session import get_session
-from sis.db.models import CalibrationLog, ScoreFeedback, AgentAnalysis
+from sis.db.models import CalibrationLog
 
 logger = logging.getLogger(__name__)
 
@@ -22,69 +21,14 @@ CONFIG_DIR = Path(__file__).parent.parent.parent / "config" / "calibration"
 
 
 def get_feedback_patterns() -> dict:
-    """Analyze feedback to identify patterns: top flagged reasons, agents, direction skew.
-
-    Returns dict with:
-    - by_reason: {reason: count}
-    - by_agent: {agent_id: count} (from agent_analyses linked via deal_assessment)
-    - direction_skew: {direction: count}
-    - top_flagged_reasons: sorted list of (reason, count)
-    """
-    with get_session() as session:
-        feedback_items = session.query(ScoreFeedback).all()
-
-        by_reason: dict[str, int] = defaultdict(int)
-        by_direction: dict[str, int] = defaultdict(int)
-
-        for f in feedback_items:
-            by_reason[f.reason_category] += 1
-            by_direction[f.disagreement_direction] += 1
-
-        # Identify which agents are most associated with flagged assessments
-        by_agent: dict[str, int] = defaultdict(int)
-        flagged_assessment_ids = [f.deal_assessment_id for f in feedback_items]
-
-        if flagged_assessment_ids:
-            # Find agent analyses from the same analysis runs
-            from sis.db.models import DealAssessment
-            assessments = (
-                session.query(DealAssessment)
-                .filter(DealAssessment.id.in_(flagged_assessment_ids))
-                .all()
-            )
-            run_ids = [a.analysis_run_id for a in assessments]
-
-            if run_ids:
-                agent_analyses = (
-                    session.query(AgentAnalysis)
-                    .filter(AgentAnalysis.analysis_run_id.in_(run_ids))
-                    .all()
-                )
-                for aa in agent_analyses:
-                    by_agent[aa.agent_id] += 1
-
-        # Direction skew per agent (too_high vs too_low)
-        direction_per_agent: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-        for f in feedback_items:
-            # Use account_id to correlate
-            agent_results = (
-                session.query(AgentAnalysis.agent_id)
-                .filter(AgentAnalysis.account_id == f.account_id)
-                .distinct()
-                .all()
-            )
-            for (agent_id,) in agent_results:
-                direction_per_agent[agent_id][f.disagreement_direction] += 1
-
-    top_flagged_reasons = sorted(by_reason.items(), key=lambda x: -x[1])
-
+    """Placeholder — will be replaced with deal_context analysis."""
     return {
-        "total_feedback": len(feedback_items),
-        "by_reason": dict(by_reason),
-        "by_direction": dict(by_direction),
-        "by_agent": dict(by_agent),
-        "direction_per_agent": {k: dict(v) for k, v in direction_per_agent.items()},
-        "top_flagged_reasons": top_flagged_reasons,
+        "total_feedback": 0,
+        "by_reason": {},
+        "by_direction": {},
+        "by_agent": {},
+        "direction_per_agent": {},
+        "top_flagged_reasons": [],
     }
 
 

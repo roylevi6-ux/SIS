@@ -3,7 +3,7 @@
 import json
 import pytest
 
-from sis.db.models import Account, DealAssessment, Transcript, ScoreFeedback
+from sis.db.models import Account, DealAssessment, Transcript
 
 
 class TestAccountService:
@@ -67,45 +67,6 @@ class TestTranscriptService:
         texts = get_active_transcript_texts(seeded_db["healthy_id"])
         assert len(texts) == 2
         assert "healthy" in texts[0].lower()
-
-
-class TestFeedbackService:
-    def test_submit_feedback(self, seeded_db, mock_get_session):
-        from sis.services.feedback_service import submit_feedback
-        result = submit_feedback(
-            account_id=seeded_db["at_risk_id"],
-            assessment_id=seeded_db["assessment_ids"][seeded_db["at_risk_id"]],
-            author="AE Two",
-            direction="too_low",
-            reason="recent_change",
-            free_text="New development",
-        )
-        assert result["direction"] == "too_low"
-        assert result["author"] == "AE Two"
-
-    def test_submit_feedback_invalid_direction(self, seeded_db, mock_get_session):
-        from sis.services.feedback_service import submit_feedback
-        with pytest.raises(ValueError, match="direction must be"):
-            submit_feedback(
-                account_id=seeded_db["healthy_id"],
-                assessment_id=seeded_db["assessment_ids"][seeded_db["healthy_id"]],
-                author="AE One", direction="invalid", reason="other",
-            )
-
-    def test_list_feedback(self, seeded_db, mock_get_session):
-        from sis.services.feedback_service import list_feedback
-        feedback = list_feedback()
-        assert len(feedback) >= 2
-
-    def test_resolve_feedback(self, seeded_db, mock_get_session):
-        from sis.services.feedback_service import resolve_feedback
-        result = resolve_feedback(
-            feedback_id=seeded_db["feedback_ids"][0],
-            resolution="accepted",
-            notes="Verified off-channel activity",
-            resolved_by="TL One",
-        )
-        assert result["resolution"] == "accepted"
 
 
 class TestAnalysisService:

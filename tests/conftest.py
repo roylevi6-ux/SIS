@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker, Session
 
 from sis.db.models import (
     Base, Account, Transcript, AnalysisRun, AgentAnalysis, DealAssessment,
-    ScoreFeedback, CoachingEntry, CalibrationLog, PromptVersion,
+    CoachingEntry, CalibrationLog, PromptVersion,
     ChatSession, ChatMessage, UsageEvent, User, Team,
 )
 
@@ -82,7 +82,6 @@ def mock_get_session(session):
         "sis.db.session.get_session",
         "sis.services.account_service.get_session",
         "sis.services.transcript_service.get_session",
-        "sis.services.feedback_service.get_session",
         "sis.services.analysis_service.get_session",
         "sis.services.dashboard_service.get_session",
         "sis.services.coaching_service.get_session",
@@ -272,26 +271,6 @@ def seeded_db(mock_get_session):
         assessment_ids[acct_id] = da_id
     session.flush()
 
-    # Score feedback (2 entries)
-    fb1_id = _uuid()
-    session.add(ScoreFeedback(
-        id=fb1_id, account_id=healthy_id, deal_assessment_id=assessment_ids[healthy_id],
-        author="AE One", feedback_date=_now(1), health_score_at_time=82,
-        disagreement_direction="too_high", reason_category="off_channel",
-        free_text="Score doesn't capture recent meeting", off_channel_activity=1,
-        resolution="pending", created_at=_now(1),
-    ))
-    fb2_id = _uuid()
-    session.add(ScoreFeedback(
-        id=fb2_id, account_id=critical_id, deal_assessment_id=assessment_ids[critical_id],
-        author="AE Three", feedback_date=_now(1), health_score_at_time=35,
-        disagreement_direction="too_low", reason_category="recent_change",
-        free_text="New stakeholder engaged", off_channel_activity=0,
-        resolution="accepted", resolution_notes="Valid", resolved_at=_now(0),
-        resolved_by="TL Two", created_at=_now(1),
-    ))
-    session.flush()
-
     # Coaching entries (2)
     session.add(CoachingEntry(
         id=_uuid(), account_id=healthy_id, rep_name="AE One", coach_name="TL One",
@@ -354,7 +333,6 @@ def seeded_db(mock_get_session):
         "run_ids": run_ids,
         "assessment_ids": assessment_ids,
         "transcript_ids": transcript_ids,
-        "feedback_ids": [fb1_id, fb2_id],
         "chat_id": chat_id,
         "team_alpha_id": team_alpha_id,
         "team_beta_id": team_beta_id,

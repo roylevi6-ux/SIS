@@ -9,7 +9,7 @@ from typing import Optional
 from sis.db.session import get_session
 from sis.db.models import (
     Account, AnalysisRun, DealAssessment,
-    AgentAnalysis, Transcript, ScoreFeedback, CoachingEntry,
+    AgentAnalysis, Transcript, CoachingEntry,
     User, Team,
 )
 
@@ -245,11 +245,7 @@ def delete_account(account_id: str) -> dict:
         account_name = account.account_name
         total_deleted = 0
 
-        # 1. score_feedback (FK to account_id and deal_assessment_id)
-        n = session.query(ScoreFeedback).filter_by(account_id=account_id).delete()
-        total_deleted += n
-
-        # 2. coaching_entries (FK to account_id)
+        # 1. coaching_entries (FK to account_id)
         n = session.query(CoachingEntry).filter_by(account_id=account_id).delete()
         total_deleted += n
 

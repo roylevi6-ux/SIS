@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from sis.db.models import (
     Account, Transcript, AnalysisRun, AgentAnalysis, DealAssessment,
-    ScoreFeedback, CoachingEntry, PromptVersion, ChatSession, ChatMessage, UsageEvent,
+    CoachingEntry, PromptVersion, ChatSession, ChatMessage, UsageEvent,
     User, Team,
 )
 

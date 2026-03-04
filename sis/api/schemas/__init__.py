@@ -55,12 +55,6 @@ from .dashboard import (
     TeamRollupItem,
     TeamTrendItem,
 )
-from .feedback import (
-    FeedbackCreate,
-    FeedbackItem,
-    FeedbackResolve,
-    FeedbackSummary,
-)
 from .transcripts import TranscriptItem, TranscriptResponse, TranscriptUpload
 
 __all__ = [
@@ -111,11 +105,6 @@ __all__ = [
     "PortfolioSummary",
     "TeamRollupItem",
     "TeamTrendItem",
-    # feedback
-    "FeedbackCreate",
-    "FeedbackItem",
-    "FeedbackResolve",
-    "FeedbackSummary",
     # transcripts
     "TranscriptItem",
     "TranscriptResponse",

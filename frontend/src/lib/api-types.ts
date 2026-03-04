@@ -218,39 +218,6 @@ export interface PortfolioSummary {
   }>;
 }
 
-// ── Feedback ──
-export interface FeedbackItem {
-  id: string;
-  account_id: string;
-  agent_id: string;
-  author: string;
-  feedback_text: string;
-  status: string;
-  resolution_note: string | null;
-  created_at: string;
-  [key: string]: unknown;
-}
-
-export interface FeedbackSubmit {
-  account_id: string;
-  assessment_id: string;
-  author: string;
-  direction: 'too_high' | 'too_low';
-  reason: string;
-  free_text?: string;
-  off_channel?: boolean;
-}
-
-export interface FeedbackSummary {
-  total: number;
-  pending: number;
-  resolved: number;
-  by_agent: Record<string, number>;
-  by_status?: Record<string, number>;
-  by_direction?: Record<string, number>;
-  [key: string]: unknown;
-}
-
 // ── Chat ──
 export interface ChatResponse {
   response: string;

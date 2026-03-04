@@ -19,9 +19,6 @@ import type {
   DeltaResponse,
   DivergenceItem,
   ExportResponse,
-  FeedbackItem,
-  FeedbackSubmit,
-  FeedbackSummary,
   ForecastData,
   ForecastMovementResponse,
   HierarchyTeam,
@@ -175,18 +172,6 @@ export const api = {
       apiFetch<VelocityResponse>(`/api/dashboard/trends/velocity?weeks=${weeks ?? 4}`),
     trendsTeamComparison: (weeks?: number) =>
       apiFetch<TeamComparisonResponse>(`/api/dashboard/trends/team-comparison?weeks=${weeks ?? 4}`),
-  },
-  feedback: {
-    submit: (data: FeedbackSubmit) =>
-      apiFetch<FeedbackItem>('/api/feedback/', { method: 'POST', body: JSON.stringify(data) }),
-    list: (params?: { account_id?: string; author?: string; status?: string }) =>
-      apiFetch<FeedbackItem[]>(`/api/feedback/?${new URLSearchParams(params as Record<string, string>)}`),
-    resolve: (id: string, data: { resolution_note: string }) =>
-      apiFetch<FeedbackItem>(`/api/feedback/${id}/resolve`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
-    summary: () => apiFetch<FeedbackSummary>('/api/feedback/summary'),
   },
   chat: {
     query: (message: string, history?: ChatMessage[]) =>

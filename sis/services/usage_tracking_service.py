@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sis.db.session import get_session
-from sis.db.models import UsageEvent, DealAssessment, Account, ScoreFeedback
+from sis.db.models import UsageEvent, DealAssessment, Account
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +123,6 @@ def get_cro_metrics() -> list[dict]:
                     pass
         adoption_weeks = len(brief_weeks)
 
-        # --- 4. Score feedback count ---
-        feedback_count = session.query(ScoreFeedback).count()
-
         # --- 5. VP forecast usage: forecast page views ---
         forecast_views = (
             session.query(UsageEvent)
@@ -168,9 +165,9 @@ def get_cro_metrics() -> list[dict]:
             "metric": "Score Feedback",
             "description": "Total feedback submissions from TLs",
             "target": "10+",
-            "actual": str(feedback_count),
-            "value": feedback_count,
-            "passed": feedback_count >= 10,
+            "actual": "0",
+            "value": 0,
+            "passed": False,
         },
         {
             "metric": "VP Forecast Usage",
