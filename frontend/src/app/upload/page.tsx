@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
   Upload,
@@ -95,6 +95,74 @@ const SF_STAGES = [
   { value: '6', label: '6 – Contract' },
   { value: '7', label: '7 – Implement' },
 ];
+
+// ---------------------------------------------------------------------------
+// localStorage helpers for drive path
+// ---------------------------------------------------------------------------
+
+const DRIVE_PATH_KEY = 'sis-upload-drive-path';
+
+function getSavedDrivePath(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(DRIVE_PATH_KEY) ?? '';
+}
+
+function saveDrivePath(path: string) {
+  if (typeof window === 'undefined') return;
+  if (path.trim()) {
+    localStorage.setItem(DRIVE_PATH_KEY, path.trim());
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ResizeHandle — draggable column divider
+// ---------------------------------------------------------------------------
+
+function ResizeHandle({
+  onResize,
+  direction,
+}: {
+  onResize: (delta: number) => void;
+  direction: 'left' | 'right';
+}) {
+  const dragging = useRef(false);
+  const startX = useRef(0);
+
+  const onMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragging.current = true;
+      startX.current = e.clientX;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!dragging.current) return;
+        const delta = ev.clientX - startX.current;
+        startX.current = ev.clientX;
+        onResize(direction === 'left' ? delta : -delta);
+      };
+      const onMouseUp = () => {
+        dragging.current = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    },
+    [onResize, direction],
+  );
+
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="w-1 cursor-col-resize bg-border hover:bg-accent/40 active:bg-accent/60 transition-colors shrink-0"
+      title="Drag to resize"
+    />
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -256,7 +324,7 @@ function AccountListPanel({
   );
 
   return (
-    <div className="flex flex-col h-full border-r border-border">
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-3 py-3 border-b border-border shrink-0">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -336,6 +404,7 @@ interface AccountDetailPanelProps {
   onDealConfigChange: (updates: Partial<DealConfig>) => void;
   onAddToQueue: () => void;
   icUsers: ICUser[];
+  hasExistingAnalysis: boolean;
 }
 
 function AccountDetailPanel({
@@ -348,6 +417,7 @@ function AccountDetailPanel({
   onDealConfigChange,
   onAddToQueue,
   icUsers,
+  hasExistingAnalysis,
 }: AccountDetailPanelProps) {
   const sortedCalls = useMemo(
     () => [...calls].sort((a, b) => b.date.localeCompare(a.date)),
@@ -367,7 +437,8 @@ function AccountDetailPanel({
     dealConfig.sfCloseQuarter !== '' &&
     dealConfig.cpEstimate !== '';
 
-  const canAdd = newSelected > 0 && configComplete;
+  // Allow queuing with new calls selected OR re-analysis of existing accounts
+  const canAdd = (newSelected > 0 || hasExistingAnalysis) && configComplete;
 
   if (!accountName) {
     return (
@@ -394,71 +465,9 @@ function AccountDetailPanel({
         )}
       </div>
 
-      {/* Calls section — scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {loadingCalls ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-            <Loader2 className="size-4 animate-spin" />
-            Loading calls...
-          </div>
-        ) : sortedCalls.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No calls found for this account.</p>
-        ) : (
-          <>
-            <InfoBanner newSelected={newSelected} activeCallCount={activeCalls.length} />
-
-            <div className="border border-border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8"></TableHead>
-                    <TableHead className="w-24">Date</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead className="w-20">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedCalls.map((call, i) => {
-                    const callId = call.gong_call_id ?? `__idx_${i}`;
-                    const isNew = call.status === 'new';
-                    const isChecked = isNew && selectedCallIds.has(callId);
-
-                    return (
-                      <TableRow
-                        key={callId}
-                        className={isChecked ? 'bg-accent/5' : ''}
-                      >
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            disabled={!isNew}
-                            onChange={() => isNew && onToggleCall(callId)}
-                            className="size-4 rounded border-border accent-emerald-500 disabled:opacity-30"
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {call.date}
-                        </TableCell>
-                        <TableCell className="whitespace-normal text-sm">
-                          {call.title || '—'}
-                        </TableCell>
-                        <TableCell>
-                          <CallStatusBadge status={call.status} />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Deal Config — pinned at bottom */}
+      {/* Deal Config — above calls list */}
       {!loadingCalls && calls.length > 0 && (
-        <div className="border-t border-border px-4 py-3 space-y-3 shrink-0 bg-card">
+        <div className="border-b border-border px-4 py-3 space-y-3 shrink-0 bg-card">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Deal Config
           </p>
@@ -582,14 +591,81 @@ function AccountDetailPanel({
               />
             </div>
           </div>
+        </div>
+      )}
 
+      {/* Calls section — scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {loadingCalls ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <Loader2 className="size-4 animate-spin" />
+            Loading calls...
+          </div>
+        ) : sortedCalls.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No calls found for this account.</p>
+        ) : (
+          <>
+            <InfoBanner newSelected={newSelected} activeCallCount={activeCalls.length} />
+
+            <div className="border border-border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead className="w-24">Date</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="w-20">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedCalls.map((call, i) => {
+                    const callId = call.gong_call_id ?? `__idx_${i}`;
+                    const isNew = call.status === 'new';
+                    const isChecked = isNew && selectedCallIds.has(callId);
+
+                    return (
+                      <TableRow
+                        key={callId}
+                        className={isChecked ? 'bg-accent/5' : ''}
+                      >
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={!isNew}
+                            onChange={() => isNew && onToggleCall(callId)}
+                            className="size-4 rounded border-border accent-emerald-500 disabled:opacity-30"
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {call.date}
+                        </TableCell>
+                        <TableCell className="whitespace-normal text-sm">
+                          {call.title || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <CallStatusBadge status={call.status} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Add to Queue — pinned at bottom */}
+      {!loadingCalls && calls.length > 0 && (
+        <div className="border-t border-border px-4 py-3 shrink-0 bg-card">
           <Button
             onClick={onAddToQueue}
             disabled={!canAdd}
             size="sm"
             className="w-full"
           >
-            Add to Queue
+            {newSelected > 0 ? 'Add to Queue' : 'Re-analyze'}
             <ChevronRight className="size-4 ml-1" />
           </Button>
         </div>
@@ -611,7 +687,7 @@ interface QueuePanelProps {
 
 function QueuePanel({ queue, onRemove, onRunAnalysis, isRunning }: QueuePanelProps) {
   return (
-    <div className="flex flex-col h-full border-l border-border">
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-3 py-3 border-b border-border shrink-0">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1339,11 +1415,18 @@ function PastUploadsTable({ refreshKey }: { refreshKey: number }) {
 
 export default function UploadPage() {
   // Drive scanning
-  const [drivePath, setDrivePath] = useState('');
+  const [drivePath, setDrivePath] = useState(() => getSavedDrivePath());
   const [scanning, setScanning] = useState(false);
   const [driveAccounts, setDriveAccounts] = useState<EnrichedDriveAccount[]>([]);
   const [scanError, setScanError] = useState('');
   const [accountSearch, setAccountSearch] = useState('');
+
+  // Resizable panel widths (px)
+  const [leftWidth, setLeftWidth] = useState(220);
+  const [rightWidth, setRightWidth] = useState(260);
+  const MIN_PANEL = 160;
+  const MAX_LEFT = 400;
+  const MAX_RIGHT = 400;
 
   // Account selection
   const [selectedAccountName, setSelectedAccountName] = useState<string | null>(null);
@@ -1371,10 +1454,21 @@ export default function UploadPage() {
 
   const { data: icUsers = [] } = useICUsers();
 
+  // Resize handlers
+  const handleResizeLeft = useCallback(
+    (delta: number) => setLeftWidth((w) => Math.max(MIN_PANEL, Math.min(MAX_LEFT, w + delta))),
+    [],
+  );
+  const handleResizeRight = useCallback(
+    (delta: number) => setRightWidth((w) => Math.max(MIN_PANEL, Math.min(MAX_RIGHT, w + delta))),
+    [],
+  );
+
   // Scan drive — accepts optional path override for auto-scan on load
   const scanDrive = useCallback(async (pathOverride?: string) => {
     const scanPath = (pathOverride ?? drivePath).trim();
     if (!scanPath) return;
+    saveDrivePath(scanPath);
     setScanning(true);
     setScanError('');
     setDriveAccounts([]);
@@ -1398,6 +1492,13 @@ export default function UploadPage() {
 
   // Auto-load drive path on mount and auto-scan
   useEffect(() => {
+    const saved = getSavedDrivePath();
+    if (saved) {
+      setDrivePath(saved);
+      scanDrive(saved);
+      return;
+    }
+    // Fall back to server config if no localStorage path
     api.gdrive.config().then((cfg) => {
       if (cfg.path) {
         setDrivePath(cfg.path);
@@ -1428,14 +1529,6 @@ export default function UploadPage() {
         driveAccount.db_account_id ?? undefined,
       );
       setAccountCalls(calls);
-
-      // Auto-select NEW calls
-      const newIds = new Set(
-        calls
-          .filter((c) => c.status === 'new' && c.gong_call_id)
-          .map((c) => c.gong_call_id as string),
-      );
-      setSelectedCallIds(newIds);
 
       // Auto-fill deal config from existing DB account
       if (driveAccount.db_account_id) {
@@ -1628,39 +1721,51 @@ export default function UploadPage() {
       {(driveAccounts.length > 0 || scanning) && (
         <Card className="overflow-hidden">
           <div
-            className="grid min-h-[600px]"
-            style={{ gridTemplateColumns: '220px 1fr 260px' }}
+            className="flex min-h-[600px]"
           >
             {/* Left: Account list */}
-            <AccountListPanel
-              accounts={driveAccounts}
-              selectedName={selectedAccountName}
-              queuedNames={queuedNames}
-              search={accountSearch}
-              onSearchChange={setAccountSearch}
-              onSelect={handleSelectAccount}
-            />
+            <div style={{ width: leftWidth, minWidth: MIN_PANEL }} className="shrink-0">
+              <AccountListPanel
+                accounts={driveAccounts}
+                selectedName={selectedAccountName}
+                queuedNames={queuedNames}
+                search={accountSearch}
+                onSearchChange={setAccountSearch}
+                onSelect={handleSelectAccount}
+              />
+            </div>
+
+            <ResizeHandle onResize={handleResizeLeft} direction="left" />
 
             {/* Middle: Account detail */}
-            <AccountDetailPanel
-              accountName={selectedAccountName}
-              calls={accountCalls}
-              loadingCalls={loadingCalls}
-              selectedCallIds={selectedCallIds}
-              onToggleCall={handleToggleCall}
-              dealConfig={dealConfig}
-              onDealConfigChange={handleDealConfigChange}
-              onAddToQueue={handleAddToQueue}
-              icUsers={icUsers as ICUser[]}
-            />
+            <div className="flex-1 min-w-0">
+              <AccountDetailPanel
+                accountName={selectedAccountName}
+                calls={accountCalls}
+                loadingCalls={loadingCalls}
+                selectedCallIds={selectedCallIds}
+                onToggleCall={handleToggleCall}
+                dealConfig={dealConfig}
+                onDealConfigChange={handleDealConfigChange}
+                onAddToQueue={handleAddToQueue}
+                icUsers={icUsers as ICUser[]}
+                hasExistingAnalysis={
+                  !!driveAccounts.find((a) => a.name === selectedAccountName)?.has_active_analysis
+                }
+              />
+            </div>
+
+            <ResizeHandle onResize={handleResizeRight} direction="right" />
 
             {/* Right: Queue */}
-            <QueuePanel
-              queue={queue}
-              onRemove={handleRemoveFromQueue}
-              onRunAnalysis={handleRunAnalysis}
-              isRunning={isRunning}
-            />
+            <div style={{ width: rightWidth, minWidth: MIN_PANEL }} className="shrink-0">
+              <QueuePanel
+                queue={queue}
+                onRemove={handleRemoveFromQueue}
+                onRunAnalysis={handleRunAnalysis}
+                isRunning={isRunning}
+              />
+            </div>
           </div>
         </Card>
       )}

@@ -38,7 +38,7 @@ export function triggerLogout() {
 
 const TOKEN_KEY = 'sis_auth_token';
 const USER_KEY = 'sis_auth_user';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // -- Context ----------------------------------------------------------------
 

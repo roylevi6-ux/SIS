@@ -140,13 +140,14 @@ def get_transcripts_by_gong_ids(account_id: str, gong_call_ids: list[str]) -> di
     """Look up transcripts by gong_call_id for an account.
 
     Returns:
-        Dict mapping gong_call_id → {"is_active": bool} for each found transcript.
+        Dict mapping gong_call_id → {"is_active": bool, "call_date": str|None}
+        for each found transcript.
     """
     if not gong_call_ids:
         return {}
     with get_session() as session:
         rows = (
-            session.query(Transcript.gong_call_id, Transcript.is_active)
+            session.query(Transcript.gong_call_id, Transcript.is_active, Transcript.call_date)
             .filter(
                 Transcript.account_id == account_id,
                 Transcript.gong_call_id.in_(gong_call_ids),
@@ -154,7 +155,10 @@ def get_transcripts_by_gong_ids(account_id: str, gong_call_ids: list[str]) -> di
             .all()
         )
         return {
-            row.gong_call_id: {"is_active": bool(row.is_active)}
+            row.gong_call_id: {
+                "is_active": bool(row.is_active),
+                "call_date": row.call_date,
+            }
             for row in rows
         }
 

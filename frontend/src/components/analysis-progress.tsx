@@ -41,7 +41,7 @@ function formatElapsed(seconds: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 /**
  * Real-time analysis progress via Server-Sent Events.
