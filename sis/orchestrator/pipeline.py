@@ -142,6 +142,7 @@ class AnalysisPipeline:
         timeline_entries: list[str] | None = None,
         deal_context: dict | None = None,
         sf_data: dict | None = None,
+        tl_context: dict | None = None,
     ) -> PipelineResult:
         """Run the full pipeline synchronously (wraps async version)."""
         # Discard stale async client — its httpx connections are bound to the
@@ -151,7 +152,7 @@ class AnalysisPipeline:
 
         loop = asyncio.new_event_loop()
         try:
-            return loop.run_until_complete(self.run_async(account_id, transcript_texts, timeline_entries, deal_context, sf_data))
+            return loop.run_until_complete(self.run_async(account_id, transcript_texts, timeline_entries, deal_context, sf_data, tl_context))
         finally:
             loop.close()
 
@@ -162,6 +163,7 @@ class AnalysisPipeline:
         timeline_entries: list[str] | None = None,
         deal_context: dict | None = None,
         sf_data: dict | None = None,
+        tl_context: dict | None = None,
     ) -> PipelineResult:
         """Run the full 3-step pipeline asynchronously.
 
@@ -171,6 +173,7 @@ class AnalysisPipeline:
             timeline_entries: Optional timeline entries for context
             deal_context: Optional dict with deal_type and prior_contract_value
             sf_data: Optional dict with SF indication fields for gap computation (Agent 10 Step 5 only)
+            tl_context: Optional TL context dict from deal_context_service.get_context_for_agents()
 
         Returns:
             PipelineResult with all agent outputs, synthesis, and cost data
@@ -413,7 +416,8 @@ class AnalysisPipeline:
             try:
                 build_start = time.time()
                 agent9_call = discovery_build_call(
-                    transcript_texts, stage_context, result.agent_outputs, timeline_entries
+                    transcript_texts, stage_context, result.agent_outputs, timeline_entries,
+                    tl_context=tl_context,
                 )
                 build_elapsed = time.time() - build_start
                 agent9_result = await run_agent_async(**agent9_call)
@@ -471,7 +475,7 @@ class AnalysisPipeline:
                 mark_agent_running(self._run_id, "agent_10")
             try:
                 build_start = time.time()
-                agent10_call = synthesis_build_call(result.agent_outputs, stage_context, sf_data, deal_context)
+                agent10_call = synthesis_build_call(result.agent_outputs, stage_context, sf_data, deal_context, tl_context=tl_context)
                 build_elapsed = time.time() - build_start
                 agent10_result = await run_agent_async(**agent10_call)
                 total_prep = build_elapsed + agent10_result.prep_seconds
