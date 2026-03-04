@@ -189,7 +189,7 @@ function dealConfigFromAccount(account: Account, icUsers: ICUser[]): DealConfig 
     sfStage: '',
     sfForecast: '',
     sfCloseQuarter: '',
-    cpEstimate: account.cp_estimate != null ? String(account.cp_estimate) : '',
+    cpEstimate: '',
   };
 }
 
@@ -247,9 +247,11 @@ function AccountListPanel({
 }: AccountListPanelProps) {
   const filtered = useMemo(
     () =>
-      accounts.filter((a) =>
-        toTitleCase(a.name).toLowerCase().includes(search.toLowerCase()),
-      ),
+      accounts
+        .filter((a) =>
+          toTitleCase(a.name).toLowerCase().includes(search.toLowerCase()),
+        )
+        .sort((a, b) => (b.new_count - a.new_count) || a.name.localeCompare(b.name)),
     [accounts, search],
   );
 
@@ -347,8 +349,12 @@ function AccountDetailPanel({
   onAddToQueue,
   icUsers,
 }: AccountDetailPanelProps) {
-  const newCalls = useMemo(() => calls.filter((c) => c.status === 'new'), [calls]);
-  const activeCalls = useMemo(() => calls.filter((c) => c.status === 'active'), [calls]);
+  const sortedCalls = useMemo(
+    () => [...calls].sort((a, b) => b.date.localeCompare(a.date)),
+    [calls],
+  );
+  const newCalls = useMemo(() => sortedCalls.filter((c) => c.status === 'new'), [sortedCalls]);
+  const activeCalls = useMemo(() => sortedCalls.filter((c) => c.status === 'active'), [sortedCalls]);
   const newSelected = useMemo(
     () => newCalls.filter((c) => c.gong_call_id && selectedCallIds.has(c.gong_call_id)).length,
     [newCalls, selectedCallIds],
@@ -382,9 +388,9 @@ function AccountDetailPanel({
           Calls for
         </p>
         <h3 className="text-base font-semibold">{toTitleCase(accountName)}</h3>
-        {!loadingCalls && calls.length > 0 && (
+        {!loadingCalls && sortedCalls.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            {calls.length} total &middot; {newCalls.length} new &middot; {activeCalls.length} active
+            {sortedCalls.length} total &middot; {newCalls.length} new &middot; {activeCalls.length} active
           </p>
         )}
       </div>
@@ -396,7 +402,7 @@ function AccountDetailPanel({
             <Loader2 className="size-4 animate-spin" />
             Loading calls...
           </div>
-        ) : calls.length === 0 ? (
+        ) : sortedCalls.length === 0 ? (
           <p className="text-sm text-muted-foreground">No calls found for this account.</p>
         ) : (
           <>
@@ -413,7 +419,7 @@ function AccountDetailPanel({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {calls.map((call, i) => {
+                  {sortedCalls.map((call, i) => {
                     const callId = call.gong_call_id ?? `__idx_${i}`;
                     const isNew = call.status === 'new';
                     const isChecked = isNew && selectedCallIds.has(callId);
@@ -1366,18 +1372,10 @@ export default function UploadPage() {
 
   const { data: icUsers = [] } = useICUsers();
 
-  // Auto-load drive path on mount
-  useEffect(() => {
-    api.gdrive.config().then((cfg) => {
-      if (cfg.path) {
-        setDrivePath(cfg.path);
-      }
-    }).catch(() => { /* ignore */ });
-  }, []);
-
-  // Scan drive
-  const handleScan = useCallback(async () => {
-    if (!drivePath.trim()) return;
+  // Scan drive — accepts optional path override for auto-scan on load
+  const scanDrive = useCallback(async (pathOverride?: string) => {
+    const scanPath = (pathOverride ?? drivePath).trim();
+    if (!scanPath) return;
     setScanning(true);
     setScanError('');
     setDriveAccounts([]);
@@ -1385,12 +1383,12 @@ export default function UploadPage() {
     setAccountCalls([]);
 
     try {
-      const result = await api.gdrive.validate(drivePath.trim());
+      const result = await api.gdrive.validate(scanPath);
       if (!result.is_valid) {
         setScanError(result.message);
         return;
       }
-      const accounts = await api.gdrive.listAccounts(drivePath.trim());
+      const accounts = await api.gdrive.listAccounts(scanPath);
       setDriveAccounts(accounts);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Scan failed');
@@ -1398,6 +1396,17 @@ export default function UploadPage() {
       setScanning(false);
     }
   }, [drivePath]);
+
+  // Auto-load drive path on mount and auto-scan
+  useEffect(() => {
+    api.gdrive.config().then((cfg) => {
+      if (cfg.path) {
+        setDrivePath(cfg.path);
+        scanDrive(cfg.path);
+      }
+    }).catch(() => { /* ignore */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Select account
   const handleSelectAccount = useCallback(async (name: string) => {
@@ -1572,11 +1581,11 @@ export default function UploadPage() {
           placeholder="~/Library/CloudStorage/GoogleDrive-.../My Drive/Transcripts"
           value={drivePath}
           onChange={(e) => setDrivePath(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleScan()}
+          onKeyDown={(e) => e.key === 'Enter' && scanDrive()}
           className="flex-1 h-9 text-sm"
         />
         <Button
-          onClick={handleScan}
+          onClick={() => scanDrive()}
           disabled={!drivePath.trim() || scanning}
           variant="secondary"
           size="sm"
