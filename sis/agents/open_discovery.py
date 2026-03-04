@@ -49,6 +49,26 @@ class OpenDiscoveryFinding(BaseModel):
     relevance: str = Field(description="Why this matters for the deal")
 
 
+class TLContextAudit(BaseModel):
+    """Agent 9's assessment of TL-provided context credibility."""
+
+    context_vs_transcript_alignment: str = Field(
+        description="Aligned | Partially Aligned | Contradictory | No TL Context"
+    )
+    contradictions: list[str] = Field(
+        default_factory=list,
+        description="Specific contradictions between TL context and transcript evidence",
+    )
+    unverifiable_claims: list[str] = Field(
+        default_factory=list,
+        description="TL claims that cannot be verified from transcripts",
+    )
+    new_intelligence: list[str] = Field(
+        default_factory=list,
+        description="Genuine new information provided by TL not visible in transcripts",
+    )
+
+
 class UrgencyAudit(BaseModel):
     """Cross-agent urgency credibility assessment."""
 
@@ -90,6 +110,10 @@ class OpenDiscoveryFindings(BaseModel):
     urgency_audit: UrgencyAudit = Field(
         description="Always populated. Cross-agent urgency credibility assessment. "
         "Use 'Insufficient Evidence' when no urgency signals exist.",
+    )
+    tl_context_audit: Optional[TLContextAudit] = Field(
+        default=None,
+        description="Audit of TL-provided deal context against transcript evidence. Only present when TL context was provided.",
     )
     data_quality_notes: list[str] = Field(default_factory=list)
     manager_insight: str = Field(
@@ -176,6 +200,17 @@ Flag inconsistencies:
 
 This is NOT a negative signal by default -- just a credibility assessment for the manager.
 Always populate urgency_audit even when no urgency signals exist -- use "Insufficient Evidence" for urgency_credibility and "Insufficient Data" for cross_agent_consistency.
+
+## TL CONTEXT AUDIT (when TL context is provided)
+
+When Team Lead context is included in the input, you MUST produce a tl_context_audit section:
+1. Compare each TL claim against transcript evidence
+2. Classify overall alignment: Aligned / Partially Aligned / Contradictory
+3. List specific contradictions between TL claims and transcript evidence
+4. List TL claims that cannot be verified (neither confirmed nor denied by transcripts)
+5. List genuine new intelligence — TL-provided facts about off-channel activity, stakeholder dynamics, or deal context that transcripts structurally cannot capture
+
+If no TL context is provided, set tl_context_audit to null.
 """ + ENVELOPE_PROMPT_FRAGMENT + MANAGER_INSIGHT_FRAGMENT + """
 
 ## Output Format
@@ -188,6 +223,7 @@ Respond with a single JSON object using this envelope structure:
     "novel_findings": [...], "adversarial_challenges": [...],
     "upstream_gaps_identified": [...], "no_additional_signals": false,
     "urgency_audit": {"urgency_credibility": "...", "assessment": "...", "cross_agent_consistency": "...", "consistency_detail": "..."},
+    "tl_context_audit": {"context_vs_transcript_alignment": "...", "contradictions": [...], "unverifiable_claims": [...], "new_intelligence": [...]},
     "data_quality_notes": [...], "manager_insight": "..."
   },
   "evidence": [{"claim_id": "...", "transcript_index": 1, "speaker": "...", "quote": "...", "interpretation": "..."}],
@@ -202,6 +238,7 @@ def build_call(
     stage_context: dict,
     upstream_outputs: dict[str, dict],
     timeline_entries: list[str] | None = None,
+    tl_context: dict | None = None,
 ) -> dict:
     """Build kwargs dict for run_agent.
 
@@ -210,6 +247,7 @@ def build_call(
         stage_context: Stage classifier output dict
         upstream_outputs: Dict mapping agent_id -> output dict for agents 1-8
         timeline_entries: Optional timeline entries
+        tl_context: Optional TL context dict from deal_context_service.get_context_for_agents()
     """
     # Build the standard analysis prompt (transcripts + stage + timeline)
     base_prompt = build_analysis_prompt(
@@ -237,10 +275,15 @@ def build_call(
         output_json = json.dumps(compressed, ensure_ascii=False)
         upstream_section += f"\n### {label}\n```json\n{output_json}\n```\n"
 
+    # Append TL context (if any)
+    tl_section = ""
+    if tl_context and tl_context.get("formatted_prompt"):
+        tl_section = "\n\n" + tl_context["formatted_prompt"]
+
     return {
         "agent_name": "Agent 9: Open Discovery",
         "system_prompt": SYSTEM_PROMPT,
-        "user_prompt": base_prompt + upstream_section,
+        "user_prompt": base_prompt + upstream_section + tl_section,
         "output_model": OpenDiscoveryOutput,
         "model": MODEL_AGENT_9,
         "transcript_count": len(transcript_texts),
