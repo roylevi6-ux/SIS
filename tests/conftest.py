@@ -94,6 +94,7 @@ def mock_get_session(session):
         "sis.services.forecast_data_service.get_session",
         "sis.services.rep_scorecard_service.get_session",
         "sis.services.team_service.get_session",
+        "sis.services.deal_context_service.get_session",
         "sis.alerts.engine.get_session",
         "sis.api.deps.get_session",
     ]
