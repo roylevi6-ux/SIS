@@ -137,14 +137,16 @@ def validate_drive_path(path: str) -> tuple[bool, str]:
 
 
 def list_account_folders(drive_path: str) -> list[dict]:
-    """List all accounts in the local Drive folder.
+    """List all accounts in the local Drive folder with DB status enrichment.
 
     Supports both nested (sub-folders) and flat (account name in filenames)
     layouts.
 
     Returns:
-        List of dicts: [{"name": str, "path": str, "call_count": int}, ...]
-        sorted alphabetically by name.
+        List of dicts:
+            [{"name", "path", "call_count", "new_count", "db_account_id",
+              "has_active_analysis"}, ...]
+        Sorted: accounts with new calls first, then alphabetically.
     """
     root = Path(drive_path).expanduser()
     try:
@@ -154,14 +156,100 @@ def list_account_folders(drive_path: str) -> list[dict]:
 
     try:
         if _is_flat_layout(root):
-            return _list_accounts_flat(root)
-        return _list_accounts_nested(root)
+            accounts = _list_accounts_flat(root)
+        else:
+            accounts = _list_accounts_nested(root)
     except PermissionError:
         raise PermissionError(
             f"Permission denied reading {root}. "
             "On macOS, grant Full Disk Access to your terminal app: "
             "System Settings → Privacy & Security → Full Disk Access."
         )
+
+    # Enrich with DB status (new_count, db_account_id, has_active_analysis)
+    _enrich_accounts_with_db_status(accounts, root)
+
+    # Sort: accounts with new calls first, then alphabetically
+    accounts.sort(key=lambda a: (a["new_count"] == 0, a["name"].lower()))
+    return accounts
+
+
+def _enrich_accounts_with_db_status(accounts: list[dict], root: Path) -> None:
+    """Mutate each account dict to add new_count, db_account_id, has_active_analysis.
+
+    Compares the gong_call_ids found in local metadata files against the DB to
+    determine how many calls have not yet been imported.
+
+    Degrades gracefully if the DB is unavailable — all enrichment fields fall
+    back to safe defaults (new_count = call_count, no db link).
+    """
+    import json as _json
+
+    # Apply defaults first so partial failures leave accounts in a valid state
+    for acct in accounts:
+        acct["new_count"] = acct["call_count"]
+        acct["db_account_id"] = None
+        acct["has_active_analysis"] = False
+
+    try:
+        from sis.services.account_service import list_accounts
+        from sis.services.transcript_service import get_transcripts_by_gong_ids
+
+        db_accounts = list_accounts()
+        # Build a lowercase-name → db account dict for O(1) lookup
+        db_by_name: dict[str, dict] = {
+            a["account_name"].lower(): a for a in db_accounts
+        }
+    except Exception:
+        logger.warning(
+            "DB unavailable during list_account_folders enrichment — "
+            "using defaults (new_count = call_count)"
+        )
+        return
+
+    flat = _is_flat_layout(root)
+
+    for acct in accounts:
+        db_match = db_by_name.get(acct["name"].lower())
+        if db_match is None:
+            # Account not in DB — all calls are new
+            continue
+
+        acct["db_account_id"] = db_match["id"]
+        acct["has_active_analysis"] = db_match.get("health_score") is not None
+
+        # Collect gong_call_ids from local metadata files
+        try:
+            if flat:
+                meta_files = _get_meta_files(root, account_name=acct["name"])
+            else:
+                account_dir = Path(acct["path"])
+                meta_files = _get_meta_files(account_dir)
+
+            gong_ids: list[str] = []
+            for mf in meta_files:
+                try:
+                    with open(mf) as fh:
+                        data = _json.load(fh)
+                    gong_id = data.get("metaData", {}).get("id")
+                    if gong_id:
+                        gong_ids.append(gong_id)
+                except Exception:
+                    logger.warning("Failed to read gong_call_id from %s", mf.name)
+
+            if not gong_ids:
+                acct["new_count"] = 0
+                continue
+
+            db_lookup = get_transcripts_by_gong_ids(acct["db_account_id"], gong_ids)
+            imported_ids = set(db_lookup.keys())
+            acct["new_count"] = sum(1 for gid in gong_ids if gid not in imported_ids)
+
+        except Exception:
+            logger.warning(
+                "Failed to compute new_count for account '%s' — defaulting to call_count",
+                acct["name"],
+            )
 
 
 def _list_accounts_flat(root: Path) -> list[dict]:
