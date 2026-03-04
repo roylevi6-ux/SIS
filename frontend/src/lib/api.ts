@@ -22,6 +22,8 @@ import type {
   ForecastData,
   ForecastMovementResponse,
   HierarchyTeam,
+  EnrichedCall,
+  EnrichedDriveAccount,
   GDriveAccount,
   GDriveCall,
   GDriveConfig,
@@ -236,9 +238,18 @@ export const api = {
         body: JSON.stringify({ path }),
       }),
     listAccounts: (path: string) =>
-      apiFetch<GDriveAccount[]>('/api/gdrive/accounts', {
+      apiFetch<EnrichedDriveAccount[]>('/api/gdrive/accounts', {
         method: 'POST',
         body: JSON.stringify({ path }),
+      }),
+    callsStatus: (accountPath: string, accountName?: string, dbAccountId?: string) =>
+      apiFetch<{ calls: EnrichedCall[] }>('/api/gdrive/calls-status', {
+        method: 'POST',
+        body: JSON.stringify({
+          account_path: accountPath,
+          account_name: accountName,
+          db_account_id: dbAccountId,
+        }),
       }),
     listCalls: (accountName: string, accountPath: string, maxCalls?: number) =>
       apiFetch<GDriveCall[]>('/api/gdrive/calls', {

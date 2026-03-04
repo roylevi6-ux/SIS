@@ -35,6 +35,12 @@ class ImportRequest(BaseModel):
     buying_culture: str = "direct"
 
 
+class CallsStatusRequest(BaseModel):
+    account_path: str
+    account_name: Optional[str] = None
+    db_account_id: Optional[str] = None
+
+
 # ── Routes ───────────────────────────────────────────────────────────
 
 
@@ -72,6 +78,17 @@ def list_recent_calls(body: ImportRequest, user: dict = Depends(get_current_user
         body.account_path, body.max_calls, account_name=body.account_name
     )
     return calls
+
+
+@router.post("/calls-status")
+def get_calls_with_status(body: CallsStatusRequest, user: dict = Depends(get_current_user)):
+    """List ALL calls for an account with their DB import status (new/active/imported)."""
+    result = gdrive_service.get_all_calls_with_status(
+        body.account_path,
+        db_account_id=body.db_account_id,
+        account_name=body.account_name,
+    )
+    return result
 
 
 @router.post("/import")

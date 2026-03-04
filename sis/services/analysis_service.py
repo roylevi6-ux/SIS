@@ -58,18 +58,19 @@ def _compute_divergence(session, account_id: str, assessment: "DealAssessment") 
             assessment.divergence_explanation = None
 
 
-def _prepare_analysis_context(account_id: str) -> tuple[list[str], dict, dict | None]:
-    """Load transcripts, account metadata, and SF data needed before running the pipeline.
+def _prepare_analysis_context(account_id: str) -> tuple[list[str], dict, dict | None, dict | None]:
+    """Load transcripts, account metadata, SF data, and TL context before running the pipeline.
 
     Both analyze_account() and analyze_account_async() execute identical DB
     queries before invoking the pipeline.  This helper centralises that work.
 
     Returns:
-        (transcript_texts, deal_context, sf_data)
+        (transcript_texts, deal_context, sf_data, tl_context)
         - transcript_texts: list of raw transcript strings (raises if empty)
         - deal_context: dict with deal_type, prior_contract_value,
           most_recent_transcript_age_days
         - sf_data: dict with SF fields if any are populated, else None
+        - tl_context: dict from deal_context_service.get_context_for_agents(), or None
     """
     transcript_texts = get_active_transcript_texts(account_id)
     if not transcript_texts:
@@ -115,7 +116,12 @@ def _prepare_analysis_context(account_id: str) -> tuple[list[str], dict, dict | 
         "most_recent_transcript_age_days": transcript_age_days,
         "buying_culture": buying_culture,
     }
-    return transcript_texts, deal_context, sf_data
+
+    # Load TL context for agent injection
+    from sis.services.deal_context_service import get_context_for_agents
+    tl_context = get_context_for_agents(account_id)
+
+    return transcript_texts, deal_context, sf_data, tl_context
 
 
 def create_analysis_run(account_id: str) -> str:
@@ -154,11 +160,11 @@ def analyze_account(
     Returns:
         dict with run_id, status, deal_assessment summary, cost
     """
-    transcript_texts, deal_context, sf_data = _prepare_analysis_context(account_id)
+    transcript_texts, deal_context, sf_data, tl_context = _prepare_analysis_context(account_id)
     deal_type = deal_context["deal_type"]
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
-    result = pipeline.run(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data)
+    result = pipeline.run(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data, tl_context=tl_context)
 
     transcript_ids = get_active_transcript_ids(account_id)
     persisted_run_id = _persist_pipeline_result(
@@ -185,11 +191,11 @@ async def analyze_account_async(
     run_id: str | None = None,
 ) -> dict:
     """Async version of analyze_account."""
-    transcript_texts, deal_context, sf_data = _prepare_analysis_context(account_id)
+    transcript_texts, deal_context, sf_data, tl_context = _prepare_analysis_context(account_id)
     deal_type = deal_context["deal_type"]
 
     pipeline = AnalysisPipeline(progress_callback=progress_callback, run_id=run_id)
-    result = await pipeline.run_async(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data)
+    result = await pipeline.run_async(account_id, transcript_texts, deal_context=deal_context, sf_data=sf_data, tl_context=tl_context)
 
     transcript_ids = get_active_transcript_ids(account_id)
     persisted_run_id = _persist_pipeline_result(

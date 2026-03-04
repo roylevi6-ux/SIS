@@ -332,6 +332,23 @@ export interface GDriveCall {
   participants: string[];
 }
 
+export interface EnrichedDriveAccount {
+  name: string;
+  path: string;
+  call_count: number;
+  new_count: number;
+  db_account_id: string | null;
+  has_active_analysis: boolean;
+}
+
+export interface EnrichedCall {
+  date: string;
+  title: string;
+  gong_call_id: string | null;
+  has_transcript: boolean;
+  status: 'new' | 'active' | 'imported';
+}
+
 export interface GDriveImportResult {
   account_id: string;
   transcripts_imported: number;
