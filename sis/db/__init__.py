@@ -18,6 +18,7 @@ from .models import (
     ChatSession,
     ChatMessage,
     Quota,
+    DealContextEntry,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "ChatSession",
     "ChatMessage",
     "Quota",
+    "DealContextEntry",
 ]
