@@ -12,8 +12,10 @@ from typing import Optional
 
 import yaml
 
+from collections import defaultdict
+
 from sis.db.session import get_session
-from sis.db.models import CalibrationLog
+from sis.db.models import CalibrationLog, DealContextEntry
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +23,27 @@ CONFIG_DIR = Path(__file__).parent.parent.parent / "config" / "calibration"
 
 
 def get_feedback_patterns() -> dict:
-    """Placeholder — will be replaced with deal_context analysis."""
-    return {
-        "total_feedback": 0,
-        "by_reason": {},
-        "by_direction": {},
-        "by_agent": {},
-        "direction_per_agent": {},
-        "top_flagged_reasons": [],
-    }
+    """Analyze deal context entries for calibration insights."""
+    with get_session() as session:
+        entries = (
+            session.query(DealContextEntry)
+            .filter(DealContextEntry.is_active == 1, DealContextEntry.superseded_by.is_(None))
+            .all()
+        )
+
+        by_question: dict[int, int] = defaultdict(int)
+        by_account: dict[str, int] = defaultdict(int)
+
+        for e in entries:
+            by_question[e.question_id] += 1
+            by_account[e.account_id] += 1
+
+        return {
+            "total_entries": len(entries),
+            "by_question": dict(by_question),
+            "accounts_with_context": len(by_account),
+            "by_account": dict(by_account),
+        }
 
 
 def get_current_calibration() -> dict:
