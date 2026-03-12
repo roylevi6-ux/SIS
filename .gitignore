@@ -53,6 +53,8 @@ data/transcripts/
 data/test_output_*.json
 data/gdrive_credentials.json
 data/gdrive_token.json
+data/tam_accounts.csv
+data/sf_name_mapping.json
 
 # Logs
 *.log
