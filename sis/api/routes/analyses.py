@@ -164,7 +164,7 @@ def _run_batch(batch_id: str, items: list[dict]):
     concurrent.futures.wait(futures)
 
 
-@router.post("/")
+@router.post("")
 async def run_analysis(body: AnalysisRequest, user: dict = Depends(get_current_user)):
     """Start analysis pipeline — returns immediately, polls via SSE.
 

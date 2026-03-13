@@ -38,7 +38,7 @@ def get_context(account_id: str, user: dict = Depends(get_current_user)):
     return deal_context_service.get_current_context(account_id)
 
 
-@router.post("/")
+@router.post("")
 def upsert(body: DealContextUpsert, user: dict = Depends(get_current_user)):
     """Submit or update deal context. Requires TL+ role."""
     require_role(user, "team_lead")

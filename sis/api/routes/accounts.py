@@ -18,7 +18,7 @@ from sis.api.schemas.accounts import (
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
 
-@router.get("/")
+@router.get("")
 def list_accounts(
     sort_by: str = "account_name",
     team: Optional[str] = None,
@@ -39,7 +39,7 @@ def get_account(account_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/")
+@router.post("")
 def create_account(body: AccountCreate, user: dict = Depends(get_current_user)):
     """Create a new account."""
     account = account_service.create_account(

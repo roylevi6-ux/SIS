@@ -23,7 +23,7 @@ def get_patterns(user: dict = Depends(get_current_user)):
     return calibration_service.get_feedback_patterns()
 
 
-@router.post("/")
+@router.post("")
 def create(body: CalibrationCreate, user: dict = Depends(get_current_user)):
     """Persist a calibration change log entry."""
     return calibration_service.create_calibration_log(

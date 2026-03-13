@@ -54,7 +54,7 @@ def get_team_quota(
     return {"team_id": team_id, "team_name": team.name, "period": period, "amount": total}
 
 
-@router.post("/")
+@router.post("")
 def upsert_quota_endpoint(
     data: QuotaCreate,
     db: Session = Depends(get_db),

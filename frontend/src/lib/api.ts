@@ -2,6 +2,7 @@ import { getStoredToken, triggerLogout } from './auth';
 import type {
   Account,
   AccountCreate,
+  AccountUpdate,
   AgentAnalysisResponse,
   AnalysisHistoryItem,
   AnalysisRunResponse,
@@ -112,12 +113,14 @@ export const api = {
     me: () => apiFetch<{ username: string; role: string }>('/api/auth/me'),
   },
   accounts: {
-    list: (params?: { sort_by?: string; team?: string }) =>
-      apiFetch<Account[]>(`/api/accounts/?${new URLSearchParams(params as Record<string, string>)}`),
+    list: (params?: { sort_by?: string; team?: string }) => {
+      const qs = params ? new URLSearchParams(params as Record<string, string>).toString() : '';
+      return apiFetch<Account[]>(qs ? `/api/accounts?${qs}` : '/api/accounts');
+    },
     get: (id: string) => apiFetch<Account>(`/api/accounts/${id}`),
     create: (data: AccountCreate) =>
-      apiFetch<Account>('/api/accounts/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<AccountCreate>) =>
+      apiFetch<Account>('/api/accounts', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: AccountUpdate) =>
       apiFetch<Account>(`/api/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/accounts/${id}`, { method: 'DELETE' }),
@@ -131,11 +134,11 @@ export const api = {
     list: (accountId: string, activeOnly?: boolean) =>
       apiFetch<Transcript[]>(`/api/transcripts/${accountId}?active_only=${activeOnly ?? true}`),
     upload: (data: TranscriptUpload) =>
-      apiFetch<Transcript>('/api/transcripts/', { method: 'POST', body: JSON.stringify(data) }),
+      apiFetch<Transcript>('/api/transcripts', { method: 'POST', body: JSON.stringify(data) }),
   },
   analyses: {
     run: (accountId: string) =>
-      apiFetch<AnalysisRunResponse>('/api/analyses/', {
+      apiFetch<AnalysisRunResponse>('/api/analyses', {
         method: 'POST',
         body: JSON.stringify({ account_id: accountId }),
       }),
@@ -208,7 +211,7 @@ export const api = {
     current: () => apiFetch<CalibrationSnapshot>('/api/calibration/current'),
     patterns: () => apiFetch<Record<string, unknown>>('/api/calibration/patterns'),
     create: (data: Record<string, unknown>) =>
-      apiFetch<CalibrationSnapshot>('/api/calibration/', { method: 'POST', body: JSON.stringify(data) }),
+      apiFetch<CalibrationSnapshot>('/api/calibration', { method: 'POST', body: JSON.stringify(data) }),
     history: () => apiFetch<CalibrationSnapshot[]>('/api/calibration/history'),
   },
   tracking: {
@@ -217,9 +220,11 @@ export const api = {
   },
   coaching: {
     submit: (data: { rep_name: string; note_text: string; author?: string }) =>
-      apiFetch<CoachingNote>('/api/coaching/', { method: 'POST', body: JSON.stringify(data) }),
-    list: (params?: Record<string, string>) =>
-      apiFetch<CoachingNote[]>(`/api/coaching/?${new URLSearchParams(params)}`),
+      apiFetch<CoachingNote>('/api/coaching', { method: 'POST', body: JSON.stringify(data) }),
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : '';
+      return apiFetch<CoachingNote[]>(qs ? `/api/coaching?${qs}` : '/api/coaching');
+    },
     summary: (repName?: string) =>
       apiFetch<CoachingSummary>(`/api/coaching/summary${repName ? `?rep_name=${repName}` : ''}`),
   },
@@ -295,24 +300,24 @@ export const api = {
 
   // Team & User management (admin)
   teams: {
-    list: () => apiFetch<HierarchyTeam[]>('/api/teams/'),
+    list: () => apiFetch<HierarchyTeam[]>('/api/teams'),
     create: (data: { name: string; level: string; parent_id?: string; leader_id?: string }) =>
-      apiFetch<any>('/api/teams/', { method: 'POST', body: JSON.stringify(data) }),
+      apiFetch<any>('/api/teams', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: { name?: string; parent_id?: string; leader_id?: string }) =>
       apiFetch<any>(`/api/teams/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     members: (id: string) => apiFetch<any[]>(`/api/teams/${id}/members`),
   },
   users: {
-    list: () => apiFetch<any[]>('/api/users/'),
+    list: () => apiFetch<any[]>('/api/users'),
     listICs: () => apiFetch<ICUser[]>('/api/users/ics'),
     create: (data: { name: string; email: string; role: string; team_id?: string }) =>
-      apiFetch<any>('/api/users/', { method: 'POST', body: JSON.stringify(data) }),
+      apiFetch<any>('/api/users', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: { name?: string; role?: string; team_id?: string; is_active?: boolean }) =>
       apiFetch<any>(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   },
   dealContext: {
     upsert: (data: DealContextUpsert) =>
-      apiFetch<{ account_id: string; entries: DealContextEntryInput[] }>('/api/deal-context/', {
+      apiFetch<{ account_id: string; entries: DealContextEntryInput[] }>('/api/deal-context', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

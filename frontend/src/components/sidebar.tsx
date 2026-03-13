@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   Users,
   Award,
-  Upload,
+  Play,
   MessageSquare,
   Calendar,
   Settings,
@@ -82,7 +82,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Actions',
     items: [
-      { label: 'Import & Analyze', href: '/upload', icon: Upload },
+      { label: 'Analyze', href: '/upload', icon: Play },
       { label: 'Watchlist', href: '/watchlist', icon: ListChecks },
       { label: 'Chat', href: '/chat', icon: MessageSquare },
       { label: 'Meeting Prep', href: '/meeting-prep', icon: Calendar },

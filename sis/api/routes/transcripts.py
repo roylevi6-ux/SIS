@@ -17,7 +17,7 @@ def list_transcripts(account_id: str, active_only: bool = True, user: dict = Dep
     return transcript_service.list_transcripts(account_id, active_only=active_only)
 
 
-@router.post("/")
+@router.post("")
 def upload_transcript(body: TranscriptUpload, user: dict = Depends(get_current_user)):
     """Upload and preprocess a new transcript."""
     transcript = transcript_service.upload_transcript(

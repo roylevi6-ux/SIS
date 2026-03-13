@@ -30,6 +30,10 @@ export interface Account {
   divergence_flag: boolean;
   created_at: string;
   updated_at: string;
+  deal_type: string;
+  buying_culture: string;
+  owner_id: string | null;
+  prior_contract_value: number | null;
   sf_stage: number | null;
   sf_forecast_category: string | null;
   sf_close_quarter: string | null;
@@ -46,6 +50,21 @@ export interface AccountCreate {
   sf_stage?: number;
   sf_forecast_category?: string;
   sf_close_quarter?: string;
+}
+
+export interface AccountUpdate {
+  name?: string;
+  cp_estimate?: number;
+  team_lead?: string;
+  ae_owner?: string;
+  team_name?: string;
+  deal_type?: string;
+  prior_contract_value?: number;
+  owner_id?: string;
+  sf_stage?: number;
+  sf_forecast_category?: string;
+  sf_close_quarter?: string;
+  buying_culture?: string;
 }
 
 // ── Transcripts ──
