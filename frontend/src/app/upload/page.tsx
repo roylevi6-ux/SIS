@@ -83,7 +83,6 @@ interface AccountConfig {
   sf_forecast_category: string;
   sf_close_quarter: string;
   buying_culture: string;
-  prior_contract_value: string;
 }
 
 interface RunResult {
@@ -107,12 +106,7 @@ function configFromAccount(a: Account): AccountConfig {
     sf_forecast_category: a.sf_forecast_category ?? '',
     sf_close_quarter: a.sf_close_quarter ?? '',
     buying_culture: a.buying_culture ?? 'direct',
-    prior_contract_value: a.prior_contract_value != null ? String(a.prior_contract_value) : '',
   };
-}
-
-function isExpansion(dealType: string): boolean {
-  return dealType.startsWith('expansion');
 }
 
 function isConfigComplete(cfg: AccountConfig): boolean {
@@ -123,7 +117,6 @@ function isConfigComplete(cfg: AccountConfig): boolean {
   if (!cfg.sf_close_quarter) return false;
   if (!cfg.buying_culture) return false;
   if (!cfg.cp_estimate) return false;
-  if (isExpansion(cfg.deal_type) && !cfg.prior_contract_value) return false;
   return true;
 }
 
@@ -439,17 +432,6 @@ function AccountRow({
         className="w-16"
       />
 
-      {/* Prior Contract Value — only for expansion */}
-      {isExpansion(config.deal_type) && (
-        <InlineNumber
-          value={config.prior_contract_value}
-          onChange={(v) => onConfigChange({ prior_contract_value: v })}
-          placeholder="Prior $"
-          required
-          className="w-16"
-        />
-      )}
-
       {/* Completeness indicator */}
       {!complete && (
         <span className="shrink-0 text-[10px] text-destructive font-medium">!</span>
@@ -586,7 +568,6 @@ export default function AnalyzePage() {
             owner_id: cfg.owner_id || undefined,
             deal_type: cfg.deal_type || undefined,
             buying_culture: cfg.buying_culture || undefined,
-            prior_contract_value: cfg.prior_contract_value ? Number(cfg.prior_contract_value) : undefined,
           });
 
           // Step 2: Start analysis
