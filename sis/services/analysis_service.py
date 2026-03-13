@@ -172,6 +172,13 @@ def analyze_account(
     )
     result.run_id = persisted_run_id
 
+    if result.status == "completed":
+        from sis.services.watchlist_service import clear_new_calls_flag
+        try:
+            clear_new_calls_flag(account_id)
+        except Exception:
+            logger.warning("Failed to clear has_new_calls flag for %s", account_id, exc_info=True)
+
     expected_agents = 11 if is_expansion_deal(deal_type) else 10
     return {
         "run_id": persisted_run_id,
@@ -202,6 +209,13 @@ async def analyze_account_async(
         account_id, result, transcript_texts, transcript_ids, existing_run_id=run_id,
     )
     result.run_id = persisted_run_id
+
+    if result.status == "completed":
+        from sis.services.watchlist_service import clear_new_calls_flag
+        try:
+            clear_new_calls_flag(account_id)
+        except Exception:
+            logger.warning("Failed to clear has_new_calls flag for %s", account_id, exc_info=True)
 
     expected_agents = 11 if is_expansion_deal(deal_type) else 10
     return {

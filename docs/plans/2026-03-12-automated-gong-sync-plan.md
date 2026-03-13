@@ -1145,4 +1145,4 @@ All open questions have been resolved. See Design Doc Section 13 for full detail
 9. **N8N processing** — Sequential, one account at a time, 15s delay
 10. **Progress widget** — Detailed per-account status throughout all phases
 
-**Blocker:** N8N webhook returns 401 Unauthorized. URL/token may need refresh before implementation can be tested end-to-end.
+**Resolved (2026-03-13):** Switched to Okta Workflows endpoint (no auth needed). Webhook returns 503 after ~31s but files still land in Drive — this is expected behavior handled by the fire-and-verify pattern. Full implementation complete across 7 phases.

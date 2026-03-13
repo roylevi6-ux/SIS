@@ -86,6 +86,18 @@ STALE_CALL_DAYS_THRESHOLD = 30
 # --- Google Drive Integration ---
 GOOGLE_DRIVE_TRANSCRIPTS_PATH = os.getenv("GOOGLE_DRIVE_TRANSCRIPTS_PATH", "")
 
+# --- N8N / Gong Sync Integration ---
+N8N_WEBHOOK_URL = os.getenv(
+    "N8N_WEBHOOK_URL",
+    "https://riskified.workflows.okta.com/api/flo/adc27d5f3ead6ebf35c103bcf05fead4/invoke",
+)
+N8N_REQUEST_TIMEOUT = int(os.getenv("N8N_REQUEST_TIMEOUT", "300"))          # 5 min
+N8N_INTER_REQUEST_DELAY = int(os.getenv("N8N_INTER_REQUEST_DELAY", "15"))   # 15s between calls
+N8N_DRIVE_POLL_INTERVAL = int(os.getenv("N8N_DRIVE_POLL_INTERVAL", "10"))   # 10s between Drive checks
+N8N_DRIVE_POLL_MAX_WAIT = int(os.getenv("N8N_DRIVE_POLL_MAX_WAIT", "180"))  # 3 min max wait
+N8N_DRIVE_STABILITY_CHECKS = int(os.getenv("N8N_DRIVE_STABILITY_CHECKS", "2"))
+N8N_DEFAULT_START_DATE = os.getenv("N8N_DEFAULT_START_DATE", "2025-01-01")
+
 
 # ---------------------------------------------------------------------------
 # Calibration config

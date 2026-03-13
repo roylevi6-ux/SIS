@@ -288,6 +288,7 @@ class N8NExtractResponse:
 N8N is described as "flaky and unstable." Our strategy is **fire-and-verify**:
 
 1. **Don't trust the response for success/failure.**
+   - **CONFIRMED 2026-03-13**: Okta workflow returns 503 but files land in Drive anyway. Tested with Nintendo (+58 files) and Rakuten Ichiba (+18 files) — both returned 503 at step 36 but all files appeared in Drive within 60 seconds.
    - N8N may return an error response while actually working (false negative)
    - N8N may return success but create 0 files
    - Always verify by scanning the local Drive folder after all N8N calls complete
@@ -638,6 +639,7 @@ The watchlist supports three ways to add accounts:
 **Problem:** After N8N creates files in Google Drive, Drive for Desktop takes time to sync them locally. Research shows typical sync is 1s–2min, averaging ~45s. No programmatic API to detect sync completion.
 
 **Solution — Poll-based detection:**
+- **CONFIRMED 2026-03-13**: Drive for Desktop syncs new files within ~60 seconds. Files appeared immediately at t=0, new files trickled in through t=60s, stabilized by t=90s.
 - After all N8N calls complete, poll the local Drive folder every 10 seconds for up to 3 minutes
 - "Stabilized" = same file count + same total file size for 2 consecutive checks (20s of stability)
 - If stabilized before 3 min, proceed immediately (saves wait time)

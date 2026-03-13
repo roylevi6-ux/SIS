@@ -197,6 +197,7 @@ def list_accounts(
                 "sf_stage": acct.sf_stage,
                 "sf_forecast_category": acct.sf_forecast_category,
                 "sf_close_quarter": acct.sf_close_quarter,
+                "has_new_calls": bool(acct.has_new_calls),
             }
 
             if latest_assessment:
@@ -383,6 +384,7 @@ def get_account_detail(account_id: str) -> dict:
             "sf_stage": account.sf_stage,
             "sf_forecast_category": account.sf_forecast_category,
             "sf_close_quarter": account.sf_close_quarter,
+            "has_new_calls": bool(account.has_new_calls),
             "transcripts": transcripts,
             "assessment": None,
         }

@@ -51,14 +51,23 @@ import type {
   TranscriptUpload,
   UsageSummary,
   VelocityResponse,
+  WatchlistAccount,
+  SyncJob,
+  SyncProgress,
 } from './api-types';
 import type { CommandCenterResponse } from './pipeline-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  // Strip trailing slash to prevent 308 redirects (which drop Authorization headers)
+  const cleanPath = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+
+  // Don't set Content-Type for FormData — the browser must set it with the multipart boundary
+  const isFormData = options?.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options?.headers as Record<string, string>),
   };
 
@@ -68,7 +77,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${cleanPath}`, {
     ...options,
     headers,
   });
@@ -78,7 +87,16 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
       triggerLogout();
     }
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || `API error: ${res.status}`);
+    const detail = error.detail;
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join('; ')
+          : typeof detail === 'object' && detail?.message
+            ? detail.message
+            : `API error: ${res.status}`;
+    throw new Error(message);
   }
   return res.json();
 }
@@ -302,6 +320,49 @@ export const api = {
       apiFetch<DealContextResponse>(`/api/deal-context/${accountId}`),
     questions: () =>
       apiFetch<Record<string, DealContextQuestion>>('/api/deal-context/questions'),
+  },
+  watchlist: {
+    list: () => apiFetch<WatchlistAccount[]>('/api/watchlist'),
+    add: (accountIds: string[], sfNames?: Record<string, string>) =>
+      apiFetch<WatchlistAccount[]>('/api/watchlist', {
+        method: 'POST',
+        body: JSON.stringify({ account_ids: accountIds, sf_account_names: sfNames }),
+      }),
+    remove: (accountId: string) =>
+      apiFetch<{ ok: boolean }>(`/api/watchlist/${accountId}`, { method: 'DELETE' }),
+    updateSFName: (accountId: string, sfName: string) =>
+      apiFetch<WatchlistAccount>(`/api/watchlist/${accountId}/sf-name`, {
+        method: 'PUT',
+        body: JSON.stringify({ sf_account_name: sfName }),
+      }),
+    addAll: () => apiFetch<WatchlistAccount[]>('/api/watchlist/add-all', { method: 'POST' }),
+    importCsv: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return apiFetch<{ matched: WatchlistAccount[]; unmatched: string[] }>('/api/watchlist/import-csv', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    uploadTam: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return apiFetch<{ count: number }>('/api/watchlist/tam-list', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+  },
+  sync: {
+    start: (params?: { account_ids?: string[]; start_date?: string; skip_n8n?: boolean }) =>
+      apiFetch<{ job_id: string; status: string; total_accounts: number }>(
+        '/api/sync/start',
+        { method: 'POST', body: JSON.stringify(params || {}) },
+      ),
+    status: (jobId: string) => apiFetch<SyncProgress>(`/api/sync/status/${jobId}`),
+    cancel: (jobId: string) =>
+      apiFetch<{ ok: boolean }>(`/api/sync/${jobId}/cancel`, { method: 'POST' }),
+    history: () => apiFetch<SyncJob[]>('/api/sync/history'),
   },
 };
 

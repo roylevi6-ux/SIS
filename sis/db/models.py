@@ -113,6 +113,7 @@ class Account(Base):
     sf_forecast_category = Column(Text, nullable=True)  # "Commit" / "Realistic" / "Upside" / "At Risk"
     sf_close_quarter = Column(Text, nullable=True)  # Expected close quarter, e.g. "Q2 2026"
     buying_culture = Column(Text, nullable=False, default="direct")  # "direct" | "proxy_delegated"
+    has_new_calls = Column(Integer, default=0)  # boolean: 1=new calls since last analysis
     owner_id = Column(Text, ForeignKey("users.id"), nullable=True)
     created_at = Column(Text, nullable=False, default=_now)
     updated_at = Column(Text, nullable=False, default=_now, onupdate=_now)
@@ -493,3 +494,112 @@ class DealContextEntry(Base):
         Index("ix_deal_context_account_question", "account_id", "question_id", "created_at"),
         Index("ix_deal_context_account_latest", "account_id", "created_at"),
     )
+
+
+# ─── watchlist_accounts ───────────────────────────────────────────────
+
+
+class WatchlistAccount(Base):
+    __tablename__ = "watchlist_accounts"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    account_id = Column(Text, ForeignKey("accounts.id"), nullable=False)
+    sf_account_name = Column(Text, nullable=False)
+    added_by = Column(Text, ForeignKey("users.id"), nullable=True)
+    added_at = Column(Text, nullable=False, default=_now)
+
+    # Relationships
+    account = relationship("Account")
+
+    __table_args__ = (
+        UniqueConstraint("account_id", name="uq_watchlist_account"),
+        Index("ix_watchlist_account", "account_id"),
+    )
+
+
+# ─── sync_jobs ─────────────────────────────────────────────────────────
+
+
+class SyncJob(Base):
+    __tablename__ = "sync_jobs"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    status = Column(Text, nullable=False, default="pending")
+    triggered_by = Column(Text, ForeignKey("users.id"), nullable=True)
+    started_at = Column(Text, nullable=False, default=_now)
+    completed_at = Column(Text, nullable=True)
+
+    total_accounts = Column(Integer, nullable=False, default=0)
+    n8n_calls_made = Column(Integer, default=0)
+    n8n_calls_succeeded = Column(Integer, default=0)
+    n8n_calls_failed = Column(Integer, default=0)
+    new_calls_found = Column(Integer, default=0)
+    calls_imported = Column(Integer, default=0)
+    calls_skipped = Column(Integer, default=0)
+
+    n8n_phase_seconds = Column(Float, nullable=True)
+    scan_phase_seconds = Column(Float, nullable=True)
+    total_seconds = Column(Float, nullable=True)
+
+    error_log = Column(Text, nullable=True)  # JSON array
+    created_at = Column(Text, nullable=False, default=_now)
+
+    # Relationships
+    account_results = relationship("SyncAccountResult", back_populates="sync_job")
+
+    __table_args__ = (
+        Index("ix_sync_jobs_status", "status", "started_at"),
+    )
+
+
+# ─── sync_account_results ─────────────────────────────────────────────
+
+
+class SyncAccountResult(Base):
+    __tablename__ = "sync_account_results"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    sync_job_id = Column(Text, ForeignKey("sync_jobs.id"), nullable=False)
+    account_id = Column(Text, ForeignKey("accounts.id"), nullable=False)
+    account_name = Column(Text, nullable=False)
+
+    # N8N phase
+    n8n_status = Column(Text, default="pending")
+    n8n_calls_found = Column(Integer, nullable=True)
+    n8n_calls_processed = Column(Integer, nullable=True)
+    n8n_files_created = Column(Integer, nullable=True)
+    n8n_response = Column(Text, nullable=True)  # Raw JSON
+    n8n_error = Column(Text, nullable=True)
+    n8n_duration_seconds = Column(Float, nullable=True)
+
+    # Import phase
+    import_status = Column(Text, default="pending")
+    new_files_found = Column(Integer, default=0)
+    calls_imported = Column(Integer, default=0)
+    calls_skipped = Column(Integer, default=0)
+    import_error = Column(Text, nullable=True)
+
+    has_new_data = Column(Integer, default=0)  # boolean
+    created_at = Column(Text, nullable=False, default=_now)
+
+    # Relationships
+    sync_job = relationship("SyncJob", back_populates="account_results")
+
+    __table_args__ = (
+        Index("ix_sync_results_job", "sync_job_id"),
+        Index("ix_sync_results_account", "account_id"),
+    )
+
+
+# ─── tam_accounts ──────────────────────────────────────────────────────
+
+
+class TamAccount(Base):
+    __tablename__ = "tam_accounts"
+
+    id = Column(Text, primary_key=True, default=_uuid)
+    account_name = Column(Text, nullable=False, unique=True)
+    account_owner = Column(Text, nullable=True)
+    business_sub_region = Column(Text, nullable=True)
+    business_structure = Column(Text, nullable=True)
+    uploaded_at = Column(Text, nullable=False, default=_now)

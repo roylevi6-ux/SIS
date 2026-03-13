@@ -6,3 +6,4 @@ export * from './use-dashboard';
 export * from './use-chat';
 export * from './use-admin';
 export * from './use-command-center';
+export * from './use-sync-progress';

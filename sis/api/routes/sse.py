@@ -16,6 +16,7 @@ from sis.db.models import AgentAnalysis, AnalysisRun
 from sis.db.session import get_session
 from sis.orchestrator.progress_store import get_snapshot
 from sis.orchestrator.batch_store import get_snapshot as get_batch_snapshot
+from sis.services.sync_progress_store import get_sync_snapshot
 
 router = APIRouter(prefix="/api/sse", tags=["sse"])
 
@@ -70,6 +71,32 @@ async def batch_progress(batch_id: str):
             elapsed += 1
         else:
             yield f"data: {json.dumps({'batch_id': batch_id, 'status': 'timeout', 'items': []})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.get("/sync/{job_id}")
+async def sync_progress(job_id: str):
+    """SSE stream for sync job progress.
+
+    Streams the full sync snapshot at 1s intervals.
+    Closes when sync reaches a terminal status or after timeout.
+    """
+
+    async def event_stream():
+        elapsed = 0
+        while elapsed < SSE_TIMEOUT_SECONDS:
+            snapshot = get_sync_snapshot(job_id)
+            if not snapshot:
+                yield f"data: {json.dumps({'job_id': job_id, 'status': 'not_found'})}\n\n"
+                break
+            yield f"data: {json.dumps(snapshot)}\n\n"
+            if snapshot["status"] in ("completed", "failed", "cancelled"):
+                break
+            await asyncio.sleep(1)
+            elapsed += 1
+        else:
+            yield f"data: {json.dumps({'job_id': job_id, 'status': 'timeout'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

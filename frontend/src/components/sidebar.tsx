@@ -25,6 +25,7 @@ import {
   Menu,
   LogOut,
   User,
+  ListChecks,
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth';
@@ -82,6 +83,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Actions',
     items: [
       { label: 'Import & Analyze', href: '/upload', icon: Upload },
+      { label: 'Watchlist', href: '/watchlist', icon: ListChecks },
       { label: 'Chat', href: '/chat', icon: MessageSquare },
       { label: 'Meeting Prep', href: '/meeting-prep', icon: Calendar },
     ],

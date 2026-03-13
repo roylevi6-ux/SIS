@@ -64,12 +64,19 @@ const dealColumns: ColumnDef<PipelineDeal>[] = [
       const deal = row.original;
       return (
         <div className="min-w-[160px]" title={deal.deal_memo_preview || undefined}>
-          <a
-            href={`/deals/${deal.account_id}`}
-            className="text-[13.5px] font-semibold text-foreground hover:text-brand-400 hover:underline"
-          >
-            {deal.account_name}
-          </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href={`/deals/${deal.account_id}`}
+              className="text-[13.5px] font-semibold text-foreground hover:text-brand-400 hover:underline"
+            >
+              {deal.account_name}
+            </a>
+            {deal.has_new_calls && (
+              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-400 shrink-0">
+                NEW
+              </span>
+            )}
+          </div>
           {deal.ae_owner && (
             <div className="text-[11.5px] text-muted-foreground mt-0.5">{deal.ae_owner}</div>
           )}

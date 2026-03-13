@@ -21,6 +21,7 @@ export interface PipelineDeal {
   stage_gap_magnitude?: number | null;
   forecast_gap_direction?: string | null;
   attention_level?: string | null;
+  has_new_calls?: boolean;
 }
 
 // ---------------------------------------------------------------------------

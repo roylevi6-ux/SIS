@@ -55,6 +55,8 @@ from sis.api.routes import (  # noqa: E402
     quotas,
     preferences,
     deal_context,
+    watchlist,
+    sync,
 )
 
 app.include_router(auth.router)
@@ -72,3 +74,5 @@ app.include_router(teams.router)
 app.include_router(quotas.router)
 app.include_router(preferences.router)
 app.include_router(deal_context.router)
+app.include_router(watchlist.router)
+app.include_router(sync.router)

@@ -33,6 +33,7 @@ export interface Account {
   sf_stage: number | null;
   sf_forecast_category: string | null;
   sf_close_quarter: string | null;
+  has_new_calls?: boolean;
   // Backend may include additional fields (assessment data, etc.)
   [key: string]: unknown;
 }
@@ -673,4 +674,56 @@ export interface DealContextQuestion {
   scale_max?: number;
   max_chars?: number;
   change_categories?: string[];
+}
+
+// ── Watchlist ──
+export interface WatchlistAccount {
+  account_id: string;
+  account_name: string;
+  sf_account_name: string;
+  has_new_calls: boolean;
+  health_score: number | null;
+  last_analyzed: string | null;
+  transcript_count: number;
+  added_at: string;
+}
+
+export interface SyncJob {
+  job_id: string;
+  status: 'pending' | 'running' | 'scanning' | 'importing' | 'completed' | 'failed' | 'cancelled';
+  total_accounts: number;
+  calls_imported: number;
+  calls_skipped: number;
+  n8n_calls_succeeded: number;
+  n8n_calls_failed: number;
+  total_seconds: number | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface SyncProgress {
+  job_id: string;
+  status: string;
+  phase: 'n8n_extraction' | 'waiting_for_drive' | 'importing' | 'completed' | 'failed' | 'cancelled';
+  total_accounts: number;
+  n8n_progress: { completed: number; total: number; current_account: string | null };
+  drive_poll: {
+    elapsed_seconds: number;
+    max_seconds: number;
+    file_count: number;
+    stable_checks: number;
+    needed_checks: number;
+    status: string;
+  } | null;
+  import_progress: { completed: number; total: number };
+  accounts: Record<string, {
+    name: string;
+    n8n_status: string;
+    n8n_calls_found: number | null;
+    import_status: string;
+    calls_imported: number;
+    calls_skipped: number;
+  }>;
+  summary: Record<string, unknown> | null;
+  errors: string[];
 }
